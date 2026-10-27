@@ -536,7 +536,7 @@ function MainLayout({ children }) {
 
           {/* Floating Timer - Toggl-style */}
           <FloatingTimer
-            isVisible={timerVisible}
+            isVisible={isActualAdmin && fullNav && timerVisible}
             onClose={() => {
               setTimerVisible(false)
               setTimerInitialClient(null)

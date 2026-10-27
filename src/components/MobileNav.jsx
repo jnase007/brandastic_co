@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
+import { readFullNav } from '../lib/navMode'
 import { Button } from './ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { getInitials } from '../lib/utils'
@@ -44,15 +45,22 @@ const adminNavItems = [
 // Bottom tab bar for quick access
 export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
   const location = useLocation()
-  const { isAdmin, profile } = useAuth()
-  
-  const quickItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: 'Home' },
-    { path: '/time', icon: Clock, label: 'Time' },
-    { path: '/clients', icon: Building2, label: 'Clients' },
-    { action: 'timer', icon: Timer, label: 'Timer' },
-    { action: 'more', icon: Menu, label: 'More' },
-  ]
+  const { user, isAdmin, profile } = useAuth()
+  const canRevealNav = String(user?.email || '').toLowerCase() === 'justin@brandastic.com'
+  const showFullNav = canRevealNav && readFullNav()
+
+  const quickItems = showFullNav
+    ? [
+        { path: '/dashboard', icon: LayoutDashboard, label: 'Home' },
+        { path: '/time', icon: Clock, label: 'Time' },
+        { path: '/clients', icon: Building2, label: 'Clients' },
+        { action: 'timer', icon: Timer, label: 'Timer' },
+        { action: 'more', icon: Menu, label: 'More' },
+      ]
+    : [
+        { path: '/profitability', icon: BarChart3, label: 'Profitability' },
+        { path: '/profitability/team', icon: Users2, label: 'Team' },
+      ]
 
   const [showMore, setShowMore] = useState(false)
   
@@ -78,7 +86,11 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         <div className="flex items-center justify-around h-16 px-2 bg-gradient-to-t from-background via-background to-background/95">
           {quickItems.map((item) => {
             const Icon = item.icon
-            const isActive = item.path && location.pathname === item.path
+            const isActive = item.path === '/profitability/team'
+              ? location.pathname.startsWith('/profitability/team')
+              : item.path === '/profitability'
+                ? location.pathname.startsWith('/profitability') && !location.pathname.startsWith('/profitability/team')
+                : item.path && location.pathname === item.path
             
             if (item.action === 'timer') {
               return (
