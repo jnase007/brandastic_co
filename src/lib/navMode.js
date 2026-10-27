@@ -22,6 +22,7 @@ export function setFullNav(on) {
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(STORAGE_KEY, on ? '1' : '0')
+    window.dispatchEvent(new Event('brandastic-full-nav'))
   } catch {
     /* ignore */
   }

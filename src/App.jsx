@@ -222,6 +222,7 @@ import {
 import { User, LogOut, ChevronDown, X, Eye } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { QuickActionsFAB } from './components/QuickActions'
+import { readFullNav } from './lib/navMode'
 import { ShortcutsPanel } from './components/ShortcutsPanel'
 import { NotificationBell } from './components/NotificationCenter'
 import { FocusModeProvider } from './components/FocusMode'
@@ -346,6 +347,17 @@ function MainLayout({ children }) {
   const [timerInitialClient, setTimerInitialClient] = useState(null)
   const [timerInitialDescription, setTimerInitialDescription] = useState('')
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [fullNav, setFullNavUi] = useState(() => readFullNav())
+
+  useEffect(() => {
+    const sync = () => setFullNavUi(readFullNav())
+    window.addEventListener('brandastic-full-nav', sync)
+    window.addEventListener('storage', sync)
+    return () => {
+      window.removeEventListener('brandastic-full-nav', sync)
+      window.removeEventListener('storage', sync)
+    }
+  }, [])
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -535,7 +547,7 @@ function MainLayout({ children }) {
           />
 
           {/* Quick Actions FAB - Hidden when timer is visible to avoid overlap */}
-          {!timerVisible && (
+          {fullNav && !timerVisible && (
             <QuickActionsFAB
               onStartTimer={() => setTimerVisible(true)}
               onNewTicket={() => navigate('/taskboard?new=true')}
