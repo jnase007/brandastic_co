@@ -40,7 +40,7 @@ export default function Login() {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) navigate('/dashboard', { replace: true })
+    if (user) navigate('/profitability', { replace: true })
   }, [user, navigate])
 
   // Rotate background images
@@ -151,31 +151,6 @@ export default function Login() {
           <p className="text-center text-sm text-muted-foreground mt-4">
             Use your @brandastic.com Google account
           </p>
-
-          {/* Quick Access Cards */}
-          <div className="mt-10 grid grid-cols-2 gap-3">
-            <Link
-              to="/client-login"
-              className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-blue-500/30 hover:border-blue-500/60 hover:bg-blue-500/5 transition-all group"
-            >
-              <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/20 transition-colors">
-                <Building2 className="h-5 w-5" />
-              </div>
-              <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground">Client Portal</span>
-            </Link>
-            
-            <a
-              href="https://brandastic.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-brand-orange/30 hover:border-brand-orange/60 hover:bg-brand-orange/5 transition-all group"
-            >
-              <div className="p-2 rounded-lg bg-brand-orange/10 text-brand-orange group-hover:bg-brand-orange/20 transition-colors">
-                <Users className="h-5 w-5" />
-              </div>
-              <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground">About Us</span>
-            </a>
-          </div>
 
           {/* Footer */}
           <p className="text-center text-xs text-muted-foreground mt-10">
