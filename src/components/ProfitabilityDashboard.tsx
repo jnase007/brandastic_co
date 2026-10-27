@@ -229,7 +229,7 @@ export function ProfitabilityDashboard({
           return (
             <Link
               key={client.slug}
-              href={profitabilityHref(range, client.slug)}
+              to={profitabilityHref(range, client.slug)}
               className="pr-card"
             >
               <div className="pr-card-top">

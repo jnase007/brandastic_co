@@ -3,6 +3,7 @@
   gap: 16px;
   min-width: 0;
   max-width: 100%;
+  padding: 12px 28px 28px 32px;
 }
 
 .pr-page > * {
