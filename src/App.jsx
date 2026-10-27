@@ -1110,6 +1110,14 @@ function App() {
 
               {/* Financials Dashboard */}
               <Route
+                path="/profitability/team/:member"
+                element={
+                  <TeamRoute>
+                    <ProfitabilityTeam />
+                  </TeamRoute>
+                }
+              />
+              <Route
                 path="/profitability/team"
                 element={
                   <TeamRoute>
