@@ -7,6 +7,7 @@ import {
   User,
   ChevronLeft,
   ChevronRight,
+  LogOut,
   Search,
   Activity,
   Timer,
@@ -90,7 +91,16 @@ export default function Sidebar({
   const [fullNav, setFullNavState] = useState(false)
 
   useEffect(() => {
-    setFullNavState(Boolean(isActualAdmin && readFullNav()))
+    if (!isActualAdmin) {
+      setFullNavState(false)
+      return
+    }
+    try {
+      const v = localStorage.getItem('brandasticFullNav')
+      setFullNavState(v !== '0')
+    } catch {
+      setFullNavState(true)
+    }
   }, [isActualAdmin])
 
   const showFullNav = Boolean(isActualAdmin && fullNav)

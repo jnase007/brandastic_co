@@ -9,7 +9,7 @@ export function readFullNav() {
       return true
     }
     if (q.get('simple') === '1') {
-      localStorage.removeItem(STORAGE_KEY)
+      localStorage.setItem(STORAGE_KEY, '0')
       return false
     }
     return localStorage.getItem(STORAGE_KEY) === '1'
@@ -21,8 +21,7 @@ export function readFullNav() {
 export function setFullNav(on) {
   if (typeof window === 'undefined') return
   try {
-    if (on) localStorage.setItem(STORAGE_KEY, '1')
-    else localStorage.removeItem(STORAGE_KEY)
+    localStorage.setItem(STORAGE_KEY, on ? '1' : '0')
   } catch {
     /* ignore */
   }
