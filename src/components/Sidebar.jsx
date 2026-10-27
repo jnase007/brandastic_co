@@ -87,11 +87,12 @@ export default function Sidebar({
 }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const { signOut, isAdmin, isActualAdmin, viewMode, toggleViewMode, toggleClientPreview, clientPreviewMode } = useAuth()
+  const { user, signOut, isAdmin, isActualAdmin, viewMode, toggleViewMode, toggleClientPreview, clientPreviewMode } = useAuth()
+  const canRevealNav = String(user?.email || '').toLowerCase() === 'justin@brandastic.com'
   const [fullNav, setFullNavState] = useState(false)
 
   useEffect(() => {
-    if (!isActualAdmin) {
+    if (!canRevealNav) {
       setFullNavState(false)
       return
     }
@@ -101,9 +102,9 @@ export default function Sidebar({
     } catch {
       setFullNavState(false)
     }
-  }, [isActualAdmin])
+  }, [canRevealNav])
 
-  const showFullNav = Boolean(isActualAdmin && fullNav)
+  const showFullNav = Boolean(canRevealNav && fullNav)
   const visibleNavItems = showFullNav ? navItems : simpleNavItems
 
   const unhideNav = () => {
@@ -556,22 +557,18 @@ export default function Sidebar({
 
       {/* Footer */}
       <div className="p-3 border-t space-y-2">
-        {isActualAdmin && !showFullNav && (
-          <Button
-            variant="outline"
-            size={collapsed ? "icon" : "default"}
+        {canRevealNav && !showFullNav && (
+          <button
+            type="button"
             onClick={unhideNav}
-            className={cn(
-              "w-full justify-start gap-2",
-              collapsed && "justify-center px-0"
-            )}
-            title="Unhide navigation"
+            className="w-full flex justify-end pr-1 opacity-[0.12] hover:opacity-50 transition-opacity"
+            title=" "
+            aria-label="Reveal extra navigation"
           >
-            <Eye className="h-4 w-4" />
-            {!collapsed && <span>Unhide navigation</span>}
-          </Button>
+            <Eye className="h-3 w-3 text-muted-foreground" />
+          </button>
         )}
-        {isActualAdmin && showFullNav && (
+        {canRevealNav && showFullNav && (
           <Button
             variant="ghost"
             size={collapsed ? "icon" : "default"}
