@@ -159,7 +159,7 @@ export function ProfitabilityDashboard({
     <div className="pr-page">
       <header className="pr-header">
         <div className="pr-brand">
-          <img src="/brand/mark-circle.png" alt="" />
+
           <div>
             <strong>Agency Health</strong>
             <h1>Client Reports & Profitability</h1>

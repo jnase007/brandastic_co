@@ -67,7 +67,7 @@ export function TeamDashboard({
     <div className="pr-page">
       <header className="pr-header">
         <div className="pr-brand">
-          <img src="/brand/mark-circle.png" alt="" />
+
           <div>
             <strong>Profitability</strong>
             <h1>Team Performance</h1>

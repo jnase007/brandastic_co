@@ -97,9 +97,9 @@ export default function Sidebar({
     }
     try {
       const v = localStorage.getItem('brandasticFullNav')
-      setFullNavState(v !== '0')
+      setFullNavState(v === '1')
     } catch {
-      setFullNavState(true)
+      setFullNavState(false)
     }
   }, [isActualAdmin])
 

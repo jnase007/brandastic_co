@@ -274,7 +274,7 @@ function ProtectedRoute({ children, allowedRoles = ['team', 'admin', 'client'] }
     if (profile.role === 'client') {
       return <Navigate to="/portal" replace />
     }
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/profitability" replace />
   }
 
   return children
@@ -1081,7 +1081,7 @@ function App() {
               />
               <Route
                 path="/login"
-                element={<Navigate to="/dashboard" replace />}
+                element={<Navigate to="/profitability" replace />}
               />
               <Route
                 path="/client-login"
@@ -1122,6 +1122,14 @@ function App() {
                 element={
                   <TeamRoute>
                     <ProfitabilityTeam />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/profitability/:slug"
+                element={
+                  <TeamRoute>
+                    <Profitability />
                   </TeamRoute>
                 }
               />
