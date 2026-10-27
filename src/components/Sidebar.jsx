@@ -37,6 +37,7 @@ import {
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
+import { readFullNav, setFullNav } from '../lib/navMode'
 import { Button } from './ui/button'
 import XPBar from './XPBar'
 import { AchievementMini } from './AchievementShowcase'
@@ -61,6 +62,11 @@ const navItems = [
   { path: '/leaderboard', icon: Trophy, label: 'Leaderboard', shortcut: 'G L' },
 ]
 
+const simpleNavItems = [
+  { path: '/profitability', icon: BarChart3, label: 'Profitability' },
+  { path: '/profitability/team', icon: Users2, label: 'Team' },
+]
+
 const adminNavItems = [
   { path: '/admin-hub', icon: Crown, label: 'Admin Hub', shortcut: 'G H' },
   { path: '/mission', icon: Target, label: 'Mission', shortcut: 'G M' },
@@ -80,7 +86,24 @@ export default function Sidebar({
 }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const { isAdmin, isActualAdmin, viewMode, toggleViewMode, toggleClientPreview, clientPreviewMode } = useAuth()
+  const { signOut, isAdmin, isActualAdmin, viewMode, toggleViewMode, toggleClientPreview, clientPreviewMode } = useAuth()
+  const [fullNav, setFullNavState] = useState(false)
+
+  useEffect(() => {
+    setFullNavState(Boolean(isActualAdmin && readFullNav()))
+  }, [isActualAdmin])
+
+  const showFullNav = Boolean(isActualAdmin && fullNav)
+  const visibleNavItems = showFullNav ? navItems : simpleNavItems
+
+  const unhideNav = () => {
+    setFullNav(true)
+    setFullNavState(true)
+  }
+  const hideNavAgain = () => {
+    setFullNav(false)
+    setFullNavState(false)
+  }
   const [gamificationExpanded, setGamificationExpanded] = useState(false)
   const [recentlyViewed, setRecentlyViewed] = useState([])
   const [showRecent, setShowRecent] = useState(true)
@@ -126,6 +149,11 @@ export default function Sidebar({
     e.stopPropagation()
     localStorage.removeItem('recentlyViewed')
     setRecentlyViewed([])
+  }
+
+  const handleSignOut = async () => {
+    await signOut()
+    window.location.href = '/login'
   }
 
   return (
@@ -192,7 +220,7 @@ export default function Sidebar({
       </div>
 
       {/* Search - prioritized at top */}
-      <div className="p-3 pb-2">
+      {showFullNav && <div className="p-3 pb-2">
         <Button
           variant="outline"
           size={collapsed ? "icon" : "default"}
@@ -210,10 +238,10 @@ export default function Sidebar({
             </>
           )}
         </Button>
-      </div>
+      </div>}
 
       {/* Compact XP Bar & Gamification Toggle */}
-      <div className="px-3 pb-2">
+      {showFullNav && <div className="px-3 pb-2">
         {collapsed ? (
           <XPBar collapsed={collapsed} />
         ) : (
@@ -266,11 +294,11 @@ export default function Sidebar({
             </AnimatePresence>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive = location.pathname === item.path
           return (
             <Link
@@ -315,7 +343,7 @@ export default function Sidebar({
         })}
 
         {/* Admin Navigation - only for admins */}
-        {isActualAdmin && (
+        {showFullNav && isActualAdmin && (
           <>
             <div className="pt-4 border-t mt-4">
               <div className={cn(
@@ -433,7 +461,7 @@ export default function Sidebar({
         )}
 
         {/* Recently Viewed Section */}
-        {!collapsed && recentlyViewed.length > 0 && showRecent && (
+        {showFullNav && !collapsed && recentlyViewed.length > 0 && showRecent && (
           <div className="pt-4 border-t mt-4">
             <div className="flex items-center justify-between px-3 mb-2">
               <p className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
@@ -473,7 +501,7 @@ export default function Sidebar({
           </div>
         )}
 
-        <div className="pt-4 border-t mt-4">
+        {showFullNav && <div className="pt-4 border-t mt-4">
           <p className={cn(
             "text-xs text-muted-foreground uppercase tracking-wider mb-2",
             collapsed ? "text-center" : "px-3"
@@ -513,9 +541,54 @@ export default function Sidebar({
             <NotificationBell />
             {!collapsed && <span className="text-sm text-muted-foreground">Notifications</span>}
           </div>
-        </div>
+        </div>}
       </nav>
 
+      {/* Footer */}
+      <div className="p-3 border-t space-y-2">
+        {isActualAdmin && !showFullNav && (
+          <Button
+            variant="outline"
+            size={collapsed ? "icon" : "default"}
+            onClick={unhideNav}
+            className={cn(
+              "w-full justify-start gap-2",
+              collapsed && "justify-center px-0"
+            )}
+            title="Unhide navigation"
+          >
+            <Eye className="h-4 w-4" />
+            {!collapsed && <span>Unhide navigation</span>}
+          </Button>
+        )}
+        {isActualAdmin && showFullNav && (
+          <Button
+            variant="ghost"
+            size={collapsed ? "icon" : "default"}
+            onClick={hideNavAgain}
+            className={cn(
+              "w-full justify-start gap-2 text-muted-foreground",
+              collapsed && "justify-center px-0"
+            )}
+            title="Hide extra navigation"
+          >
+            <EyeOff className="h-4 w-4" />
+            {!collapsed && <span>Hide extra nav</span>}
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size={collapsed ? "icon" : "default"}
+          onClick={handleSignOut}
+          className={cn(
+            "w-full justify-start gap-2 text-muted-foreground hover:text-red-500",
+            collapsed && "justify-center px-0"
+          )}
+        >
+          <LogOut className="h-4 w-4" />
+          {!collapsed && <span>Sign Out</span>}
+        </Button>
+      </div>
     </motion.aside>
   )
 }

@@ -33,6 +33,8 @@ const ClientLogin = lazy(() => import('./pages/ClientLogin'))
 const ClientDashboard = lazy(() => import('./pages/ClientDashboard'))
 const Mission = lazy(() => import('./pages/Mission'))
 const Financials = lazy(() => import('./pages/Financials'))
+const Profitability = lazy(() => import('./pages/Profitability'))
+const ProfitabilityTeam = lazy(() => import('./pages/ProfitabilityTeam'))
 const WorkingNotWorking = lazy(() => import('./pages/WorkingNotWorking'))
 const AdminHub = lazy(() => import('./pages/AdminHub'))
 const Ideas = lazy(() => import('./pages/Ideas'))
@@ -1108,6 +1110,22 @@ function App() {
 
               {/* Financials Dashboard */}
               <Route
+                path="/profitability/team"
+                element={
+                  <TeamRoute>
+                    <ProfitabilityTeam />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/profitability"
+                element={
+                  <TeamRoute>
+                    <Profitability />
+                  </TeamRoute>
+                }
+              />
+              <Route
                 path="/financials"
                 element={
                   <AdminRoute>
@@ -1147,7 +1165,7 @@ function App() {
               />
 
               {/* Default redirect */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<Navigate to="/profitability" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             </AnimatePresence>
