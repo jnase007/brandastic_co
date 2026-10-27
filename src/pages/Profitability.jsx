@@ -3,6 +3,7 @@ import { useLocation, useSearchParams } from 'react-router-dom'
 import '../profitability.css'
 import { ProfitabilityDashboard } from '../components/ProfitabilityDashboard'
 import { profitRange } from '../lib/profitability'
+import { cachedProfitability, fetchProfitability } from '../lib/profitabilityCache'
 
 function clientSlugFromPath(pathname) {
   const parts = String(pathname || '').split('/').filter(Boolean)
@@ -15,41 +16,28 @@ export default function Profitability() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const slug = clientSlugFromPath(location.pathname)
-  const [data, setData] = useState(null)
+  const [data, setData] = useState(() => cachedProfitability())
   const [error, setError] = useState('')
   const range = profitRange(searchParams.get('range') || undefined)
 
   useEffect(() => {
     let cancelled = false
-    setData(null)
-    setError('')
-    const url = slug
-      ? `https://dash.brandastic.com/api/profitability-data?slug=${encodeURIComponent(slug)}`
-      : 'https://dash.brandastic.com/api/profitability-data'
-    fetch(url)
-      .then(async (res) => {
-        const body = await res.json()
-        if (!res.ok) throw new Error(body.error || 'Could not load profitability')
-        return body
-      })
-      .then(async (body) => {
-        if (slug && !(body.clients || []).some((c) => c.slug === slug)) {
-          const fullRes = await fetch('https://dash.brandastic.com/api/profitability-data')
-          const full = await fullRes.json()
-          if (!cancelled) setData(full)
-          return
+    fetchProfitability()
+      .then((body) => {
+        if (!cancelled) {
+          setData(body)
+          setError('')
         }
-        if (!cancelled) setData(body)
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message || 'Could not load profitability')
+        if (!cancelled && !data) setError(err.message || 'Could not load profitability')
       })
     return () => {
       cancelled = true
     }
-  }, [slug])
+  }, [])
 
-  if (error) {
+  if (error && !data) {
     return (
       <div className="pr-page">
         <div className="pr-panel">
