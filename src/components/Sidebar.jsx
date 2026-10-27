@@ -334,15 +334,7 @@ export default function Sidebar({
                   )}
                 </span>
               )}
-              
-              {/* Active indicator */}
-              {isActive && (
-                <motion.div
-                  layoutId="activeNav"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full"
-                />
-              )}
-              
+
               {/* Tooltip for collapsed */}
               {collapsed && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-foreground text-background text-sm rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
