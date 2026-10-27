@@ -3,6 +3,18 @@ import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext({})
 
+function isBrandasticEmail(email) {
+  return String(email || '').toLowerCase().endsWith('@brandastic.com')
+}
+
+async function rejectNonBrandastic(user) {
+  if (user && !isBrandasticEmail(user.email)) {
+    await supabase.auth.signOut({ scope: 'global' })
+    return true
+  }
+  return false
+}
+
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {
@@ -166,8 +178,13 @@ export function AuthProvider({ children }) {
           setProfile(null)
         } else if (session?.user) {
           console.log('[Auth] Session found for:', session.user.email)
-          setUser(session.user)
-          await createProfileIfNeeded(session.user)
+          if (await rejectNonBrandastic(session.user)) {
+            setUser(null)
+            setProfile(null)
+          } else {
+            setUser(session.user)
+            await createProfileIfNeeded(session.user)
+          }
         } else if (storedAuth) {
           // We have stored auth but getSession returned null - try to recover
           console.log('[Auth] No session but localStorage has auth - attempting recovery...')
@@ -226,10 +243,14 @@ export function AuthProvider({ children }) {
 
         // Handle different auth events
         if (event === 'TOKEN_REFRESHED') {
-          // Token was refreshed - just update user, don't refetch profile
           console.log('[Auth] Token refreshed for:', session?.user?.email)
           if (session?.user) {
-            setUser(session.user)
+            if (await rejectNonBrandastic(session.user)) {
+              setUser(null)
+              setProfile(null)
+            } else {
+              setUser(session.user)
+            }
           }
           return
         }
@@ -243,14 +264,17 @@ export function AuthProvider({ children }) {
         }
 
         if (session?.user) {
+          if (await rejectNonBrandastic(session.user)) {
+            setUser(null)
+            setProfile(null)
+            setLoading(false)
+            return
+          }
           setUser(session.user)
-          
-          // On sign in or initial session, ensure profile exists
           if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
             console.log('[Auth] Creating/fetching profile for:', session.user.email)
             await createProfileIfNeeded(session.user)
           } else {
-            // For other events, just fetch profile
             await fetchProfile(session.user.id)
           }
         } else if (event !== 'TOKEN_REFRESHED') {
@@ -276,7 +300,11 @@ export function AuthProvider({ children }) {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.origin}/profitability`,
+        queryParams: {
+          hd: 'brandastic.com',
+          prompt: 'select_account',
+        },
       },
     })
     return { data, error }
