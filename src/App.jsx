@@ -547,7 +547,7 @@ function MainLayout({ children }) {
           />
 
           {/* Quick Actions FAB - Hidden when timer is visible to avoid overlap */}
-          {fullNav && !timerVisible && (
+          {isActualAdmin && fullNav && !timerVisible && (
             <QuickActionsFAB
               onStartTimer={() => setTimerVisible(true)}
               onNewTicket={() => navigate('/taskboard?new=true')}
