@@ -1126,15 +1126,7 @@ function App() {
                 }
               />
               <Route
-                path="/profitability/:slug"
-                element={
-                  <TeamRoute>
-                    <Profitability />
-                  </TeamRoute>
-                }
-              />
-              <Route
-                path="/profitability"
+                path="/profitability/*"
                 element={
                   <TeamRoute>
                     <Profitability />

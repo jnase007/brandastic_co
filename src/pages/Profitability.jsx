@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import '../profitability.css'
 import { ProfitabilityDashboard } from '../components/ProfitabilityDashboard'
 import { profitRange } from '../lib/profitability'
 
+function clientSlugFromPath(pathname) {
+  const parts = String(pathname || '').split('/').filter(Boolean)
+  if (parts[0] !== 'profitability') return ''
+  if (!parts[1] || parts[1] === 'team') return ''
+  return parts[1]
+}
+
 export default function Profitability() {
-  const { slug } = useParams()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
+  const slug = clientSlugFromPath(location.pathname)
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const range = profitRange(searchParams.get('range') || undefined)
@@ -24,7 +32,13 @@ export default function Profitability() {
         if (!res.ok) throw new Error(body.error || 'Could not load profitability')
         return body
       })
-      .then((body) => {
+      .then(async (body) => {
+        if (slug && !(body.clients || []).some((c) => c.slug === slug)) {
+          const fullRes = await fetch('https://dash.brandastic.com/api/profitability-data')
+          const full = await fullRes.json()
+          if (!cancelled) setData(full)
+          return
+        }
         if (!cancelled) setData(body)
       })
       .catch((err) => {
