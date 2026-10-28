@@ -42,6 +42,7 @@ const COMMANDS = [
   { id: 'dashboard', label: 'Go to Dashboard', icon: LayoutDashboard, shortcut: 'G D', action: 'navigate', path: '/dashboard', category: 'Navigation' },
   { id: 'time', label: 'Go to Time Tracking', icon: Clock, shortcut: 'G T', action: 'navigate', path: '/time', category: 'Navigation' },
   { id: 'clients', label: 'Go to Clients', icon: Building2, shortcut: 'G C', action: 'navigate', path: '/clients', category: 'Navigation' },
+  { id: 'leads', label: 'Go to Leads', icon: Target, action: 'navigate', path: '/leads', category: 'Navigation' },
   { id: 'pipeline', label: 'Go to Sales Pipeline', icon: Target, action: 'navigate', path: '/pipeline', category: 'Navigation' },
   { id: 'docs', label: 'Go to Internal Docs', icon: HelpCircle, shortcut: 'G N', action: 'navigate', path: '/docs', category: 'Navigation' },
   { id: 'reports', label: 'Go to Reports', icon: BarChart3, shortcut: 'G R', action: 'navigate', path: '/reports', category: 'Navigation' },

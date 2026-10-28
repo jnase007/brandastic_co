@@ -5,7 +5,7 @@ import {
   Menu, X, LayoutDashboard, Kanban, Building2, Clock, BarChart3,
   Users2, Trophy, User, Shield, LogOut, Timer, Activity,
   Search, ChevronRight, Zap, Bell, BookOpen, ActivitySquare, Settings,
-  ListTodo, Lightbulb, Target,
+  ListTodo, Lightbulb, Target, ClipboardList,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
@@ -60,6 +60,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
     : [
         { path: '/profitability', icon: BarChart3, label: 'Profitability' },
         { path: '/profitability/team', icon: Users2, label: 'Team' },
+        { path: '/leads', icon: ClipboardList, label: 'Leads' },
       ]
 
   const [showMore, setShowMore] = useState(false)

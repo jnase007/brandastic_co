@@ -38,3 +38,4 @@ coverage
 .netlify
 test-results/
 .vercel
+.env*

@@ -33,6 +33,7 @@ const ClientLogin = lazy(() => import('./pages/ClientLogin'))
 const ClientDashboard = lazy(() => import('./pages/ClientDashboard'))
 const Mission = lazy(() => import('./pages/Mission'))
 const Financials = lazy(() => import('./pages/Financials'))
+const Leads = lazy(() => import('./pages/Leads'))
 const Profitability = lazy(() => import('./pages/Profitability'))
 const ProfitabilityTeam = lazy(() => import('./pages/ProfitabilityTeam'))
 const WorkingNotWorking = lazy(() => import('./pages/WorkingNotWorking'))
@@ -1121,6 +1122,14 @@ function App() {
               />
 
               {/* Financials Dashboard */}
+              <Route
+                path="/leads"
+                element={
+                  <TeamRoute>
+                    <Leads />
+                  </TeamRoute>
+                }
+              />
               <Route
                 path="/profitability/team/:member"
                 element={
