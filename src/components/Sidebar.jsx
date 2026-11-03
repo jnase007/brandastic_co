@@ -36,6 +36,7 @@ import {
   Mail,
   Lightbulb,
   ClipboardList,
+  ListChecks,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
@@ -55,6 +56,7 @@ const navItems = [
   { path: '/time', icon: Clock, label: 'Time Tracking', shortcut: 'G T' },
   { path: '/clients', icon: Building2, label: 'Clients', shortcut: 'G C' },
   { path: '/leads', icon: ClipboardList, label: 'Leads' },
+  { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
   { path: '/pipeline', icon: Target, label: 'Sales Pipeline' },
   { path: '/docs', icon: BookOpen, label: 'Internal Docs', shortcut: 'G N' },
   { path: '/taskboard', icon: Kanban, label: 'Task Board', shortcut: 'G K' },
@@ -69,6 +71,7 @@ const simpleNavItems = [
   { path: '/profitability', icon: BarChart3, label: 'Profitability' },
   { path: '/profitability/team', icon: Users2, label: 'Team' },
   { path: '/leads', icon: ClipboardList, label: 'Leads' },
+  { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
 ]
 
 const adminNavItems = [
