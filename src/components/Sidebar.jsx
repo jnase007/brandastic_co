@@ -40,6 +40,7 @@ import {
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
 import { readFullNav, setFullNav } from '../lib/navMode'
+import { useFeatureListNav } from '../lib/featureListNav'
 import { Button } from './ui/button'
 import XPBar from './XPBar'
 import { AchievementMini } from './AchievementShowcase'
@@ -109,6 +110,7 @@ export default function Sidebar({
 
   const showFullNav = Boolean(canRevealNav && fullNav)
   const visibleNavItems = showFullNav ? navItems : simpleNavItems
+  const featureNav = useFeatureListNav()?.nav
 
   const unhideNav = () => {
     setFullNav(true)
@@ -147,7 +149,17 @@ export default function Sidebar({
     }
   }, [])
 
-  
+  useEffect(() => {
+    if (!featureNav?.activeId || collapsed) return
+    const button = document.querySelector(`[data-feature-nav="${featureNav.activeId}"]`)
+    const nav = button?.closest('nav')
+    if (!button || !nav) return
+    const navRect = nav.getBoundingClientRect()
+    const buttonRect = button.getBoundingClientRect()
+    if (buttonRect.top < navRect.top) nav.scrollTop -= navRect.top - buttonRect.top
+    else if (buttonRect.bottom > navRect.bottom) nav.scrollTop += buttonRect.bottom - navRect.bottom
+  }, [featureNav?.activeId, collapsed])
+
   const getRecentIcon = (type) => {
     switch (type) {
       case 'client': return Building2
@@ -314,37 +326,63 @@ export default function Sidebar({
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
         {visibleNavItems.map((item) => {
           const isActive = location.pathname === item.path
+          const sections = item.path === '/feature-list' && isActive && !collapsed ? featureNav?.sections : null
           return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all relative group",
-                collapsed && "justify-center px-0",
-                isActive
-                  ? "bg-brand-orange text-white"
-                  : "hover:bg-muted text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <item.icon className="h-5 w-5 flex-shrink-0" />
-              {!collapsed && (
-                <span className="flex items-center gap-2">
-                  {item.label}
-                  {item.beta && (
-                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-500/20 text-amber-600 rounded-full font-medium">
-                      BETA
-                    </span>
-                  )}
-                </span>
-              )}
+            <div key={item.path}>
+              <Link
+                to={item.path}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all relative group",
+                  collapsed && "justify-center px-0",
+                  isActive
+                    ? "bg-brand-orange text-white"
+                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <item.icon className="h-5 w-5 flex-shrink-0" />
+                {!collapsed && (
+                  <span className="flex items-center gap-2">
+                    {item.label}
+                    {item.beta && (
+                      <span className="text-[9px] px-1.5 py-0.5 bg-amber-500/20 text-amber-600 rounded-full font-medium">
+                        BETA
+                      </span>
+                    )}
+                  </span>
+                )}
 
-              {/* Tooltip for collapsed */}
-              {collapsed && (
-                <div className="absolute left-full ml-2 px-2 py-1 bg-foreground text-background text-sm rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
-                  {item.label}
+                {/* Tooltip for collapsed */}
+                {collapsed && (
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-foreground text-background text-sm rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
+                    {item.label}
+                  </div>
+                )}
+              </Link>
+              {sections?.length ? (
+                <div className="mb-2 ml-3 mt-1 space-y-0.5 border-l border-border pl-2">
+                  {sections.map((section) => {
+                    const current = section.id === (featureNav.activeId || sections[0].id)
+                    return (
+                      <button
+                        key={section.id}
+                        type="button"
+                        data-feature-nav={section.id}
+                        onClick={() => featureNav.jump(section.name)}
+                        className={cn(
+                          "flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 text-left text-sm leading-snug",
+                          current
+                            ? "bg-[#e8eeff] font-medium text-[#1644ED]"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                      >
+                        <span className="w-5 shrink-0 text-xs">{section.number}</span>
+                        <span>{section.name}</span>
+                      </button>
+                    )
+                  })}
                 </div>
-              )}
-            </Link>
+              ) : null}
+            </div>
           )
         })}
 

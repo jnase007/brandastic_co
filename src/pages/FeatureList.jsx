@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import {
   FEATURE_SHEET_CSV_URL,
@@ -6,6 +6,7 @@ import {
   parseFeatureSheet,
   sectionId,
 } from '../lib/featureList'
+import { useFeatureListNav } from '../lib/featureListNav'
 
 const DIFFICULTY_STYLE = {
   Easy: 'bg-[#e8eeff] text-[#1644ED]',
@@ -56,6 +57,12 @@ function scrollParent(node) {
 }
 
 export default function FeatureList() {
+  const pageRef = useRef(null)
+  const featureNav = useFeatureListNav()
+  const setNavRef = useRef(featureNav?.setNav)
+  const clearRef = useRef(featureNav?.clear)
+  setNavRef.current = featureNav?.setNav
+  clearRef.current = featureNav?.clear
   const [features, setFeatures] = useState([])
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
@@ -132,14 +139,36 @@ export default function FeatureList() {
     return () => observer.disconnect()
   }, [status, groups])
 
-  function showGroup(name) {
+  const showGroup = useCallback((name) => {
     const id = sectionId(name)
     const nodes = [...document.querySelectorAll(`[data-feature-section="${id}"]`)]
     const target = nodes.find((node) => node.getClientRects().length > 0) || nodes[0]
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     setActiveId(id)
     setMenuOpen(false)
-  }
+  }, [])
+
+  useEffect(() => {
+    if (status !== 'ready') return undefined
+    function publish() {
+      const root = pageRef.current
+      if (!root || root.getClientRects().length === 0) return
+      setNavRef.current?.({
+        sections: groups.map((group, index) => ({
+          name: group.name,
+          id: sectionId(group.name),
+          number: sectionNumber(index),
+        })),
+        activeId,
+        jump: showGroup,
+      })
+    }
+    publish()
+    window.addEventListener('resize', publish)
+    return () => window.removeEventListener('resize', publish)
+  }, [status, groups, activeId, showGroup])
+
+  useEffect(() => () => clearRef.current?.(), [])
 
   const activeGroup = groups.find((group) => sectionId(group.name) === activeId)
   const counts = useMemo(() => ({
@@ -149,7 +178,7 @@ export default function FeatureList() {
   }), [features])
 
   return (
-    <div className="min-h-screen bg-[#f4f7fa] px-4 py-6 text-[#15202b] sm:px-6 lg:px-8">
+    <div ref={pageRef} className="min-h-screen bg-[#f4f7fa] px-4 py-6 text-[#15202b] sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
         <section className="grid overflow-hidden rounded-3xl bg-[#10141c] text-white shadow-sm lg:grid-cols-2">
           <div className="p-8 sm:p-12">
@@ -223,27 +252,7 @@ export default function FeatureList() {
               </div>
             </section>
 
-            <div className="mt-6 lg:grid lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:items-start lg:gap-8">
-              <aside className="sticky top-20 hidden max-h-[calc(100vh-7rem)] self-start overflow-y-auto lg:block">
-                <p className="px-2 text-xs font-medium uppercase tracking-wide text-[#8b98a5]">Categories</p>
-                <div className="mt-3 space-y-1">
-                  {groups.map((group, index) => {
-                    const active = sectionId(group.name) === (activeId || sectionId(groups[0].name))
-                    return (
-                      <button
-                        key={group.name}
-                        type="button"
-                        onClick={() => showGroup(group.name)}
-                        className={`flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 text-left text-sm ${active ? 'bg-[#e8eeff] font-medium text-[#1644ED]' : 'text-[#3d4d5c] hover:bg-white'}`}
-                      >
-                        <span className="w-5 shrink-0 text-xs text-[#8b98a5]">{sectionNumber(index)}</span>
-                        <span>{group.name}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </aside>
-              <div>
+            <div className="mt-6">
                 <div className="sticky top-14 z-30 mb-4 lg:hidden">
                   <button
                     type="button"
@@ -343,7 +352,6 @@ export default function FeatureList() {
                 </div>
               </section>
             ))}
-              </div>
             </div>
           </>
         ) : null}

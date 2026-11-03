@@ -45,6 +45,7 @@ const InternalDocs = lazy(() => import('./pages/InternalDocs'))
 
 // Components
 import Sidebar from './components/Sidebar'
+import { FeatureListNavProvider } from './lib/featureListNav'
 import LoadingScreen from './components/LoadingScreen'
 import CommandPalette from './components/CommandPalette'
 import FloatingTimer from './components/FloatingTimer'
@@ -423,6 +424,7 @@ function MainLayout({ children }) {
   const ClientPortalPreview = lazy(() => import('./pages/ClientPortal'))
 
   return (
+    <FeatureListNavProvider>
     <div className="min-h-screen bg-background">
       {/* Client Preview Banner */}
       <AnimatePresence>
@@ -565,6 +567,7 @@ function MainLayout({ children }) {
         </>
       )}
     </div>
+    </FeatureListNavProvider>
   )
 }
 
