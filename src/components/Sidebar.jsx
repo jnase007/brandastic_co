@@ -35,7 +35,6 @@ import {
   X,
   Mail,
   Lightbulb,
-  ClipboardList,
   ListChecks,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
@@ -55,7 +54,6 @@ const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', shortcut: 'G D' },
   { path: '/time', icon: Clock, label: 'Time Tracking', shortcut: 'G T' },
   { path: '/clients', icon: Building2, label: 'Clients', shortcut: 'G C' },
-  { path: '/leads', icon: ClipboardList, label: 'Leads' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
   { path: '/pipeline', icon: Target, label: 'Sales Pipeline' },
   { path: '/docs', icon: BookOpen, label: 'Internal Docs', shortcut: 'G N' },
@@ -70,7 +68,6 @@ const navItems = [
 const simpleNavItems = [
   { path: '/profitability', icon: BarChart3, label: 'Profitability' },
   { path: '/profitability/team', icon: Users2, label: 'Team' },
-  { path: '/leads', icon: ClipboardList, label: 'Leads' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
 ]
 
