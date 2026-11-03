@@ -1,7 +1,7 @@
 "use client";
 
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   PROFIT_RANGES,
   burnHealth,
@@ -37,11 +37,13 @@ function profitabilityHref(range: ProfitRange, slug?: string) {
 }
 
 export function ProfitabilityDashboard({
+  extra,
   data,
   view,
   slug = "",
   range: initialRange,
 }: {
+  extra?: ReactNode;
   data: ProfitabilityData;
   view: "overview" | "client";
   slug?: string;
@@ -157,6 +159,7 @@ export function ProfitabilityDashboard({
 
   return (
     <div className="pr-page">
+      {extra}
       <header className="pr-header">
         <div className="pr-brand">
 

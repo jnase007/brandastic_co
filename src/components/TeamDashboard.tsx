@@ -1,7 +1,7 @@
 "use client";
 
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   entriesFor,
   formatEntryDate,
@@ -31,12 +31,14 @@ function teamHref(range: TeamRange, slug?: string, client?: string) {
 }
 
 export function TeamDashboard({
+  extra,
   data,
   view,
   member,
   range,
   client,
 }: {
+  extra?: ReactNode;
   data: ProfitabilityData;
   view: "overview" | "person";
   member?: string;
@@ -65,6 +67,7 @@ export function TeamDashboard({
 
   return (
     <div className="pr-page">
+      {extra}
       <header className="pr-header">
         <div className="pr-brand">
 

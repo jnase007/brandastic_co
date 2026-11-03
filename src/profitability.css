@@ -1244,3 +1244,59 @@
     grid-template-columns: 1fr;
   }
 }
+
+.pr-rates-toggle,
+.pr-rates-actions button,
+.pr-rates-remove {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pr-rates-save {
+  background: #0f172a;
+  color: #fff;
+  border-color: #0f172a;
+}
+
+.pr-rates-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.pr-rates-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.pr-rates-row input {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font: inherit;
+}
+
+.pr-rates-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pr-rates-error {
+  margin: 10px 0 0;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
+}

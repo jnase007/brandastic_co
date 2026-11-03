@@ -4,6 +4,8 @@ import '../profitability.css'
 import { ProfitabilityDashboard } from '../components/ProfitabilityDashboard'
 import { profitRange } from '../lib/profitability'
 import { cachedProfitability, fetchProfitability } from '../lib/profitabilityCache'
+import { applyLaborRates, useLaborRateRows } from '../lib/laborRates'
+import LaborRates from '../components/LaborRates'
 
 function clientSlugFromPath(pathname) {
   const parts = String(pathname || '').split('/').filter(Boolean)
@@ -18,6 +20,7 @@ export default function Profitability() {
   const slug = clientSlugFromPath(location.pathname)
   const [data, setData] = useState(() => cachedProfitability())
   const [error, setError] = useState('')
+  const { rows, setRows, missing, error: rateError, ready } = useLaborRateRows()
   const range = profitRange(searchParams.get('range') || undefined)
 
   useEffect(() => {
@@ -37,18 +40,7 @@ export default function Profitability() {
     }
   }, [])
 
-  if (error && !data) {
-    return (
-      <div className="pr-page">
-        <div className="pr-panel">
-          <h1>Client Reports & Profitability</h1>
-          <p className="pr-note">{error}</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!data) {
+  if (!ready || (!data && !error)) {
     return (
       <div className="pr-page">
         <div className="pr-panel">
@@ -59,9 +51,36 @@ export default function Profitability() {
     )
   }
 
+  if (error && !data) {
+    return (
+      <div className="pr-page">
+        <LaborRates
+          rows={rows}
+          fallback={[]}
+          missing={missing || Boolean(rateError)}
+          onSaved={setRows}
+        />
+        <div className="pr-panel">
+          <h1>Client Reports & Profitability</h1>
+          <p className="pr-note">{error}</p>
+        </div>
+      </div>
+    )
+  }
+
+  const viewData = applyLaborRates(data, rows)
+
   return (
     <ProfitabilityDashboard
-      data={data}
+      extra={(
+        <LaborRates
+          rows={rows}
+          fallback={data.costRates}
+          missing={missing || Boolean(rateError)}
+          onSaved={setRows}
+        />
+      )}
+      data={viewData}
       view={slug ? 'client' : 'overview'}
       slug={slug || ''}
       range={range}
