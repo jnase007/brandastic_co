@@ -363,7 +363,7 @@ export default function Sidebar({
                   </div>
                 )}
               </Link>
-              {item.path === '/profitability' && !collapsed ? (
+              {item.path === '/profitability' && isActive && !collapsed ? (
                 <div className="mb-2 ml-3 mt-1 border-l border-border pl-2">
                   <Link
                     to="/profitability/costs"
