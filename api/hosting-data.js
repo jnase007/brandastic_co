@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     return
   }
   try {
-    const body = await loadHostingPortfolio(process.env)
+    const body = await loadHostingPortfolio(process.env, token)
     res.status(200).json(body)
   } catch (error) {
     res.status(500).json({ error: error.message || 'Could not load hosting' })

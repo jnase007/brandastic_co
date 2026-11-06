@@ -52,7 +52,7 @@ function hostingPlugin(env) {
             res.end(JSON.stringify({ error: gate.error }))
             return
           }
-          const body = await loadHostingPortfolio(env)
+          const body = await loadHostingPortfolio(env, token)
           res.statusCode = 200
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify(body))

@@ -629,6 +629,9 @@ function App() {
     // Check for deployment updates by comparing versions
     const checkForUpdates = async () => {
       try {
+        // Local dev always reports version "dev" in public/version.json, while the
+        // running app gets a new timestamp whenever Vite restarts. Skip the prompt there.
+        if (import.meta.env.DEV) return
         // Get current app version (injected at build time)
         const currentVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : null
         if (!currentVersion) return
@@ -702,7 +705,7 @@ function App() {
       }
       
       // Handle other deployment-related errors (stale code)
-      if (isDeploymentError(message)) {
+      if (isDeploymentError(message) && !import.meta.env.DEV) {
         console.warn('[App] Possible stale code detected:', message)
         setUpdateAvailable(true)
       }

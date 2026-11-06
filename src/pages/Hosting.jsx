@@ -2,23 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { ExternalLink, RefreshCw } from 'lucide-react'
 import { fetchHosting } from '../lib/hosting'
 
-const FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'Hosting', label: 'Hosting' },
-  { id: 'Hosting + Maintenance', label: 'Hosting + Maintenance' },
-  { id: 'Maintenance', label: 'Maintenance' },
-  { id: 'Tier-1', label: 'Tier 1' },
-  { id: 'Tier-2', label: 'Tier 2' },
-  { id: 'attention', label: 'Needs attention' },
-]
-
 export default function Hosting() {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('all')
-  const [query, setQuery] = useState('')
-  const [sort, setSort] = useState({ key: 'attention', dir: 1 })
+  const [profitOpen, setProfitOpen] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -31,41 +19,20 @@ export default function Hosting() {
 
   useEffect(load, [])
 
-  const rows = useMemo(() => {
-    const source = data?.retainers || []
-    const text = query.trim().toLowerCase()
-    const filtered = source.filter((row) => {
-      if (filter === 'attention') {
-        if (!(row.level === 'over' || row.level === 'warn' || row.billingMonthMissing || row.amountPending || updateNeedsAttention(row))) return false
-      } else if (filter === 'updates') {
-        const cycle = data?.kpis?.updateCycle
-        if (row.tier !== 'Tier-2' || row.updates?.[cycle]?.state === 'done') return false
-      } else if (filter !== 'all' && row.service !== filter && row.tier !== filter) return false
-      if (!text) return true
-      return `${row.client} ${row.project} ${row.key} ${row.assignee}`.toLowerCase().includes(text)
-    })
-    const dir = sort.dir
-    return [...filtered].sort((a, b) => {
-      if (sort.key === 'attention') return compareAttention(a, b)
-      const left = sortValue(a, sort.key)
-      const right = sortValue(b, sort.key)
-      if (left == null && right == null) return 0
-      if (left == null) return 1
-      if (right == null) return -1
-      if (typeof left === 'number' && typeof right === 'number') return (left - right) * dir
-      return String(left).localeCompare(String(right)) * dir
-    })
-  }, [data, filter, query, sort])
-
   const alerts = (data?.retainers || []).filter((row) => row.level === 'over' || row.level === 'warn')
   const tier2 = (data?.retainers || []).filter((row) => row.tier === 'Tier-2')
+  const clients = [...(data?.retainers || [])].sort((a, b) => {
+    const tier = (a.tier === 'Tier-2' ? 0 : 1) - (b.tier === 'Tier-2' ? 0 : 1)
+    if (tier) return tier
+    return shortClientName(a.client).localeCompare(shortClientName(b.client))
+  })
 
   return (
     <div className="min-h-full bg-[#f6f7fb] px-4 py-6 lg:px-8">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Hosting</h1>
-          <p className="mt-1 text-sm text-slate-500">Hosting and maintenance retainers. Hours are this billing year and the last one, from Tempo.</p>
+          <p className="mt-1 text-sm text-slate-500">Hosting and maintenance retainers.</p>
         </div>
         <button
           type="button"
@@ -92,13 +59,16 @@ export default function Hosting() {
           <div className="mb-5 grid grid-cols-1 items-stretch gap-3 min-[900px]:grid-cols-3">
             <div className="grid h-full grid-cols-2 gap-3 min-[900px]:grid-cols-1 min-[900px]:grid-rows-3">
               <Kpi label="Active retainers" value={data.kpis.active} detail={`${data.kpis.tier1} Tier 1 · ${data.kpis.tier2} Tier 2`} />
-              <Kpi label="Annual fees" value={money(data.kpis.annualRevenue)} detail={`${data.kpis.hosting} hosting · ${data.kpis.hostingMaintenance} both · ${data.kpis.maintenance} maintenance`} />
+              <Kpi label="Annual revenue" value={money(data.kpis.annualRevenue)} detail={`${data.kpis.hosting} hosting · ${data.kpis.hostingMaintenance} both · ${data.kpis.maintenance} maintenance`} />
               <Kpi
-                label="Updates this cycle"
-                value={`${data.kpis.updatesDone} of ${data.kpis.updatesTotal}`}
-                detail={`${data.kpis.updateCycleLabel} · Tier 2`}
-                onClick={() => setFilter((current) => current === 'updates' ? 'all' : 'updates')}
-                active={filter === 'updates'}
+                label="Projected annual profit"
+                value={money(data.profit.profit)}
+                tone={data.profit.profit < 0 ? 'loss' : 'profit'}
+                detail={`Revenue ${money(data.profit.fees)} · Kinsta ${money(data.profit.kinsta)} · Labor ${money(data.profit.labor)}`}
+                margin={marginLabel(data.profit.margin)}
+                note={profitNote(data.profit)}
+                onClick={() => setProfitOpen(true)}
+                active={profitOpen}
                 className="col-span-2 min-[900px]:col-span-1"
               />
             </div>
@@ -123,71 +93,6 @@ export default function Hosting() {
             </section>
           ) : null}
 
-          <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              {FILTERS.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setFilter(item.id)}
-                  className={`rounded-full px-3 py-1 text-sm ${filter === item.id ? 'bg-[#e8eeff] font-medium text-[#1644ED]' : 'bg-slate-100 text-slate-600'}`}
-                >
-                  {item.label}
-                </button>
-              ))}
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search client or key"
-                className="ml-auto w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm sm:w-56"
-              />
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="text-xs uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <SortHead label="Client" sortKey="client" sort={sort} onSort={setSort} />
-                    <SortHead label="Service" sortKey="service" sort={sort} onSort={setSort} />
-                    <SortHead label="Tier" sortKey="tier" sort={sort} onSort={setSort} />
-                    <SortHead label="Annual fee" sortKey="annualFee" sort={sort} onSort={setSort} />
-                    <SortHead label="Hours" sortKey="percentUsed" sort={sort} onSort={setSort} />
-                    <SortHead label="Invoice month" sortKey="invoiceMonth" sort={sort} onSort={setSort} />
-                    <th className="px-2 py-2 font-medium">Jun</th>
-                    <th className="px-2 py-2 font-medium">Nov</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.key} className="border-t border-slate-100 align-top">
-                      <td className="px-2 py-3">
-                        <a className="inline-flex items-center gap-1 font-medium text-slate-900 hover:text-[#1644ED]" href={row.url} target="_blank" rel="noreferrer">
-                          {row.client} <ExternalLink className="h-3 w-3" />
-                        </a>
-                        <span className="mt-0.5 block text-xs text-slate-500">{row.key} · {row.status}</span>
-                      </td>
-                      <td className="px-2 py-3 whitespace-nowrap"><ServiceTag service={row.service} /></td>
-                      <td className="px-2 py-3 whitespace-nowrap"><TierBadge tier={row.tier} /></td>
-                      <td className="px-2 py-3">{row.amountPending ? <em className="text-slate-500">Pending</em> : money(row.annualFee)}</td>
-                      <td className="px-2 py-3"><HoursCell row={row} /></td>
-                      <td className="px-2 py-3">{row.billingMonthMissing ? <Missing /> : row.invoiceMonth}</td>
-                      {row.tier === 'Tier-1' ? (
-                        <td colSpan={2} className="px-2 py-3">
-                          <span className="inline-flex whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">Not included</span>
-                        </td>
-                      ) : (
-                        <>
-                          <td className="px-2 py-3"><CycleCell cycle={row.updates?.june} /></td>
-                          <td className="px-2 py-3"><CycleCell cycle={row.updates?.november} /></td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {!rows.length ? <p className="px-2 py-6 text-sm text-slate-500">No retainers match.</p> : null}
-            </div>
-          </section>
-
           <section>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Biannual updates</h2>
             {tier2.length ? (
@@ -200,6 +105,46 @@ export default function Hosting() {
               <p className="mt-2 text-sm text-slate-500">No Tier 2 retainers.</p>
             )}
           </section>
+
+          <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="mb-3 flex items-baseline justify-between gap-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Clients</h2>
+              <p className="text-sm text-slate-500">{clients.length}</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead className="text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-2 py-2 font-medium">Client</th>
+                    <th className="px-2 py-2 font-medium">Tier</th>
+                    <th className="px-2 py-2 font-medium">Service</th>
+                    <th className="px-2 py-2 font-medium">Annual revenue</th>
+                    <th className="px-2 py-2 font-medium">Hours</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {clients.map((row) => (
+                    <tr key={row.key} className="border-t border-slate-100 align-top">
+                      <td className="px-2 py-3">
+                        <a className="inline-flex items-center gap-1 font-medium text-slate-900 hover:text-[#1644ED]" href={row.url} target="_blank" rel="noreferrer">
+                          {shortClientName(row.client)}
+                          {row.launching ? <LaunchingPill /> : null}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                        <span className="mt-0.5 block text-xs text-slate-500">{row.key}</span>
+                      </td>
+                      <td className="px-2 py-3 whitespace-nowrap"><TierPill tier={row.tier} /></td>
+                      <td className="px-2 py-3 whitespace-nowrap"><ServiceTag service={row.service} /></td>
+                      <td className="px-2 py-3">{row.amountPending ? <em className="text-slate-500">Pending</em> : money(row.annualFee)}</td>
+                      <td className="px-2 py-3"><HoursCell row={row} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!clients.length ? <p className="px-2 py-6 text-sm text-slate-500">No retainers.</p> : null}
+            </div>
+          </section>
+          {profitOpen ? <ProfitBreakdown profit={data.profit} onClose={() => setProfitOpen(false)} /> : null}
         </>
       ) : null}
     </div>
@@ -367,6 +312,15 @@ function moneyExact(value) {
   }).format(value || 0)
 }
 
+function TierPill({ tier }) {
+  const tier2 = tier === 'Tier-2'
+  return (
+    <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${tier2 ? 'bg-teal-50 text-teal-800' : 'bg-slate-100 text-slate-600'}`}>
+      {tier2 ? 'Tier 2' : 'Tier 1'}
+    </span>
+  )
+}
+
 function ServiceTag({ service }) {
   if (service === 'Hosting + Maintenance') {
     return (
@@ -385,22 +339,16 @@ function ServiceTag({ service }) {
   )
 }
 
-function TierBadge({ tier }) {
-  const first = tier === 'Tier-1'
-  return (
-    <span className={`inline-flex whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${first ? 'bg-slate-100 text-slate-600' : 'bg-slate-800 text-white'}`}>
-      {first ? 'Tier 1' : 'Tier 2'}
-    </span>
-  )
-}
-
-function Kpi({ label, value, detail, tone, onClick, active, className = '' }) {
+function Kpi({ label, value, detail, margin, note, tone, onClick, active, className = '' }) {
   const classNames = `flex h-full flex-col justify-center rounded-2xl border bg-white p-4 text-left ${active ? 'border-[#1644ED]' : 'border-slate-200'} ${onClick ? 'hover:border-[#1644ED]' : ''} ${className}`
+  const valueColor = tone === 'loss' || tone === 'over' ? 'text-red-700' : tone === 'profit' ? 'text-emerald-600' : 'text-slate-900'
   const body = (
     <>
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${tone === 'over' ? 'text-red-700' : 'text-slate-900'}`}>{value}</p>
+      <p className={`mt-1 text-2xl font-semibold ${valueColor}`}>{value}</p>
       <p className="mt-1 text-xs text-slate-500">{detail}</p>
+      {margin ? <p className="mt-1 text-lg font-bold text-slate-900">{margin}</p> : null}
+      {note ? <p className="mt-1 text-xs text-slate-400">{note}</p> : null}
     </>
   )
   if (onClick) {
@@ -421,22 +369,13 @@ const CYCLE_LABEL = {
   upcoming: 'Upcoming',
 }
 
-const CYCLE_DOT = {
-  done: 'bg-emerald-500',
-  scheduled: 'bg-[#1644ED]',
-  needs: 'bg-amber-500',
-  overdue: 'bg-red-600',
-  upcoming: 'bg-slate-400',
-}
+const CYCLE_RANK = { overdue: 0, needs: 1, scheduled: 2, upcoming: 3, done: 4, na: 5 }
 
-const CYCLE_RANK = { overdue: 0, needs: 1, scheduled: 2, upcoming: 3, done: 4 }
-
-const CYCLE_PILL = {
-  done: 'bg-emerald-50 text-emerald-700',
-  scheduled: 'bg-[#e8eeff] text-[#1644ED]',
-  needs: 'bg-amber-50 text-amber-800',
-  overdue: 'bg-red-50 text-red-700',
-  upcoming: 'bg-slate-100 text-slate-500',
+const CYCLE_TEXT = {
+  scheduled: 'text-[#1644ED]',
+  needs: 'text-amber-800',
+  overdue: 'text-red-700',
+  upcoming: 'text-slate-500',
 }
 
 function compareUpdates(a, b) {
@@ -451,79 +390,136 @@ function updateRank(row) {
   return Math.min(june, november) * 10 + Math.max(june, november)
 }
 
+function shortClientName(name) {
+  const raw = String(name || '').trim()
+  const first = raw.split(/\s+/)[0]?.replace(/[-–—+]/g, '') || ''
+  const keepFirst = /^(hosting|maintenance)$/i.test(first)
+  const short = raw
+    .replace(/\btier[-\s]?[12]\b/gi, '')
+    .replace(/\bhosting\b/gi, '')
+    .replace(/\bmaintenance\b/gi, '')
+    .replace(/\+/g, '')
+    .replace(/[-–—]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (keepFirst) return `${first} ${short}`.replace(/\s+/g, ' ').trim()
+  return short || raw
+}
+
+function LaunchingPill() {
+  return <span className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">Launching</span>
+}
+
 function UpdateCard({ row }) {
-  const june = row.updates?.june
-  const november = row.updates?.november
-  const worst = (CYCLE_RANK[june?.state] ?? 5) <= (CYCLE_RANK[november?.state] ?? 5) ? june : november
   return (
     <article className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <a className="text-[15px] font-semibold leading-snug tracking-tight text-slate-900 hover:text-[#1644ED]" href={row.url} target="_blank" rel="noreferrer">
-          {row.client}
+          {shortClientName(row.client)}
         </a>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-extrabold ${CYCLE_PILL[worst?.state] || CYCLE_PILL.upcoming}`}>
-          {CYCLE_LABEL[worst?.state] || 'Upcoming'}
-        </span>
+        {row.launching ? <LaunchingPill /> : null}
       </div>
-      <div className="flex items-start justify-between gap-3">
-        <CycleStat label="Jun" cycle={june} />
-        <CycleStat label="Nov" cycle={november} align="right" />
-      </div>
-      <div className="flex h-2 overflow-hidden rounded-full bg-slate-100">
-        <span className={`h-full flex-1 ${CYCLE_DOT[june?.state] || 'bg-slate-300'}`} />
-        <span className={`h-full flex-1 ${CYCLE_DOT[november?.state] || 'bg-slate-300'}`} />
+      <div className="grid gap-2">
+        <CycleRow label="JUN" cycle={row.updates?.june} />
+        <CycleRow label="NOV" cycle={row.updates?.november} />
       </div>
     </article>
   )
 }
 
-function CycleStat({ label, cycle, align }) {
-  const detail = cycle?.key ? `${cycle.key} · ${cycle.status || 'No status'}` : 'No sub-task'
+function marginLabel(value) {
+  if (value == null) return ''
+  const rounded = Math.round(value * 10) / 10
+  return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}% margin`
+}
+
+function profitNote(profit) {
+  if (!profit) return ''
+  const parts = []
+  if (profit.missingBillingMonths) {
+    const count = profit.missingBillingMonths
+    parts.push(`${count} missing a billing month`)
+  }
+  return parts.join(' · ')
+}
+
+function ProfitBreakdown({ profit, onClose }) {
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   return (
-    <div className={align === 'right' ? 'text-right' : ''}>
-      <p className="text-base font-extrabold tracking-tight text-slate-900">{CYCLE_LABEL[cycle?.state] || '—'}</p>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-900/40 p-4" onClick={onClose}>
+      <div
+        className="mt-10 w-full max-w-3xl rounded-2xl bg-white p-5 shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="hosting-profit-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 id="hosting-profit-title" className="text-lg font-semibold text-slate-900">Projected annual profit</h2>
+            <p className="mt-1 text-sm text-slate-500">Each row is the revenue minus projected labor. Kinsta is subtracted once, on the card.</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100">Close</button>
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-2 py-2 font-medium">Client</th>
+                <th className="px-2 py-2 font-medium">Revenue</th>
+                <th className="px-2 py-2 font-medium">Projected hours</th>
+                <th className="px-2 py-2 font-medium">Projected labor</th>
+                <th className="px-2 py-2 font-medium">Projected profit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(profit.clients || []).map((row) => (
+                <tr key={row.key} className="border-t border-slate-100">
+                  <td className="px-2 py-2">
+                    <a className="font-medium text-slate-900 hover:text-[#1644ED]" href={row.url} target="_blank" rel="noreferrer">{row.client}</a>
+                  </td>
+                  <td className="px-2 py-2">{row.fee == null ? <em className="text-slate-500">Pending</em> : money(row.fee)}</td>
+                  <td className="px-2 py-2">{hourCount(row.projectedHours)}h</td>
+                  <td className="px-2 py-2">{money(row.projectedLabor)}</td>
+                  <td className={`px-2 py-2 font-medium ${row.projectedProfit < 0 ? 'text-red-700' : 'text-emerald-700'}`}>{money(row.projectedProfit)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CycleRow({ label, cycle }) {
+  const done = cycle?.state === 'done'
+  return (
+    <div className="flex items-baseline justify-between gap-3">
       <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
-      {cycle?.url ? (
-        <a className="mt-1 block text-xs text-[#1644ED] hover:underline" href={cycle.url} target="_blank" rel="noreferrer">{detail}</a>
+      {cycle?.state === 'na' ? (
+        <span className="text-sm font-medium text-slate-400">N/A</span>
+      ) : done ? (
+        <span className="text-base font-semibold text-emerald-600" aria-label="Done">✓</span>
       ) : (
-        <p className="mt-1 text-xs text-slate-500">{detail}</p>
+        <p className={`text-right text-sm font-medium ${CYCLE_TEXT[cycle?.state] || CYCLE_TEXT.upcoming}`}>
+          {CYCLE_LABEL[cycle?.state] || 'Upcoming'}
+          {cycle?.key ? (
+            <>
+              {' · '}
+              <a className="hover:underline" href={cycle.url} target="_blank" rel="noreferrer">{cycle.key}</a>
+            </>
+          ) : null}
+        </p>
       )}
     </div>
-  )
-}
-
-function CycleCell({ cycle }) {
-  if (!cycle) return null
-  const detail = cycle.key
-    ? `${cycle.key} · ${cycle.status || 'No status'}`
-    : 'No sub-task'
-  return (
-    <div className="group whitespace-nowrap">
-      <span className="inline-flex items-center gap-1.5 text-xs text-slate-700">
-        <span className={`h-2 w-2 rounded-full ${CYCLE_DOT[cycle.state] || 'bg-slate-400'}`} />
-        {CYCLE_LABEL[cycle.state] || cycle.state}
-      </span>
-      <p className="mt-1 hidden text-xs text-slate-500 group-hover:block">
-        {cycle.url ? (
-          <a className="text-[#1644ED] hover:underline" href={cycle.url} target="_blank" rel="noreferrer">{detail}</a>
-        ) : detail}
-      </p>
-    </div>
-  )
-}
-
-function SortHead({ label, sortKey, sort, onSort }) {
-  const active = sort.key === sortKey
-  return (
-    <th className="px-2 py-2 font-medium">
-      <button
-        type="button"
-        className={active ? 'text-[#1644ED]' : ''}
-        onClick={() => onSort({ key: sortKey, dir: active ? sort.dir * -1 : 1 })}
-      >
-        {label}
-      </button>
-    </th>
   )
 }
 
@@ -553,40 +549,8 @@ function UsageBar({ percent }) {
   )
 }
 
-function Missing() {
-  return <span className="text-amber-700">Billing month missing</span>
-}
-
-function sortValue(row, key) {
-  if (key === 'invoiceMonth') return row.invoiceMonth
-  return row[key]
-}
-
 function money(value) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value || 0)
-}
-
-function compareAttention(a, b) {
-  const rank = attentionRank(a) - attentionRank(b)
-  if (rank) return rank
-  const used = (b.percentUsed ?? -1) - (a.percentUsed ?? -1)
-  if (used) return used
-  return a.client.localeCompare(b.client)
-}
-
-function attentionRank(row) {
-  if (row.level === 'over' || (row.percentUsed != null && row.percentUsed > 100)) return 0
-  if (updateNeedsAttention(row)) return 1
-  if (row.billingMonthMissing || row.amountPending) return 2
-  if (row.level === 'warn') return 3
-  return 4
-}
-
-function updateNeedsAttention(row) {
-  return ['june', 'november'].some((half) => {
-    const state = row.updates?.[half]?.state
-    return state === 'overdue' || state === 'needs'
-  })
 }
 
 function hourCount(value) {

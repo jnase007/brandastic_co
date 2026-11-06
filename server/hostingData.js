@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { hostingCostSettings } from './hostingSettings.js'
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const MONTH_PATTERN = new RegExp(`Invoiced every (${MONTHS.join('|')})`, 'i')
@@ -22,22 +23,31 @@ export async function assertTeam(env, token) {
   return { ok: true }
 }
 
-export async function loadHostingPortfolio(env) {
-  const issues = await searchRetainers(env)
+export async function loadHostingPortfolio(env, token) {
+  const [issues, rates] = await Promise.all([searchRetainers(env), loadEmployeeCosts(env, token)])
   const retainers = issues.filter((issue) => !excluded(issue)).map(toRetainer).filter(Boolean)
-  const windows = retainers.filter((row) => row.billing)
+  const windows = retainers.filter((row) => row.profitWindow)
   const issueIds = windows.flatMap((row) => row.issueIds)
-  const earliest = windows.reduce((min, row) => (row.billing.previousStart < min ? row.billing.previousStart : min), '9999-12-31')
-  const latest = windows.reduce((max, row) => (row.billing.currentEnd > max ? row.billing.currentEnd : max), '0000-01-01')
+  const earliest = windows.reduce((min, row) => (row.profitWindow.previousStart < min ? row.profitWindow.previousStart : min), '9999-12-31')
+  const latest = windows.reduce((max, row) => (row.profitWindow.currentEnd > max ? row.profitWindow.currentEnd : max), '0000-01-01')
   const worklogs = issueIds.length ? await searchWorklogs(env, earliest, latest, issueIds) : []
   const secondsByIssue = new Map()
   for (const log of worklogs) {
     const id = String(log.issue?.id || '')
     if (!id || !log.startDate) continue
     const dates = secondsByIssue.get(id) || []
-    dates.push({ date: log.startDate, seconds: Number(log.timeSpentSeconds) || 0 })
+    dates.push({
+      date: log.startDate,
+      seconds: Number(log.timeSpentSeconds) || 0,
+      accountId: log.author?.accountId || '',
+    })
     secondsByIssue.set(id, dates)
   }
+  const userNames = await lookupAuthors(
+    env,
+    [...secondsByIssue.keys()],
+    [...secondsByIssue.values()].flatMap((logs) => logs.map((log) => log.accountId)),
+  )
 
   const rows = retainers.map((row) => {
     const hours = row.billing ? hoursFor(row, secondsByIssue) : { current: null, previous: null }
@@ -65,6 +75,7 @@ export async function loadHostingPortfolio(env) {
       level,
       status: row.status,
       assignee: row.assignee,
+      launching: !!row.launching,
       updates: row.updates,
     }
   }).sort((a, b) => a.client.localeCompare(b.client))
@@ -91,8 +102,22 @@ export async function loadHostingPortfolio(env) {
       updatesDone: tier2.filter((row) => row.updates?.[updateCycle.id]?.state === 'done').length,
       updatesTotal: tier2.length,
     },
+    profit: projectPortfolio(retainers, secondsByIssue, rates, userNames, today, hostingCostSettings),
     retainers: rows,
   }
+}
+
+async function loadEmployeeCosts(env, token) {
+  const url = env.VITE_SUPABASE_URL
+  const anon = env.VITE_SUPABASE_ANON_KEY
+  if (!url || !anon || !token) throw new Error('Employee costs are not configured')
+  const supabase = createClient(url, anon, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  })
+  const { data, error } = await supabase.from('labor_rates').select('name, hourly')
+  if (error) throw new Error('Could not load employee costs')
+  return (data || []).map((row) => ({ name: row.name, hourly: Number(row.hourly) }))
 }
 
 function hoursFor(row, secondsByIssue) {
@@ -192,6 +217,10 @@ function toRetainer(issue) {
   const today = losAngelesToday()
   const fee = money(issue.fields?.customfield_10033)
   const subtasks = issue.fields?.subtasks || []
+  const billing = month ? billingWindows(month[1], today) : null
+  const chartMonthly = !chartEvery && /^invoiced monthly\b/i.test(line.trim())
+  const launching = labels.some((label) => /^in-development$/i.test(label))
+  const start = updatesStart(notes)
   return {
     key: issue.key,
     client: cleanClient(issue.fields?.summary || issue.key),
@@ -202,11 +231,27 @@ function toRetainer(issue) {
     status: issue.fields?.status?.name || '',
     assignee: issue.fields?.assignee?.displayName || 'Unassigned',
     chartMonth: chartEvery ? MONTHS.find((name) => name.toLowerCase() === chartEvery[1].toLowerCase()) : null,
-    chartMonthly: !chartEvery && /^invoiced monthly\b/i.test(line.trim()),
-    billing: month ? billingWindows(month[1], today) : null,
+    chartMonthly,
+    billing,
+    profitWindow: billing || (chartMonthly ? calendarWindows(today) : null),
     issueIds: [issue.id, ...subtasks.map((task) => task.id)].filter(Boolean).map(String),
-    updates: tier === 'Tier-1' ? null : updateCycles(subtasks, today),
+    launching,
+    updates: tier === 'Tier-1' ? null : updateCycles(subtasks, today, { launching, start }),
   }
+}
+
+function updatesStart(notes) {
+  const match = String(notes || '').match(new RegExp(`updates\\s+start\\s*:\\s*(${MONTHS.join('|')})\\s+(\\d{4})`, 'i'))
+  if (!match) return null
+  const month = MONTHS.findIndex((name) => name.toLowerCase() === match[1].toLowerCase()) + 1
+  const year = Number(match[2])
+  if (!month || !year) return null
+  return { year, month }
+}
+
+function cycleBeforeStart(year, month, start) {
+  if (!start) return false
+  return year < start.year || (year === start.year && month < start.month)
 }
 
 const UPDATE_HALVES = [
@@ -214,9 +259,13 @@ const UPDATE_HALVES = [
   { id: 'november', label: 'November', half: '2', month: 11, endDay: 30 },
 ]
 
-function updateCycles(subtasks, today) {
+function updateCycles(subtasks, today, options = {}) {
   const cycles = {}
   for (const half of UPDATE_HALVES) {
+    if (options.launching || cycleBeforeStart(today.year, half.month, options.start)) {
+      cycles[half.id] = { key: null, url: null, status: null, summary: null, state: 'na' }
+      continue
+    }
     const match = subtasks.map((task) => readUpdateTask(task, today.year, half.half)).find(Boolean) || null
     cycles[half.id] = classifyCycle(match, today, half)
   }
@@ -263,6 +312,183 @@ function daysUntil(fromIso, toIso) {
   const from = Date.UTC(fromYear, fromMonth - 1, fromDay)
   const to = Date.UTC(toYear, toMonth - 1, toDay)
   return Math.round((to - from) / 86400000)
+}
+
+function calendarWindows(today) {
+  return {
+    currentStart: iso(today.year, 1, 1),
+    currentEnd: iso(today.year, 12, 31),
+    previousStart: iso(today.year - 1, 1, 1),
+    previousEnd: iso(today.year - 1, 12, 31),
+  }
+}
+
+function projectPortfolio(retainers, secondsByIssue, rates, userNames, today, settings) {
+  const missingAuthors = new Set()
+  let missingRateSeconds = 0
+  let missingBillingMonths = 0
+  const clients = []
+  for (const row of retainers) {
+    if (!row.profitWindow) {
+      missingBillingMonths += 1
+      continue
+    }
+    const cost = laborCost(row, secondsByIssue, rates, userNames, settings, missingAuthors)
+    missingRateSeconds += cost.missingSeconds
+    const fraction = yearFraction(row.profitWindow.currentStart, row.profitWindow.currentEnd, today.iso)
+    const early = fraction < 0.25
+    const laborRun = fraction > 0 ? cost.current / fraction : 0
+    const hoursRun = fraction > 0 ? cost.currentHours / fraction : 0
+    const useLastYear = early && cost.previous > laborRun
+    const projectedLabor = useLastYear ? cost.previous : laborRun
+    const projectedHours = useLastYear ? cost.previousHours : hoursRun
+    clients.push({
+      key: row.key,
+      url: `https://brandastic.atlassian.net/browse/${row.key}`,
+      client: row.client,
+      fee: row.annualFee,
+      projectedHours: round1(projectedHours),
+      projectedLabor: roundMoney(projectedLabor),
+      projectedProfit: roundMoney((row.annualFee || 0) - projectedLabor),
+    })
+  }
+  clients.sort((a, b) => a.projectedProfit - b.projectedProfit || a.client.localeCompare(b.client))
+  const fees = roundMoney(clients.reduce((sum, row) => sum + (row.fee || 0), 0))
+  const labor = roundMoney(clients.reduce((sum, row) => sum + row.projectedLabor, 0))
+  const profit = roundMoney(fees - settings.kinstaAnnual - labor)
+  return {
+    fees,
+    kinsta: settings.kinstaAnnual,
+    labor,
+    profit,
+    margin: fees > 0 ? Math.round((profit / fees) * 1000) / 10 : null,
+    missingBillingMonths,
+    missingRateHours: round1(missingRateSeconds / 3600),
+    missingRatePeople: missingAuthors.size,
+    missingRateNames: [...missingAuthors].filter(Boolean).sort((a, b) => a.localeCompare(b)),
+    defaultHourly: settings.defaultHourly,
+    clients,
+  }
+}
+
+async function lookupAuthors(env, issueIds, accountIds) {
+  const names = new Map()
+  const needed = new Set(accountIds.filter(Boolean))
+  if (!needed.size) return names
+  const cloud = env.JIRA_CLOUD_ID
+  const email = env.JIRA_EMAIL
+  const token = env.JIRA_API_TOKEN
+  if (!cloud || !email || !token) throw new Error('Jira is not configured')
+  const auth = Buffer.from(`${email}:${token}`).toString('base64')
+  const ids = [...new Set(issueIds)]
+  for (let index = 0; index < ids.length && needed.size; index += 6) {
+    await Promise.all(ids.slice(index, index + 6).map(async (issueId) => {
+      let startAt = 0
+      while (needed.size && startAt < 1000) {
+        const response = await fetch(`https://api.atlassian.com/ex/jira/${cloud}/rest/api/3/issue/${issueId}/worklog?startAt=${startAt}&maxResults=100`, {
+          headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
+        })
+        if (!response.ok) return
+        const body = await response.json()
+        const logs = body.worklogs || []
+        for (const log of logs) {
+          const accountId = log.author?.accountId
+          const displayName = log.author?.displayName
+          if (!accountId || !displayName) continue
+          names.set(accountId, displayName)
+          needed.delete(accountId)
+        }
+        startAt += logs.length
+        if (!logs.length || startAt >= (body.total || 0)) return
+      }
+    }))
+  }
+  return names
+}
+
+function laborCost(row, secondsByIssue, rates, userNames, settings, missingAuthors) {
+  const window = row.profitWindow
+  let current = 0
+  let previous = 0
+  let currentHours = 0
+  let previousHours = 0
+  let missingSeconds = 0
+  for (const id of row.issueIds) {
+    for (const log of secondsByIssue.get(id) || []) {
+      const inCurrent = log.date >= window.currentStart && log.date <= window.currentEnd
+      const inPrevious = log.date >= window.previousStart && log.date <= window.previousEnd
+      if (!inCurrent && !inPrevious) continue
+      const member = userNames.get(log.accountId) || ''
+      const matched = hourlyCostFor(member, rates)
+      const rate = matched == null ? settings.defaultHourly : matched
+      if (matched == null) {
+        missingAuthors.add(member || 'Unknown')
+        missingSeconds += log.seconds
+      }
+      const dollars = (log.seconds / 3600) * rate
+      const hours = log.seconds / 3600
+      if (inCurrent) {
+        current += dollars
+        currentHours += hours
+      } else {
+        previous += dollars
+        previousHours += hours
+      }
+    }
+  }
+  return { current, previous, currentHours, previousHours, missingSeconds }
+}
+
+function yearFraction(start, end, todayIso) {
+  const yearDays = daysInclusive(start, end)
+  if (todayIso < start || yearDays <= 0) return 0
+  const elapsedEnd = todayIso > end ? end : todayIso
+  return daysInclusive(start, elapsedEnd) / yearDays
+}
+
+function daysInclusive(start, end) {
+  return daysUntil(start, end) + 1
+}
+
+const RATE_ALIASES = {
+  aimee: 'aimee mcafee',
+  carlos: 'carlos cerda',
+  chloe: 'chloe uyehara',
+  cj: 'cj williams',
+  clara: 'clara',
+  cory: 'cory',
+  jonathan: 'jonathan',
+  justin: 'justin nassie',
+  maxwell: 'maxwell gilbert',
+  megan: 'megan hahn',
+  quentin: 'quentin dietz',
+  samantha: 'samantha o leary',
+  'sandy o': 'sandy ortiz',
+  stacy: 'stacy williams',
+  melissa: 'melissa',
+}
+
+function hourlyCostFor(member, rates) {
+  const key = normalizeName(member)
+  if (!key) return null
+  const target = key === 'unassigned' ? 'unassigned' : RATE_ALIASES[key] || key
+  const exact = rates.find((rate) => normalizeName(rate.name) === target)
+  if (exact) return exact.hourly
+  if (key === 'unassigned') return null
+  const first = key.split(' ')[0]
+  const hits = rates.filter((rate) => {
+    const name = normalizeName(rate.name)
+    return name === first || name.startsWith(`${first} `)
+  })
+  return hits.length === 1 ? hits[0].hourly : null
+}
+
+function normalizeName(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+function roundMoney(value) {
+  return Math.round(value * 100) / 100
 }
 
 function billingWindows(monthName, today) {
