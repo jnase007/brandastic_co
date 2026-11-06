@@ -4,15 +4,14 @@ import '../profitability.css'
 import { TeamDashboard } from '../components/TeamDashboard'
 import { teamRange } from '../lib/team'
 import { cachedTeam, fetchTeam } from '../lib/profitabilityCache'
-import { applyLaborRates, useLaborRateRows } from '../lib/laborRates'
-import LaborRates from '../components/LaborRates'
+import { applyProfitInputs, useLaborRateRows } from '../lib/laborRates'
 
 export default function ProfitabilityTeam() {
   const { member } = useParams()
   const [searchParams] = useSearchParams()
   const [data, setData] = useState(() => cachedTeam())
   const [error, setError] = useState('')
-  const { rows, setRows, missing, error: rateError, ready } = useLaborRateRows()
+  const { rows, overhead } = useLaborRateRows()
   const range = teamRange(searchParams.get('range') || undefined)
   const client = searchParams.get('client') || undefined
 
@@ -33,7 +32,7 @@ export default function ProfitabilityTeam() {
     }
   }, [])
 
-  if (!ready || (!data && !error)) {
+  if (!data && !error) {
     return (
       <div className="pr-page">
         <div className="pr-panel">
@@ -47,12 +46,6 @@ export default function ProfitabilityTeam() {
   if (error && !data) {
     return (
       <div className="pr-page">
-        <LaborRates
-          rows={rows}
-          fallback={[]}
-          missing={missing || Boolean(rateError)}
-          onSaved={setRows}
-        />
         <div className="pr-panel">
           <h1>Team Performance</h1>
           <p className="pr-note">{error}</p>
@@ -61,19 +54,9 @@ export default function ProfitabilityTeam() {
     )
   }
 
-  const viewData = applyLaborRates(data, rows)
-
   return (
     <TeamDashboard
-      extra={(
-        <LaborRates
-          rows={rows}
-          fallback={data.costRates}
-          missing={missing || Boolean(rateError)}
-          onSaved={setRows}
-        />
-      )}
-      data={viewData}
+      data={applyProfitInputs(data, rows, overhead)}
       view={member ? 'person' : 'overview'}
       member={member}
       range={range}

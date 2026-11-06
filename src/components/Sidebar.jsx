@@ -326,8 +326,12 @@ export default function Sidebar({
       {/* Navigation */}
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
         {visibleNavItems.map((item) => {
-          const isActive = location.pathname === item.path
-          const sections = item.path === '/feature-list' && isActive && !collapsed ? featureNav?.sections : null
+          const isActive = item.path === '/profitability'
+            ? (location.pathname === '/profitability' || (location.pathname.startsWith('/profitability/') && !location.pathname.startsWith('/profitability/team')))
+            : item.path === '/profitability/team'
+              ? location.pathname.startsWith('/profitability/team')
+              : location.pathname === item.path
+          const sections = item.path === '/feature-list' && location.pathname === '/feature-list' && !collapsed ? featureNav?.sections : null
           return (
             <div key={item.path}>
               <Link
@@ -359,6 +363,21 @@ export default function Sidebar({
                   </div>
                 )}
               </Link>
+              {item.path === '/profitability' && !collapsed ? (
+                <div className="mb-2 ml-3 mt-1 border-l border-border pl-2">
+                  <Link
+                    to="/profitability/costs"
+                    className={cn(
+                      "flex w-full rounded-lg px-2 py-1.5 text-left text-sm",
+                      location.pathname === '/profitability/costs'
+                        ? "bg-[#e8eeff] font-medium text-[#1644ED]"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    Costs
+                  </Link>
+                </div>
+              ) : null}
               {sections?.length ? (
                 <div className="mb-2 ml-3 mt-1 space-y-0.5 border-l border-border pl-2">
                   {sections.map((section) => {

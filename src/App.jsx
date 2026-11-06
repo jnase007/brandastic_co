@@ -35,6 +35,7 @@ const Mission = lazy(() => import('./pages/Mission'))
 const Financials = lazy(() => import('./pages/Financials'))
 const FeatureList = lazy(() => import('./pages/FeatureList'))
 const Profitability = lazy(() => import('./pages/Profitability'))
+const ProfitabilityCosts = lazy(() => import('./pages/ProfitabilityCosts'))
 const ProfitabilityTeam = lazy(() => import('./pages/ProfitabilityTeam'))
 const WorkingNotWorking = lazy(() => import('./pages/WorkingNotWorking'))
 const AdminHub = lazy(() => import('./pages/AdminHub'))
@@ -1137,6 +1138,14 @@ function App() {
                 element={
                   <TeamRoute>
                     <ProfitabilityTeam />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/profitability/costs"
+                element={
+                  <TeamRoute>
+                    <ProfitabilityCosts />
                   </TeamRoute>
                 }
               />

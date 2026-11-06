@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 
-export function isMissingLaborRates(error) {
+function isMissingTable(error, table) {
   const text = `${error?.message || ''} ${error?.code || ''} ${error?.details || ''}`
-  return text.includes('labor_rates') || text.includes('PGRST205') || text.includes('42P01')
+  return text.includes(table) || text.includes('PGRST205') || text.includes('42P01')
 }
 
 export async function fetchLaborRates() {
@@ -13,17 +13,32 @@ export async function fetchLaborRates() {
     .order('position')
     .order('name')
   if (error) {
-    if (isMissingLaborRates(error)) return null
+    if (isMissingTable(error, 'labor_rates')) return null
     throw error
   }
   return data || []
 }
 
-export function applyLaborRates(data, rows) {
-  if (!data || !rows) return data
+export async function fetchMonthlyOverhead() {
+  const { data, error } = await supabase
+    .from('profit_settings')
+    .select('monthly_overhead')
+    .eq('id', 'default')
+    .maybeSingle()
+  if (error) {
+    if (isMissingTable(error, 'profit_settings')) return null
+    throw error
+  }
+  if (!data || data.monthly_overhead == null) return { monthlyOverhead: null }
+  return { monthlyOverhead: Number(data.monthly_overhead) }
+}
+
+export function applyProfitInputs(data, rows, overhead) {
+  if (!data) return data
   return {
     ...data,
-    costRates: rows.map((row) => ({ name: row.name, hourly: Number(row.hourly) })),
+    ...(rows ? { costRates: rows.map((row) => ({ name: row.name, hourly: Number(row.hourly) })) } : {}),
+    ...(overhead == null ? {} : { monthlyOverhead: Number(overhead) }),
   }
 }
 
@@ -52,32 +67,60 @@ export async function saveLaborRates(rows) {
   return data || []
 }
 
+export async function saveMonthlyOverhead(monthlyOverhead) {
+  const { error } = await supabase.from('profit_settings').upsert({
+    id: 'default',
+    monthly_overhead: monthlyOverhead,
+    updated_at: new Date().toISOString(),
+  })
+  if (error) throw error
+  return monthlyOverhead
+}
+
 export function useLaborRateRows() {
   const [rows, setRows] = useState(undefined)
+  const [overhead, setOverhead] = useState(undefined)
   const [missing, setMissing] = useState(false)
+  const [overheadMissing, setOverheadMissing] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     let cancel = false
-    fetchLaborRates()
-      .then((result) => {
+    Promise.all([fetchLaborRates(), fetchMonthlyOverhead()])
+      .then(([rateResult, overheadResult]) => {
         if (cancel) return
-        if (result == null) {
+        if (rateResult == null) {
           setMissing(true)
           setRows(null)
-          return
+        } else {
+          setRows(rateResult)
         }
-        setRows(result)
+        if (overheadResult == null) {
+          setOverheadMissing(true)
+          setOverhead(null)
+        } else {
+          setOverhead(overheadResult.monthlyOverhead)
+        }
       })
       .catch((err) => {
         if (cancel) return
-        setError(err.message || 'Could not load hourly costs')
+        setError(err.message || 'Could not load costs')
         setRows(null)
+        setOverhead(null)
       })
     return () => {
       cancel = true
     }
   }, [])
 
-  return { rows, setRows, missing, error, ready: rows !== undefined }
+  return {
+    rows,
+    setRows,
+    overhead,
+    setOverhead,
+    missing,
+    overheadMissing,
+    error,
+    ready: rows !== undefined && overhead !== undefined,
+  }
 }

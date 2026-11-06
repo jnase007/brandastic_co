@@ -27,8 +27,12 @@ export function cachedTeam() {
   return readCache(TEAM_KEY)
 }
 
+function dashDataUrl(path) {
+  return import.meta.env.DEV ? path : `https://dash.brandastic.com${path}`
+}
+
 export async function fetchProfitability() {
-  const res = await fetch('https://dash.brandastic.com/api/profitability-data')
+  const res = await fetch(dashDataUrl('/api/profitability-data'))
   const body = await res.json()
   if (!res.ok) throw new Error(body.error || 'Could not load profitability')
   writeCache(PROFIT_KEY, body)
@@ -36,7 +40,7 @@ export async function fetchProfitability() {
 }
 
 export async function fetchTeam() {
-  const res = await fetch('https://dash.brandastic.com/api/team-performance-data')
+  const res = await fetch(dashDataUrl('/api/team-performance-data'))
   const body = await res.json()
   if (!res.ok) throw new Error(body.error || 'Could not load team')
   writeCache(TEAM_KEY, body)

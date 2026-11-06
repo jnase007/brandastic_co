@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import '../profitability.css'
 import { ProfitabilityDashboard } from '../components/ProfitabilityDashboard'
 import { profitRange } from '../lib/profitability'
 import { cachedProfitability, fetchProfitability } from '../lib/profitabilityCache'
-import { applyLaborRates, useLaborRateRows } from '../lib/laborRates'
-import LaborRates from '../components/LaborRates'
+import { applyProfitInputs, useLaborRateRows } from '../lib/laborRates'
 
 function clientSlugFromPath(pathname) {
   const parts = String(pathname || '').split('/').filter(Boolean)
   if (parts[0] !== 'profitability') return ''
-  if (!parts[1] || parts[1] === 'team') return ''
+  if (!parts[1] || parts[1] === 'team' || parts[1] === 'costs') return ''
   return parts[1]
 }
 
@@ -20,7 +19,7 @@ export default function Profitability() {
   const slug = clientSlugFromPath(location.pathname)
   const [data, setData] = useState(() => cachedProfitability())
   const [error, setError] = useState('')
-  const { rows, setRows, missing, error: rateError, ready } = useLaborRateRows()
+  const { rows, overhead } = useLaborRateRows()
   const range = profitRange(searchParams.get('range') || undefined)
 
   useEffect(() => {
@@ -40,7 +39,7 @@ export default function Profitability() {
     }
   }, [])
 
-  if (!ready || (!data && !error)) {
+  if (!data && !error) {
     return (
       <div className="pr-page">
         <div className="pr-panel">
@@ -54,12 +53,6 @@ export default function Profitability() {
   if (error && !data) {
     return (
       <div className="pr-page">
-        <LaborRates
-          rows={rows}
-          fallback={[]}
-          missing={missing || Boolean(rateError)}
-          onSaved={setRows}
-        />
         <div className="pr-panel">
           <h1>Client Reports & Profitability</h1>
           <p className="pr-note">{error}</p>
@@ -68,22 +61,17 @@ export default function Profitability() {
     )
   }
 
-  const viewData = applyLaborRates(data, rows)
-
   return (
-    <ProfitabilityDashboard
-      extra={(
-        <LaborRates
-          rows={rows}
-          fallback={data.costRates}
-          missing={missing || Boolean(rateError)}
-          onSaved={setRows}
-        />
-      )}
-      data={viewData}
-      view={slug ? 'client' : 'overview'}
-      slug={slug || ''}
-      range={range}
-    />
+    <>
+      <div className="px-7 pt-3 lg:hidden">
+        <Link to="/profitability/costs" className="text-sm font-medium text-[#1644ED]">Costs</Link>
+      </div>
+      <ProfitabilityDashboard
+        data={applyProfitInputs(data, rows, overhead)}
+        view={slug ? 'client' : 'overview'}
+        slug={slug || ''}
+        range={range}
+      />
+    </>
   )
 }

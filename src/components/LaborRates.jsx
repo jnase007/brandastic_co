@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { saveLaborRates } from '../lib/laborRates'
+import { saveLaborRates, saveMonthlyOverhead } from '../lib/laborRates'
 
 function draftFrom(rows) {
   return (rows || []).map((row) => ({
@@ -9,10 +9,17 @@ function draftFrom(rows) {
   }))
 }
 
-export default function LaborRates({ rows, fallback, missing, onSaved }) {
+function overheadText(value) {
+  return value == null || value === '' ? '' : String(value)
+}
+
+export default function LaborRates({ rows, fallback, overhead, fallbackOverhead, missing, overheadMissing, onSaved, alwaysOpen = false }) {
   const editable = Array.isArray(rows)
-  const [open, setOpen] = useState(false)
+  const overheadEditable = editable && !overheadMissing
+  const startingOverhead = overhead != null ? overhead : fallbackOverhead
+  const [open, setOpen] = useState(alwaysOpen)
   const [draft, setDraft] = useState(() => draftFrom(editable ? rows : fallback))
+  const [overheadDraft, setOverheadDraft] = useState(() => overheadText(startingOverhead))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
@@ -38,6 +45,11 @@ export default function LaborRates({ rows, fallback, missing, onSaved }) {
       setError('Every hourly cost has to be greater than 0.')
       return
     }
+    const overheadAmount = Number(String(overheadDraft).replace(/[$,]/g, ''))
+    if (overheadEditable && !(overheadAmount >= 0)) {
+      setError('Monthly overhead has to be 0 or more.')
+      return
+    }
     const names = cleaned.map((row) => row.name.toLowerCase())
     if (new Set(names).size !== names.length) {
       setError('Two rows have the same name.')
@@ -47,8 +59,10 @@ export default function LaborRates({ rows, fallback, missing, onSaved }) {
     setError('')
     try {
       const savedRows = await saveLaborRates(cleaned)
-      onSaved(savedRows)
+      const savedOverhead = overheadEditable ? await saveMonthlyOverhead(overheadAmount) : overhead
+      onSaved(savedRows, savedOverhead)
       setDraft(draftFrom(savedRows))
+      setOverheadDraft(overheadText(savedOverhead != null ? savedOverhead : startingOverhead))
       setSaved(true)
     } catch (err) {
       setError(err.message || 'Could not save hourly costs')
@@ -60,20 +74,36 @@ export default function LaborRates({ rows, fallback, missing, onSaved }) {
   return (
     <section className="pr-panel pr-rates">
       <div className="pr-panel-head">
-        <h3>Hourly costs</h3>
-        <button type="button" className="pr-rates-toggle" onClick={() => setOpen((value) => !value)}>
-          {open ? 'Hide' : 'Edit'}
-        </button>
+        <h3>Costs</h3>
+        {alwaysOpen ? null : (
+          <button type="button" className="pr-rates-toggle" onClick={() => setOpen((value) => !value)}>
+            {open ? 'Hide' : 'Edit'}
+          </button>
+        )}
       </div>
-      {open ? (
+      {alwaysOpen || open ? (
         <>
-          {missing ? (
+          {missing || overheadMissing ? (
             <p className="pr-note">
-              These rates are still read from the cost sheet. In Supabase, open the SQL editor and run supabase/labor-rates.sql once. Then this list can be edited here.
+              These numbers are still read from the cost sheet. In Supabase, open the SQL editor and run supabase/labor-rates.sql once. Then they can be edited here.
             </p>
           ) : (
-            <p className="pr-note">Profitability and Team use this list. Hours still come from Tempo.</p>
+            <p className="pr-note">Profitability uses these hourly costs and the monthly overhead. Hours still come from Tempo.</p>
           )}
+          <label className="pr-rates-overhead">
+            <span>Monthly overhead</span>
+            <input
+              aria-label="Monthly overhead"
+              inputMode="decimal"
+              value={overheadDraft}
+              disabled={!overheadEditable || saving}
+              onChange={(event) => {
+                setSaved(false)
+                setOverheadDraft(event.target.value)
+              }}
+            />
+          </label>
+          <p className="pr-rates-label">Employee costs</p>
           <div className="pr-rates-grid">
             {draft.map((row, index) => (
               <div className="pr-rates-row" key={row.id || `new-${index}`}>

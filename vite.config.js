@@ -7,6 +7,18 @@ import { writeFeaturePriority } from './server/featurePriority.js'
 // Generate a build version for cache busting
 const buildVersion = Date.now().toString(36)
 
+function dashDataProxy() {
+  return {
+    target: 'https://dash.brandastic.com',
+    changeOrigin: true,
+    configure(proxy) {
+      proxy.on('proxyReq', (proxyReq) => {
+        proxyReq.setHeader('origin', 'https://brandastic.co')
+      })
+    },
+  }
+}
+
 // https://vitejs.dev/config/
 function readRequestBody(req) {
   return new Promise((resolve, reject) => {
@@ -74,6 +86,12 @@ export default defineConfig(({ mode }) => {
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    proxy: {
+      '/api/profitability-data': dashDataProxy(),
+      '/api/team-performance-data': dashDataProxy(),
     },
   },
   build: {
