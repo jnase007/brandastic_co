@@ -9,6 +9,10 @@ export function normalizePriority(value) {
   return PRIORITIES.has(text) ? text : ''
 }
 
+export function isComplete(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase() === 'yes'
+}
+
 export function sectionId(name) {
   const slug = String(name || 'other').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   return `feature-${slug || 'other'}`
@@ -26,6 +30,7 @@ export function parseFeatureSheet(text) {
       goal: (row[5] || '').trim(),
       source: (row[6] || '').trim(),
       notes: (row[7] || '').trim(),
+      complete: isComplete(row[8]),
     }))
     .filter((feature) => feature.category && feature.name)
 }

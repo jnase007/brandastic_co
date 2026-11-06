@@ -46,6 +46,11 @@ function featureKey(feature) {
   return `${feature.category}|${feature.name}`
 }
 
+function featureCountLabel(total, completed) {
+  const noun = total === 1 ? 'feature' : 'features'
+  return `${total} ${noun} · ${completed} completed`
+}
+
 function scrollParent(node) {
   let parent = node.parentElement
   while (parent && parent !== document.body) {
@@ -171,6 +176,7 @@ export default function FeatureList() {
   useEffect(() => () => clearRef.current?.(), [])
 
   const activeGroup = groups.find((group) => sectionId(group.name) === activeId)
+  const completedCount = features.filter((feature) => feature.complete).length
   const counts = useMemo(() => ({
     easy: features.filter((feature) => feature.difficulty === 'Easy').length,
     medium: features.filter((feature) => feature.difficulty === 'Medium').length,
@@ -199,6 +205,10 @@ export default function FeatureList() {
             />
           </div>
         </section>
+
+        {status === 'ready' ? (
+          <p className="mt-6 text-sm text-[#5c6b7a]">{featureCountLabel(features.length, completedCount)}</p>
+        ) : null}
 
         {status === 'loading' ? (
           <p className="mt-8 text-sm text-[#5c6b7a]">Loading the sheet…</p>
@@ -295,13 +305,15 @@ export default function FeatureList() {
                   {sectionNumber(index)} · {group.name.toUpperCase()}
                 </p>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight">{group.name}</h2>
-                <p className="mt-1 text-sm text-[#5c6b7a]">{group.features.length} {group.features.length === 1 ? 'feature' : 'features'}</p>
+                <p className="mt-1 text-sm text-[#5c6b7a]">{featureCountLabel(group.features.length, group.features.filter((feature) => feature.complete).length)}</p>
                 <div className="mt-6 grid gap-4 md:grid-cols-2">
                   {group.features.map((feature) => (
                     <article key={`${group.name}-${feature.name}`} className="rounded-2xl border border-[#e6ebf2] bg-[#f8fafc] p-5">
                       <div className="flex items-start justify-between gap-3">
                         <h3 className="text-lg font-semibold leading-snug">{feature.name}</h3>
-                        {feature.difficulty ? (
+                        {feature.complete ? (
+                          <span className="shrink-0 rounded-full bg-[#dcfce7] px-2.5 py-1 text-xs font-medium text-[#15803d]">Complete</span>
+                        ) : feature.difficulty ? (
                           <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${DIFFICULTY_STYLE[feature.difficulty] || 'bg-slate-100 text-slate-700'}`}>
                             {feature.difficulty}
                           </span>
