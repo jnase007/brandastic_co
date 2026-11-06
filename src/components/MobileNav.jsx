@@ -6,6 +6,7 @@ import {
   Users2, Trophy, User, Shield, LogOut, Timer, Activity,
   Search, ChevronRight, Zap, Bell, BookOpen, ActivitySquare, Settings,
   ListTodo, Lightbulb, Target, ListChecks,
+  Server,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
@@ -30,6 +31,7 @@ const navItems = [
   { path: '/clients', icon: Building2, label: 'Clients' },
   { path: '/pipeline', icon: Target, label: 'Sales Pipeline' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
+  { path: '/hosting', icon: Server, label: 'Hosting' },
   { path: '/docs', icon: BookOpen, label: 'Internal Docs' },
   { path: '/taskboard', icon: ListTodo, label: 'Task Board' },
   { path: '/reports', icon: BarChart3, label: 'Reports' },
@@ -61,6 +63,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
     : [
         { path: '/profitability', icon: BarChart3, label: 'Profitability' },
         { path: '/profitability/team', icon: Users2, label: 'Team' },
+        { path: '/hosting', icon: Server, label: 'Hosting' },
         { path: '/feature-list', icon: ListChecks, label: 'Features' },
       ]
 

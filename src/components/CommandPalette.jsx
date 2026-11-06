@@ -33,6 +33,7 @@ import {
   Play,
   Sparkles,
   ListChecks,
+  Server,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { supabase } from '../lib/supabase'
@@ -44,6 +45,7 @@ const COMMANDS = [
   { id: 'time', label: 'Go to Time Tracking', icon: Clock, shortcut: 'G T', action: 'navigate', path: '/time', category: 'Navigation' },
   { id: 'clients', label: 'Go to Clients', icon: Building2, shortcut: 'G C', action: 'navigate', path: '/clients', category: 'Navigation' },
   { id: 'feature-list', label: 'Go to Feature List', icon: ListChecks, action: 'navigate', path: '/feature-list', category: 'Navigation' },
+  { id: 'hosting', label: 'Go to Hosting', icon: Server, action: 'navigate', path: '/hosting', category: 'Navigation' },
   { id: 'pipeline', label: 'Go to Sales Pipeline', icon: Target, action: 'navigate', path: '/pipeline', category: 'Navigation' },
   { id: 'docs', label: 'Go to Internal Docs', icon: HelpCircle, shortcut: 'G N', action: 'navigate', path: '/docs', category: 'Navigation' },
   { id: 'reports', label: 'Go to Reports', icon: BarChart3, shortcut: 'G R', action: 'navigate', path: '/reports', category: 'Navigation' },

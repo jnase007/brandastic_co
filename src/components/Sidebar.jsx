@@ -36,6 +36,7 @@ import {
   Mail,
   Lightbulb,
   ListChecks,
+  Server,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
@@ -56,6 +57,7 @@ const navItems = [
   { path: '/time', icon: Clock, label: 'Time Tracking', shortcut: 'G T' },
   { path: '/clients', icon: Building2, label: 'Clients', shortcut: 'G C' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
+  { path: '/hosting', icon: Server, label: 'Hosting' },
   { path: '/pipeline', icon: Target, label: 'Sales Pipeline' },
   { path: '/mission', icon: Target, label: 'Mission', shortcut: 'G M' },
   { path: '/docs', icon: BookOpen, label: 'Internal Docs', shortcut: 'G N' },
@@ -70,6 +72,7 @@ const navItems = [
 const simpleNavItems = [
   { path: '/profitability', icon: BarChart3, label: 'Profitability' },
   { path: '/profitability/team', icon: Users2, label: 'Team' },
+  { path: '/hosting', icon: Server, label: 'Hosting' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
 ]
 
