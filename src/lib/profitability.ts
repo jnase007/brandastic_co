@@ -413,7 +413,13 @@ export function paceHealth(
     if (entry.date < client.contractStart || entry.date > elapsedEnd) continue;
     used += entry.minutes / 60;
   }
-  if (used / annual > 1) return "over";
+  const yearBudget = hoursBudget(client, "year", { asOf, quarterStart: asOf, monthStart: asOf });
+  if (yearBudget != null && yearBudget > 0) {
+    const logged = Math.round(used * 10) / 10;
+    const shown = Math.round((logged / yearBudget) * 1000) / 10;
+    if (shown >= 100) return "over";
+  }
+  if (used / annual >= 1) return "over";
   if (fraction <= 0) return used > 0 ? "over" : "ok";
   const pace = used / annual / fraction;
   if (pace <= 1) return "ok";
