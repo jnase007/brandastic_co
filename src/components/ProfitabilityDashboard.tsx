@@ -22,6 +22,8 @@ import {
   reportWindow,
   contractTermLabel,
   directProfit,
+  paceHealth,
+  proratePeriodProfit,
   type CostRate,
   type DirectProfit,
   type ProfitClient,
@@ -29,7 +31,7 @@ import {
   type ProfitRange,
   type TimeEntry,
 } from "@/lib/profitability";
-import { memberSlug } from "@/lib/team";
+import { INTERNAL_SLUG, memberSlug } from "@/lib/team";
 
 function profitabilityHref(range: ProfitRange, slug?: string) {
   const query = `?range=${range}`;
@@ -53,6 +55,7 @@ export function ProfitabilityDashboard({
   const { clients, entries, bounds } = data;
   const clientOptions = data.directory?.length ? data.directory : clients;
   const [range, setRange] = useState<ProfitRange>(initialRange);
+  const [cardSort, setCardSort] = useState<"hours" | "margin">("hours");
   const [activeBar, setActiveBar] = useState<string | null>(null);
   const [activeSlice, setActiveSlice] = useState<string | null>(null);
 
@@ -93,13 +96,22 @@ export function ProfitabilityDashboard({
     [viewEntries, clients, selected]
   );
   const cards = useMemo(
-    () =>
-        clients.map((client) => {
+    () => {
+      const ranked = clients.map((client) => {
         const ranged = entriesFor(entries, clients, range, client.slug, bounds);
         const loggedRaw = ranged.reduce((sum, entry) => sum + entry.minutes, 0) / 60;
         const logged = Math.round(loggedRaw * 10) / 10;
         const budget = hoursBudget(client, range, bounds);
         const pct = budget ? Math.round((logged / budget) * 1000) / 10 : 0;
+        const profit = directProfit(
+          [client],
+          ranged,
+          data.costRates || [],
+          range,
+          bounds,
+          data.monthlyOverhead ?? null,
+          data.payingAllocatedHours || 0
+        );
         return {
           client,
           logged,
@@ -107,15 +119,30 @@ export function ProfitabilityDashboard({
           budget,
           pct,
           health: burnHealth(pct),
+          pace: paceHealth(client, entries, bounds.asOf),
           hasBudget: budget != null && budget > 0,
+          profit: profit.profit,
+          margin: profit.margin,
+          internal: client.slug === INTERNAL_SLUG || client.name.trim().toLowerCase() === "brandastic",
         };
-      })
-        .sort((a, b) => {
-          if (a.hasBudget !== b.hasBudget) return a.hasBudget ? -1 : 1;
-          if (b.pct !== a.pct) return b.pct - a.pct;
+      });
+      const external = ranked.filter((card) => !card.internal);
+      const internal = ranked.filter((card) => card.internal);
+      external.sort((a, b) => {
+        if (cardSort === "margin") {
+          if (a.margin == null && b.margin == null) return a.client.name.localeCompare(b.client.name);
+          if (a.margin == null) return 1;
+          if (b.margin == null) return -1;
+          if (a.margin !== b.margin) return a.margin - b.margin;
           return a.client.name.localeCompare(b.client.name);
-        }),
-    [clients, entries, range, bounds]
+        }
+        if (a.hasBudget !== b.hasBudget) return a.hasBudget ? -1 : 1;
+        if (b.pct !== a.pct) return b.pct - a.pct;
+        return a.client.name.localeCompare(b.client.name);
+      });
+      return [...external, ...internal];
+    },
+    [clients, entries, range, bounds, cardSort, data.costRates, data.monthlyOverhead, data.payingAllocatedHours]
   );
   const selectedCard = cards.find((card) => card.client.slug === selected?.slug);
   const budgetLabel = range === "month" ? "Allocated" : range === "quarter" ? "Quarter hrs" : "Contract hrs";
@@ -128,19 +155,18 @@ export function ProfitabilityDashboard({
   const totalHasBudget = totalBudget > 0;
   const totalPct = totalHasBudget ? (totalLogged / totalBudget) * 100 : 0;
   const totalHealth = burnHealth(totalPct);
-  const portfolioProfit = useMemo(
-    () =>
-      directProfit(
-        clients.filter((client) => client.slug !== "brandastic"),
-        entriesFor(entries, clients, range, "all", bounds).filter((entry) => entry.clientSlug !== "brandastic"),
-        data.costRates || [],
-        range,
-        bounds,
-        data.monthlyOverhead ?? null,
-        data.payingAllocatedHours || 0
-      ),
-    [clients, entries, range, bounds, data.costRates, data.monthlyOverhead, data.payingAllocatedHours]
-  );
+  const portfolioProfit = useMemo(() => {
+    const profit = directProfit(
+      clients.filter((client) => client.slug !== INTERNAL_SLUG),
+      entriesFor(entries, clients, range, "all", bounds).filter((entry) => entry.clientSlug !== INTERNAL_SLUG),
+      data.costRates || [],
+      range,
+      bounds,
+      data.monthlyOverhead ?? null,
+      data.payingAllocatedHours || 0
+    );
+    return range === "year" ? profit : proratePeriodProfit(profit, range, bounds);
+  }, [clients, entries, range, bounds, data.costRates, data.monthlyOverhead, data.payingAllocatedHours]);
   const clientProfit = useMemo(
     () =>
       selected
@@ -199,7 +225,7 @@ export function ProfitabilityDashboard({
           </div>
         </div>
       </header>
-      {view === "overview" ? <MoneyKpis profit={portfolioProfit} /> : null}
+      {view === "overview" ? <MoneyKpis profit={portfolioProfit} prorated={range !== "year"} /> : null}
       {view === "overview" ? (
       <section className="pr-cards-wrap">
       <article className="pr-card pr-card-total" aria-label="All Clients (minus Brandastic)">
@@ -227,8 +253,30 @@ export function ProfitabilityDashboard({
         </div>
       </article>
       <div className="pr-cards-sep" role="separator" />
+      <div className="pr-card-sort">
+        <span>Sort</span>
+        <div className="pr-segment" role="group" aria-label="Sort clients">
+          <button
+            type="button"
+            className={cardSort === "hours" ? "active" : ""}
+            aria-pressed={cardSort === "hours"}
+            onClick={() => setCardSort("hours")}
+          >
+            Hours %
+          </button>
+          <button
+            type="button"
+            className={cardSort === "margin" ? "active" : ""}
+            aria-pressed={cardSort === "margin"}
+            onClick={() => setCardSort("margin")}
+          >
+            Margin
+          </button>
+        </div>
+      </div>
       <div className="pr-cards" aria-label="Client retainer overview">
-        {cards.map(({ client, logged, budget, pct, health, hasBudget }) => {
+        {cards.map(({ client, logged, budget, pct, health, pace, hasBudget, profit, margin, internal }) => {
+          const pill = pace || (hasBudget ? health : "warn");
           return (
             <Link
               key={client.slug}
@@ -237,8 +285,11 @@ export function ProfitabilityDashboard({
             >
               <div className="pr-card-top">
                 <strong>{client.name}</strong>
-                <span className={`pr-burn ${hasBudget ? health : "warn"}`}>
-                  {hasBudget ? `${formatPct(pct)}%` : "No allocation"}
+                <span className="pr-card-pills">
+                  {internal ? <span className="pr-internal">Internal</span> : null}
+                  <span className={`pr-burn ${hasBudget || pace ? pill : "warn"}`}>
+                    {hasBudget ? `${formatPct(pct)}%` : "No allocation"}
+                  </span>
                 </span>
               </div>
               <div className="pr-card-hours">
@@ -256,6 +307,16 @@ export function ProfitabilityDashboard({
                   className={`pr-fill ${hasBudget ? health : "warn"}`}
                   style={{ width: `${hasBudget ? Math.min(pct, 100) : 0}%` }}
                 />
+              </div>
+              <div className="pr-card-hours pr-card-money">
+                <span>
+                  <em>{profit == null ? "—" : formatMoney(profit)}</em>
+                  Profit
+                </span>
+                <span>
+                  <em>{margin == null ? "—" : `${formatPct(margin)}%`}</em>
+                  Margin
+                </span>
               </div>
             </Link>
           );
@@ -333,7 +394,7 @@ export function ProfitabilityDashboard({
   );
 }
 
-function MoneyKpis({ profit }: { profit: DirectProfit }) {
+function MoneyKpis({ profit, prorated = false }: { profit: DirectProfit; prorated?: boolean }) {
   return (
     <section className="pr-profit" aria-label="Profit after overhead">
       <p>Revenue minus direct labor and overhead.</p>
@@ -342,6 +403,7 @@ function MoneyKpis({ profit }: { profit: DirectProfit }) {
           <span>Revenue</span>
           <strong>{profit.revenue == null ? "—" : formatMoney(profit.revenue)}</strong>
           <small>What the client pays for this period</small>
+          {prorated ? <small>Prorated to today</small> : null}
         </article>
         <article className="pr-kpi">
           <span>Labor cost</span>

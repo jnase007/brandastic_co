@@ -346,6 +346,81 @@ export function burnHealth(pct: number): "ok" | "warn" | "over" {
   return "ok";
 }
 
+function daysInCalendarMonth(year: number, month: number) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function dayNumber(iso: string) {
+  const [year, month, day] = iso.split("-").map(Number);
+  return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
+}
+
+/** Months of retainer earned through today. A finished month counts in full; the current month is day/days. */
+export function earnedRetainerMonths(range: ProfitRange, bounds: DateBounds): number | null {
+  if (range === "year") return null;
+  const [year, month, day] = bounds.asOf.split("-").map(Number);
+  if (range === "month") return day / daysInCalendarMonth(year, month);
+  const startMonth = Math.floor((month - 1) / 3) * 3 + 1;
+  let earned = 0;
+  for (let cursor = startMonth; cursor <= month; cursor += 1) {
+    const days = daysInCalendarMonth(year, cursor);
+    earned += (cursor === month ? day : days) / days;
+  }
+  return earned;
+}
+
+export function proratePeriodProfit(profit: DirectProfit, range: ProfitRange, bounds: DateBounds): DirectProfit {
+  const earned = earnedRetainerMonths(range, bounds);
+  if (earned == null || profit.revenue == null) return profit;
+  const counted = range === "month" ? 1 : ((Number(bounds.asOf.slice(5, 7)) - 1) % 3) + 1;
+  const scale = earned / counted;
+  const revenue = profit.revenue * scale;
+  const overhead = profit.overhead == null ? null : profit.overhead * scale;
+  const amount = revenue - profit.labor - (overhead ?? 0);
+  return {
+    ...profit,
+    revenue,
+    overhead,
+    profit: amount,
+    margin: revenue > 0 ? (amount / revenue) * 100 : null,
+  };
+}
+
+export function paceHealth(
+  client: ProfitClient,
+  entries: TimeEntry[],
+  asOf: string
+): "ok" | "warn" | "over" | null {
+  const monthly = client.allocatedHours;
+  if (monthly == null || monthly <= 0 || !client.contractStart) return null;
+  const yearEnd =
+    client.renewalKind === "date" && client.renewalDate
+      ? client.renewalDate
+      : client.contractEnd;
+  if (!yearEnd) return null;
+  const annual =
+    client.renewalKind === "date" && client.renewalDate
+      ? monthly * elapsedContractMonths(client.contractStart, client.renewalDate)
+      : monthly * 12;
+  if (!(annual > 0)) return null;
+  const span = Math.max(dayNumber(yearEnd) - dayNumber(client.contractStart), 1);
+  const elapsedEnd = asOf < yearEnd ? asOf : yearEnd;
+  const elapsed = Math.min(Math.max(dayNumber(elapsedEnd) - dayNumber(client.contractStart) + 1, 0), span);
+  const fraction = elapsed / span;
+  let used = 0;
+  for (const entry of entries) {
+    if (entry.clientSlug !== client.slug) continue;
+    if (entry.date < client.contractStart || entry.date > elapsedEnd) continue;
+    used += entry.minutes / 60;
+  }
+  if (used / annual > 1) return "over";
+  if (fraction <= 0) return used > 0 ? "over" : "ok";
+  const pace = used / annual / fraction;
+  if (pace <= 1) return "ok";
+  if (pace <= 1.1) return "warn";
+  return "over";
+}
+
 export function moneyExact(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",

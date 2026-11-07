@@ -143,6 +143,36 @@
   background: #cbd5e1;
 }
 
+.pr-card-sort {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pr-card-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.pr-internal {
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 800;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.pr-card-money {
+  margin-top: 2px;
+}
+
 .pr-cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
