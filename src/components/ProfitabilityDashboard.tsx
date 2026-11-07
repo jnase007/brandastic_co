@@ -103,7 +103,7 @@ export function ProfitabilityDashboard({
         const logged = Math.round(loggedRaw * 10) / 10;
         const budget = hoursBudget(client, range, bounds);
         const pct = budget ? Math.round((logged / budget) * 1000) / 10 : 0;
-        const profit = directProfit(
+        const rawProfit = directProfit(
           [client],
           ranged,
           data.costRates || [],
@@ -112,6 +112,7 @@ export function ProfitabilityDashboard({
           data.monthlyOverhead ?? null,
           data.payingAllocatedHours || 0
         );
+        const profit = range === "year" ? rawProfit : proratePeriodProfit(rawProfit, range, bounds);
         return {
           client,
           logged,
@@ -167,21 +168,19 @@ export function ProfitabilityDashboard({
     );
     return range === "year" ? profit : proratePeriodProfit(profit, range, bounds);
   }, [clients, entries, range, bounds, data.costRates, data.monthlyOverhead, data.payingAllocatedHours]);
-  const clientProfit = useMemo(
-    () =>
-      selected
-        ? directProfit(
-            [selected],
-            viewEntries,
-            data.costRates || [],
-            range,
-            bounds,
-            data.monthlyOverhead ?? null,
-            data.payingAllocatedHours || 0
-          )
-        : null,
-    [selected, viewEntries, data.costRates, range, bounds, data.monthlyOverhead, data.payingAllocatedHours]
-  );
+  const clientProfit = useMemo(() => {
+    if (!selected) return null;
+    const profit = directProfit(
+      [selected],
+      viewEntries,
+      data.costRates || [],
+      range,
+      bounds,
+      data.monthlyOverhead ?? null,
+      data.payingAllocatedHours || 0
+    );
+    return range === "year" ? profit : proratePeriodProfit(profit, range, bounds);
+  }, [selected, viewEntries, data.costRates, range, bounds, data.monthlyOverhead, data.payingAllocatedHours]);
 
   return (
     <div className="pr-page">
@@ -276,7 +275,7 @@ export function ProfitabilityDashboard({
       </div>
       <div className="pr-cards" aria-label="Client retainer overview">
         {cards.map(({ client, logged, budget, pct, health, pace, hasBudget, profit, margin, internal }) => {
-          const pill = pace || (hasBudget ? health : "warn");
+          const tone = pace || (hasBudget ? health : "warn");
           return (
             <Link
               key={client.slug}
@@ -287,7 +286,10 @@ export function ProfitabilityDashboard({
                 <strong>{client.name}</strong>
                 <span className="pr-card-pills">
                   {internal ? <span className="pr-internal">Internal</span> : null}
-                  <span className={`pr-burn ${hasBudget || pace ? pill : "warn"}`}>
+                  <span
+                    className={`pr-burn ${tone}`}
+                    title={range === "year" ? undefined : "Color = contract-year pace"}
+                  >
                     {hasBudget ? `${formatPct(pct)}%` : "No allocation"}
                   </span>
                 </span>
@@ -304,7 +306,7 @@ export function ProfitabilityDashboard({
               </div>
               <div className="pr-track" aria-hidden>
                 <div
-                  className={`pr-fill ${hasBudget ? health : "warn"}`}
+                  className={`pr-fill ${tone}`}
                   style={{ width: `${hasBudget ? Math.min(pct, 100) : 0}%` }}
                 />
               </div>
@@ -342,6 +344,8 @@ export function ProfitabilityDashboard({
             logged={selectedCard?.logged ?? 0}
             budget={selectedCard?.hasBudget ? selectedCard.budget : null}
             budgetLabel={budgetLabel}
+            pace={selectedCard?.pace ?? null}
+            showPaceTip={range !== "year"}
           />
           <article className="pr-kpi">
             <span>Monthly pace</span>
@@ -384,7 +388,7 @@ export function ProfitabilityDashboard({
             />
           </article>
         </div>
-        {clientProfit ? <MoneyKpis profit={clientProfit} /> : null}
+        {clientProfit ? <MoneyKpis profit={clientProfit} prorated={range !== "year"} /> : null}
         {range === "year" ? (
           <ContractBurnChart client={selected} entries={viewEntries} rates={data.costRates || []} />
         ) : null}
@@ -632,18 +636,24 @@ function HoursSummary({
   logged,
   budget,
   budgetLabel,
+  pace,
+  showPaceTip,
 }: {
   logged: number;
   budget: number | null;
   budgetLabel: string;
+  pace: "ok" | "warn" | "over" | null;
+  showPaceTip: boolean;
 }) {
   const pct = budget ? Math.round((logged / budget) * 1000) / 10 : 0;
-  const health = burnHealth(pct);
+  const tone = pace || (budget ? burnHealth(pct) : "warn");
   return (
     <article className="pr-kpi pr-kpi-burn">
       <div className="pr-card-top">
         <span>Total hours</span>
-        <span className={`pr-burn ${budget ? health : "warn"}`}>{budget ? `${formatPct(pct)}%` : "No allocation"}</span>
+        <span className={`pr-burn ${tone}`} title={showPaceTip ? "Color = contract-year pace" : undefined}>
+          {budget ? `${formatPct(pct)}%` : "No allocation"}
+        </span>
       </div>
       <div className="pr-card-hours">
         <span>
@@ -656,7 +666,7 @@ function HoursSummary({
         </span>
       </div>
       <div className="pr-track" aria-hidden>
-        <div className={`pr-fill ${budget ? health : "warn"}`} style={{ width: `${budget ? Math.min(pct, 100) : 0}%` }} />
+        <div className={`pr-fill ${tone}`} style={{ width: `${budget ? Math.min(pct, 100) : 0}%` }} />
       </div>
     </article>
   );
