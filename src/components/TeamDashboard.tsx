@@ -306,48 +306,43 @@ function EmployeeCard({ person, range }: { person: AllocationPerson; range: Team
           <dd>{person.internalPct == null ? "—" : `${formatPct(person.internalPct)}%`}</dd>
         </div>
       </dl>
-      <p className="tm-emp-count">{person.clientCount} clients</p>
     </article>
   );
 }
 
 function AllocationDonut({ segments, center, caption }: { segments: HourSegment[]; center: string; caption: string }) {
+  const [active, setActive] = useState<string | null>(null);
   const total = segments.reduce((sum, segment) => sum + segment.minutes, 0);
   const radius = 68;
-  const circumference = 2 * Math.PI * radius;
-  let cursor = 0;
+  const current = segments.find((segment) => segment.key === active);
+  let angle = -Math.PI / 2;
   return (
     <div className="tm-card-donut">
-      <svg viewBox="0 0 200 200" role="img" aria-label={`${center} ${caption}`}>
-        <g transform="rotate(-90 100 100)">
-          {total > 0 ? (
-            segments.map((segment) => {
-              const length = (segment.minutes / total) * circumference;
-              const gap = length > 8 ? 2.5 : 0;
-              const visible = Math.max(length - gap, 0);
-              const dash = `${visible} ${circumference - visible}`;
-              const offset = -cursor;
-              cursor += length;
-              return (
-                <circle
-                  key={segment.key}
-                  cx="100"
-                  cy="100"
-                  r={radius}
-                  fill="none"
-                  stroke={segment.color}
-                  strokeWidth="22"
-                  strokeDasharray={dash}
-                  strokeDashoffset={offset}
-                >
-                  <title>{`${segment.name}: ${hoursLabel(segment.minutes)}`}</title>
-                </circle>
-              );
-            })
-          ) : (
-            <circle cx="100" cy="100" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="22" />
-          )}
-        </g>
+      <svg viewBox="0 0 200 200" role="img" aria-label={`${center} ${caption}`} onMouseLeave={() => setActive(null)}>
+        {total > 0 ? (
+          segments.map((segment) => {
+            const sweep = (segment.minutes / total) * Math.PI * 2;
+            const start = angle;
+            const end = angle + sweep;
+            angle = end;
+            const gap = sweep > 0.18 ? 0.045 : 0;
+            const path = donutArc(100, 100, radius, start + gap, end - gap);
+            return (
+              <path
+                key={segment.key}
+                d={path}
+                fill="none"
+                stroke={segment.color}
+                strokeWidth="22"
+                strokeLinecap="butt"
+                opacity={!active || active === segment.key ? 1 : 0.4}
+                onMouseEnter={() => setActive(segment.key)}
+              />
+            );
+          })
+        ) : (
+          <circle cx="100" cy="100" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="22" />
+        )}
         <text x="100" y="96" textAnchor="middle" className="pr-donut-value">
           {center}
         </text>
@@ -355,8 +350,25 @@ function AllocationDonut({ segments, center, caption }: { segments: HourSegment[
           {caption}
         </text>
       </svg>
+      {current ? (
+        <span className="pr-tip tm-card-tip" role="tooltip">
+          <strong>{current.name}</strong>
+          {hoursLabel(current.minutes)}
+        </span>
+      ) : null}
     </div>
   );
+}
+
+function donutArc(cx: number, cy: number, radius: number, start: number, end: number) {
+  const sweep = Math.max(end - start, 0.001);
+  const drawEnd = start + Math.min(sweep, Math.PI * 2 - 0.001);
+  const x1 = cx + radius * Math.cos(start);
+  const y1 = cy + radius * Math.sin(start);
+  const x2 = cx + radius * Math.cos(drawEnd);
+  const y2 = cy + radius * Math.sin(drawEnd);
+  const large = drawEnd - start > Math.PI ? 1 : 0;
+  return `M ${x1} ${y1} A ${radius} ${radius} 0 ${large} 1 ${x2} ${y2}`;
 }
 
 function ClientRow({ row, range }: { row: ClientTeamRow; range: TeamRange }) {

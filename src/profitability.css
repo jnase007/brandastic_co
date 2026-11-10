@@ -1518,11 +1518,30 @@
   font-weight: 700;
 }
 
-.tm-emp-count {
-  margin: 0;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 700;
+.tm-card-donut {
+  position: relative;
+}
+
+.tm-card-donut path {
+  cursor: pointer;
+}
+
+.tm-card-tip {
+  display: none;
+  top: 50%;
+  bottom: auto;
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+@media (min-width: 1024px) {
+  .tm-emp-legend {
+    display: none;
+  }
+
+  .tm-card-tip {
+    display: block;
+  }
 }
 
 .tm-person {
