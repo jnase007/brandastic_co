@@ -6,6 +6,9 @@ function draftFrom(rows) {
     id: row.id,
     name: row.name,
     hourly: row.hourly == null ? '' : String(row.hourly),
+    workerType: row.worker_type === 'contractor' ? 'contractor' : 'employee',
+    weeklyCapacity: row.weekly_capacity == null || row.weekly_capacity === '' ? '40' : String(row.weekly_capacity),
+    role: row.role || '',
   }))
 }
 
@@ -13,7 +16,7 @@ function overheadText(value) {
   return value == null || value === '' ? '' : String(value)
 }
 
-export default function LaborRates({ rows, fallback, overhead, fallbackOverhead, missing, overheadMissing, onSaved, alwaysOpen = false }) {
+export default function LaborRates({ rows, fallback, overhead, fallbackOverhead, missing, overheadMissing, profileReady = true, onSaved, alwaysOpen = false }) {
   const editable = Array.isArray(rows)
   const overheadEditable = editable && !overheadMissing
   const startingOverhead = overhead != null ? overhead : fallbackOverhead
@@ -36,6 +39,9 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
       id: row.id,
       name: row.name.trim(),
       hourly: row.hourly,
+      workerType: row.workerType === 'contractor' ? 'contractor' : 'employee',
+      weeklyCapacity: row.weeklyCapacity,
+      role: row.role,
     }))
     if (cleaned.some((row) => !row.name)) {
       setError('Every person needs a name.')
@@ -43,6 +49,10 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
     }
     if (cleaned.some((row) => !(Number(row.hourly) > 0))) {
       setError('Every hourly cost has to be greater than 0.')
+      return
+    }
+    if (cleaned.some((row) => row.workerType === 'employee' && !(Number(row.weeklyCapacity) > 0))) {
+      setError('Weekly hours for an employee have to be greater than 0.')
       return
     }
     const overheadAmount = Number(String(overheadDraft).replace(/[$,]/g, ''))
@@ -58,12 +68,18 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
     setSaving(true)
     setError('')
     try {
-      const savedRows = await saveLaborRates(cleaned)
+      const savedRates = await saveLaborRates(cleaned)
+      const savedRows = savedRates.rows
       const savedOverhead = overheadEditable ? await saveMonthlyOverhead(overheadAmount) : overhead
       onSaved(savedRows, savedOverhead)
       setDraft(draftFrom(savedRows))
       setOverheadDraft(overheadText(savedOverhead != null ? savedOverhead : startingOverhead))
-      setSaved(true)
+      if (!savedRates.profileSaved) {
+        setError('Hourly costs saved, but type, weekly hours, and role did not save.')
+        setSaved(false)
+      } else {
+        setSaved(true)
+      }
     } catch (err) {
       setError(err.message || 'Could not save hourly costs')
     } finally {
@@ -88,7 +104,9 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
               These numbers are still read from the cost sheet. In Supabase, open the SQL editor and run supabase/labor-rates.sql once. Then they can be edited here.
             </p>
           ) : (
-            <p className="pr-note">Profitability uses these hourly costs and the monthly overhead. Hours still come from Tempo.</p>
+            <p className="pr-note">
+              Profitability uses these hourly costs and the monthly overhead. Hours still come from Tempo. Team uses type, weekly hours, and role. Weekly hours are for employees and start at 40.
+            </p>
           )}
           <label className="pr-rates-overhead">
             <span>Monthly overhead</span>
@@ -103,8 +121,16 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
               }}
             />
           </label>
-          <p className="pr-rates-label">Employee costs</p>
+          <p className="pr-rates-label">People</p>
           <div className="pr-rates-grid">
+            <div className="pr-rates-head">
+              <span>Name</span>
+              <span>Type</span>
+              <span>Role</span>
+              <span>Weekly hours</span>
+              <span>Hourly cost</span>
+              <span />
+            </div>
             {draft.map((row, index) => (
               <div className="pr-rates-row" key={row.id || `new-${index}`}>
                 <input
@@ -112,6 +138,30 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                   value={row.name}
                   disabled={!editable || saving}
                   onChange={(event) => update(index, 'name', event.target.value)}
+                />
+                <select
+                  aria-label={`Type for ${row.name || 'person'}`}
+                  value={row.workerType}
+                  disabled={!editable || saving}
+                  onChange={(event) => update(index, 'workerType', event.target.value)}
+                >
+                  <option value="employee">Employee</option>
+                  <option value="contractor">Contractor</option>
+                </select>
+                <input
+                  aria-label={`Role for ${row.name || 'person'}`}
+                  value={row.role}
+                  placeholder="Optional"
+                  disabled={!editable || saving}
+                  onChange={(event) => update(index, 'role', event.target.value)}
+                />
+                <input
+                  aria-label={`Weekly hours for ${row.name || 'person'}`}
+                  inputMode="decimal"
+                  value={row.workerType === 'contractor' ? '' : row.weeklyCapacity}
+                  placeholder={row.workerType === 'contractor' ? '—' : '40'}
+                  disabled={!editable || saving || row.workerType === 'contractor'}
+                  onChange={(event) => update(index, 'weeklyCapacity', event.target.value)}
                 />
                 <input
                   aria-label={`Hourly cost for ${row.name || 'person'}`}
@@ -143,7 +193,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                 disabled={saving}
                 onClick={() => {
                   setSaved(false)
-                  setDraft((current) => [...current, { name: '', hourly: '' }])
+                  setDraft((current) => [...current, { name: '', hourly: '', workerType: 'employee', weeklyCapacity: '40', role: '' }])
                 }}
               >
                 Add person

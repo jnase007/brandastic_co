@@ -1,25 +1,23 @@
 "use client";
 
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import {
-  entriesFor,
+  findCostRate,
   formatEntryDate,
-  formatHours,
   formatHoursMinutes,
   formatMoney,
   formatPct,
   type ProfitabilityData,
 } from "@/lib/profitability";
 import {
-  INTERNAL_SLUG,
-  OTHER_TRACKED_SLUG,
   TEAM_RANGES,
-  buildTeam,
-  personTrend,
-  topSegments,
-  type ClientSlice,
-  type TeamPerson,
+  buildAllocation,
+  statusLabel,
+  type AllocationPerson,
+  type AllocationReport,
+  type ClientTeamRow,
+  type HourSegment,
   type TeamRange,
 } from "@/lib/team";
 
@@ -30,6 +28,10 @@ function teamHref(range: TeamRange, slug?: string, client?: string) {
   return slug ? `/profitability/team/${slug}${query}` : `/profitability/team${query}`;
 }
 
+function profitHref(slug: string, range: TeamRange) {
+  return `/profitability/${slug}?range=${range === "week" ? "month" : range}`;
+}
+
 export function TeamDashboard({
   extra,
   data,
@@ -37,6 +39,7 @@ export function TeamDashboard({
   member,
   range,
   client,
+  showMoney = false,
 }: {
   extra?: ReactNode;
   data: ProfitabilityData;
@@ -44,13 +47,15 @@ export function TeamDashboard({
   member?: string;
   range: TeamRange;
   client?: string;
+  showMoney?: boolean;
 }) {
   const navigate = useNavigate();
   const report = useMemo(
-    () => buildTeam(data.entries, data.clients, data.costRates || [], data.roster || [], range, data.bounds),
+    () => buildAllocation(data.entries, data.clients, data.costRates || [], data.roster || [], range, data.bounds, data.reportSlugs || []),
     [data, range]
   );
-  const person = view === "person" ? report.people.find((item) => item.slug === member) : undefined;
+  const people = useMemo(() => [...report.employees, ...report.contractors], [report]);
+  const person = view === "person" ? people.find((item) => item.slug === member) : undefined;
   const names = useMemo(() => new Map(data.clients.map((item) => [item.slug, item.name])), [data.clients]);
   const reportSlugs = useMemo(() => new Set(data.reportSlugs || []), [data.reportSlugs]);
   const clientName = client ? names.get(client) : undefined;
@@ -70,7 +75,6 @@ export function TeamDashboard({
       {extra}
       <header className="pr-header">
         <div className="pr-brand">
-
           <div>
             <strong>Profitability</strong>
             <h1>Team Performance</h1>
@@ -81,7 +85,7 @@ export function TeamDashboard({
             <label className="pr-field">
               <span>Team member</span>
               <select value={person?.slug || ""} onChange={(event) => openPerson(event.target.value)}>
-                {report.people.map((item) => (
+                {people.map((item) => (
                   <option key={item.slug} value={item.slug}>
                     {item.name}
                   </option>
@@ -116,196 +120,230 @@ export function TeamDashboard({
           reportSlugs={reportSlugs}
           client={clientName ? client : undefined}
           clientName={clientName}
+          showMoney={showMoney}
+          compareLabel={report.compareLabel}
           onClearClient={() => navigate(teamHref(range, person.slug), { replace: true })}
         />
-      ) : null}
+      ) : (
+        <section className="pr-dashboard">
+          <Link to={teamHref(range)} className="pr-back">
+            ← All team members
+          </Link>
+          <p className="pr-note">That person has no hours in this period.</p>
+        </section>
+      )}
     </div>
   );
 }
 
-function Overview({
-  report,
-  range,
-}: {
-  report: ReturnType<typeof buildTeam>;
-  range: TeamRange;
-}) {
+function Overview({ report, range }: { report: AllocationReport; range: TeamRange }) {
   return (
     <section className="pr-dashboard" aria-label="Team performance">
-      <Link to={`/profitability?range=${range}`} className="pr-back">
+      <Link to={`/profitability?range=${range === "week" ? "month" : range}`} className="pr-back">
         ← Client profitability
       </Link>
       <div className="tm-kpis">
         <article className="pr-kpi">
-          <span>Total hours</span>
-          <strong>{formatHours(report.totalMinutes / 60)}</strong>
-          <small>All Tempo time</small>
+          <span>Team utilization</span>
+          <strong>{report.utilization == null ? "—" : `${formatPct(report.utilization)}%`}</strong>
+          <small>Employee hours logged ÷ employee capacity</small>
         </article>
         <article className="pr-kpi">
-          <span>Active clients</span>
-          <strong>{report.activeClients}</strong>
-          <small>Includes work outside Brand Care</small>
+          <span>Client work</span>
+          <strong>{report.clientPct == null ? "—" : `${formatPct(report.clientPct)}%`}</strong>
+          <small>Employee hours on client work ÷ logged hours</small>
         </article>
         <article className="pr-kpi">
-          <span>Labor cost</span>
-          <strong>{formatMoney(report.labor)}</strong>
+          <span>Brandastic</span>
+          <strong>{hoursLabel(report.employeeInternalMinutes)}</strong>
           <small>
-            {report.uncostedHours > 0
-              ? `${formatHours(report.uncostedHours)}h missing a cost rate`
-              : "Hours logged × hourly cost"}
+            {report.internalPct == null ? "No employee hours logged" : `${formatPct(report.internalPct)}% of employee hours`}
           </small>
+        </article>
+        <article className="pr-kpi">
+          <span>Contractors</span>
+          <strong>{hoursLabel(report.contractorMinutes)}</strong>
+          <small>Hours logged by contractors</small>
         </article>
       </div>
 
-      <article className="pr-panel">
-        <div className="pr-panel-head">
-          <h3>Hours by team member</h3>
+      <section className="pr-panel" aria-label="Employees">
+        <div className="tm-section">
+          <h2>Employees</h2>
+          <p>Who is overbooked and who has room?</p>
         </div>
-        <div className="tm-bars">
-          {report.people.map((person) => (
-            <PersonBar key={person.slug} person={person} range={range} />
-          ))}
-        </div>
-      </article>
+        {report.employees.length ? (
+          <div className="pr-table-wrap">
+            <table className="pr-table tm-alloc-table">
+              <thead>
+                <tr>
+                  <th>Person</th>
+                  <th>Allocation</th>
+                  <th>Capacity</th>
+                  <th>Logged</th>
+                  <th>Utilization</th>
+                  <th>Client</th>
+                  <th>Brandastic</th>
+                  <th>Clients</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.employees.map((person) => (
+                  <EmployeeRow key={person.slug} person={person} range={range} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="pr-note">No employees in this period.</p>
+        )}
+      </section>
 
-      <MemberTable people={report.people} range={range} />
+      <section className="pr-panel" aria-label="Contractors">
+        <div className="tm-section">
+          <h2>Contractors</h2>
+          <p>Where is contractor time going?</p>
+        </div>
+        {report.contractors.length ? (
+          <div className="pr-table-wrap">
+            <table className="pr-table tm-alloc-table">
+              <thead>
+                <tr>
+                  <th>Person</th>
+                  <th>Hours</th>
+                  <th>Allocation</th>
+                  <th>Clients</th>
+                  <th>Vs {report.compareLabel}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.contractors.map((person) => (
+                  <ContractorRow key={person.slug} person={person} range={range} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="pr-note">No contractors yet. On Costs, set Type to Contractor for anyone who is not an employee.</p>
+        )}
+      </section>
+
+      <section className="pr-panel" aria-label="By client">
+        <div className="tm-section">
+          <h2>By client</h2>
+          <p>Who is working on each client?</p>
+        </div>
+        {report.clients.length ? (
+          <div className="pr-table-wrap">
+            <table className="pr-table tm-alloc-table">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Hours</th>
+                  <th>People</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.clients.map((row) => (
+                  <ClientRow key={row.slug} row={row} range={range} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="pr-note">No tracked time in this period.</p>
+        )}
+      </section>
     </section>
   );
 }
 
-function PersonBar({ person, range }: { person: TeamPerson; range: TeamRange }) {
-  const segments = topSegments(person.clients);
-  const [active, setActive] = useState<string | null>(null);
-  const current = segments.find((segment) => segment.key === active);
+function ContractorRow({ person, range }: { person: AllocationPerson; range: TeamRange }) {
+  const navigate = useNavigate();
   return (
-    <div className="tm-bar-row">
-      <Link to={teamHref(range, person.slug)}>{person.name}</Link>
-      <div className="tm-bar" onMouseLeave={() => setActive(null)}>
-        {person.minutes > 0
-          ? segments.map((segment) => (
-              <Link
+    <tr className="tm-row" onClick={(event) => openRow(event, () => navigate(teamHref(range, person.slug)))}>
+      <td>
+        <Link to={teamHref(range, person.slug)}>{person.name}</Link>
+        {person.role ? <small className="tm-role">{person.role}</small> : null}
+      </td>
+      <td>{hoursLabel(person.minutes)}</td>
+      <td className="tm-bar-cell">
+        <StackBar segments={person.segments} />
+      </td>
+      <td>{person.clientCount}</td>
+      <td title={person.previousMinutes == null ? "Not enough earlier hours to compare." : undefined}>
+        {changeLabel(person.minutes, person.previousMinutes)}
+      </td>
+    </tr>
+  );
+}
+
+function EmployeeRow({ person, range }: { person: AllocationPerson; range: TeamRange }) {
+  const navigate = useNavigate();
+  return (
+    <tr className="tm-row" onClick={(event) => openRow(event, () => navigate(teamHref(range, person.slug)))}>
+      <td>
+        <div className="tm-person">
+          <Link to={teamHref(range, person.slug)}>{person.name}</Link>
+          {person.role ? <small className="tm-role">{person.role}</small> : null}
+          {person.status ? <span className={`tm-status tm-status-${person.status}`}>{statusLabel(person.status)}</span> : null}
+        </div>
+      </td>
+      <td className="tm-bar-cell">
+        <StackBar segments={person.segments} markerPct={person.markerPct} />
+      </td>
+      <td>{hoursLabel(person.capacityMinutes)}</td>
+      <td>{hoursLabel(person.minutes)}</td>
+      <td>{person.utilization == null ? "—" : `${formatPct(person.utilization)}%`}</td>
+      <td>{person.clientPct == null ? "—" : `${formatPct(person.clientPct)}%`}</td>
+      <td>{person.internalPct == null ? "—" : `${formatPct(person.internalPct)}%`}</td>
+      <td>{person.clientCount}</td>
+    </tr>
+  );
+}
+
+function ClientRow({ row, range }: { row: ClientTeamRow; range: TeamRange }) {
+  return (
+    <tr>
+      <td>
+        {row.linked ? <Link to={profitHref(row.slug, range)}>{row.name}</Link> : <span className="tm-project">{row.name}</span>}
+      </td>
+      <td>{hoursLabel(row.minutes)}</td>
+      <td className="tm-bar-cell">
+        <StackBar segments={row.people} />
+        <small className="tm-people">
+          {row.people.map((person) => `${person.name} ${hoursLabel(person.minutes)}`).join(" · ")}
+        </small>
+      </td>
+    </tr>
+  );
+}
+
+function openRow(event: ReactMouseEvent, open: () => void) {
+  const target = event.target as HTMLElement;
+  if (target.closest("a")) return;
+  open();
+}
+
+function StackBar({ segments, markerPct }: { segments: HourSegment[]; markerPct?: number | null }) {
+  const shown = segments.filter((segment) => segment.minutes > 0);
+  const total = shown.reduce((sum, segment) => sum + segment.minutes, 0);
+  return (
+    <div className="tm-cap">
+      <div className="tm-cap-track" aria-hidden={total <= 0}>
+        {total > 0
+          ? shown.map((segment) => (
+              <span
                 key={segment.key}
-                href={segment.slug ? teamHref(range, person.slug, segment.slug) : teamHref(range, person.slug)}
                 className="tm-seg"
-                style={{ width: `${(segment.minutes / person.minutes) * 100}%`, background: segment.color }}
-                aria-label={`${person.name}, ${segment.name}, ${formatHoursMinutes(segment.minutes)}`}
-                onFocus={() => setActive(segment.key)}
-                onBlur={() => setActive(null)}
+                title={`${segment.name}: ${hoursLabel(segment.minutes)}`}
+                style={{ width: `${(segment.minutes / total) * 100}%`, background: segment.color }}
               />
             ))
           : null}
-        {current ? (
-          <span className="pr-tip" role="tooltip">
-            <strong>{person.name}</strong>
-            {current.name}
-            <br />
-            {formatHours(current.minutes / 60)}h
-          </span>
-        ) : null}
       </div>
-      <em>{formatHours(person.minutes / 60)}h</em>
+      {markerPct != null ? <i className="tm-cap-mark" style={{ left: `${markerPct}%` }} title="100% of capacity" /> : null}
     </div>
-  );
-}
-
-function MemberTable({ people, range }: { people: TeamPerson[]; range: TeamRange }) {
-  const navigate = useNavigate();
-  const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "hours", dir: "desc" });
-  const shown = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    const filtered = needle ? people.filter((person) => person.name.toLowerCase().includes(needle)) : people;
-    const directed = [...filtered].sort((a, b) => comparePeople(a, b, sort.key) * (sort.dir === "asc" ? 1 : -1));
-    return directed;
-  }, [people, query, sort]);
-
-  function toggle(key: SortKey) {
-    setSort((current) =>
-      current.key === key ? { key, dir: current.dir === "asc" ? "desc" : "asc" } : { key, dir: key === "name" ? "asc" : "desc" }
-    );
-  }
-
-  return (
-    <article className="pr-panel">
-      <div className="pr-panel-head">
-        <h3>Team member summary</h3>
-        <input
-          className="tm-search"
-          value={query}
-          placeholder="Search team members"
-          aria-label="Search team members"
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </div>
-      <div className="pr-table-wrap">
-        <table className="pr-table">
-          <thead>
-            <tr>
-              <SortHead label="Team member" sortKey="name" sort={sort} onSort={toggle} />
-              <SortHead label="Hours" sortKey="hours" sort={sort} onSort={toggle} />
-              <SortHead label="Clients" sortKey="clients" sort={sort} onSort={toggle} />
-              <SortHead label="Client hours" sortKey="clientHours" sort={sort} onSort={toggle} />
-              <SortHead label="Internal hours" sortKey="internal" sort={sort} onSort={toggle} />
-              <SortHead label="Labor cost" sortKey="labor" sort={sort} onSort={toggle} />
-            </tr>
-          </thead>
-          <tbody>
-            {shown.map((person) => (
-              <tr key={person.slug} className="tm-row" onClick={() => navigate(teamHref(range, person.slug))}>
-                <td>
-                  <Link to={teamHref(range, person.slug)}>{person.name}</Link>
-                </td>
-                <td>{formatHours(person.minutes / 60)}</td>
-                <td>{person.activeClients}</td>
-                <td>{formatHours(person.clientMinutes / 60)}</td>
-                <td>{formatHours(person.internalMinutes / 60)}</td>
-                <td>{person.labor == null ? "—" : formatMoney(person.labor)}</td>
-              </tr>
-            ))}
-            {!shown.length ? (
-              <tr>
-                <td className="pr-empty" colSpan={6}>
-                  No team members match that search.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
-    </article>
-  );
-}
-
-type SortKey = "name" | "hours" | "clients" | "clientHours" | "internal" | "labor";
-
-function comparePeople(a: TeamPerson, b: TeamPerson, key: SortKey) {
-  if (key === "name") return a.name.localeCompare(b.name);
-  if (key === "hours") return a.minutes - b.minutes;
-  if (key === "clients") return a.activeClients - b.activeClients;
-  if (key === "clientHours") return a.clientMinutes - b.clientMinutes;
-  if (key === "internal") return a.internalMinutes - b.internalMinutes;
-  return (a.labor ?? -1) - (b.labor ?? -1);
-}
-
-function SortHead({
-  label,
-  sortKey,
-  sort,
-  onSort,
-}: {
-  label: string;
-  sortKey: SortKey;
-  sort: { key: SortKey; dir: "asc" | "desc" };
-  onSort: (key: SortKey) => void;
-}) {
-  const mark = sort.key === sortKey ? (sort.dir === "asc" ? " ↑" : " ↓") : "";
-  return (
-    <th>
-      <button type="button" onClick={() => onSort(sortKey)}>
-        {label}
-        {mark}
-      </button>
-    </th>
   );
 }
 
@@ -317,78 +355,142 @@ function PersonView({
   reportSlugs,
   client,
   clientName,
+  showMoney,
+  compareLabel,
   onClearClient,
 }: {
-  person: TeamPerson;
+  person: AllocationPerson;
   data: ProfitabilityData;
   range: TeamRange;
   names: Map<string, string>;
   reportSlugs: Set<string>;
   client?: string;
   clientName?: string;
+  showMoney: boolean;
+  compareLabel: string;
   onClearClient: () => void;
 }) {
+  const window = useMemo(() => {
+    const asOf = data.bounds.asOf;
+    if (range === "week") {
+      const [year, month, day] = asOf.split("-").map(Number);
+      const date = new Date(Date.UTC(year, month - 1, day));
+      const weekday = date.getUTCDay();
+      date.setUTCDate(date.getUTCDate() - (weekday === 0 ? 6 : weekday - 1));
+      return { start: date.toISOString().slice(0, 10), end: asOf };
+    }
+    if (range === "month") return { start: data.bounds.monthStart, end: asOf };
+    return { start: data.bounds.quarterStart, end: asOf };
+  }, [data.bounds, range]);
   const entries = useMemo(() => {
-    return entriesFor(data.entries, data.clients, range, "all", data.bounds).filter((entry) => entry.member === person.name);
-  }, [data, range, person.name]);
-  const trend = useMemo(() => personTrend(entries, range, data.bounds, names), [entries, range, data.bounds, names]);
-  const largest = person.clients[0];
-  const concentration = person.minutes > 0 && largest ? (largest.minutes / person.minutes) * 100 : null;
+    const rates = data.costRates || [];
+    return data.entries.filter((entry) => {
+      if (entry.date < window.start || entry.date > window.end) return false;
+      const rate = findCostRate(entry.member, rates);
+      return (rate?.name || entry.member) === person.name;
+    });
+  }, [data.entries, data.costRates, person.name, window]);
 
   return (
-    <section className="pr-dashboard" aria-label={`${person.name} performance`}>
+    <section className="pr-dashboard" aria-label={`${person.name} allocation`}>
       <Link to={teamHref(range)} className="pr-back">
         ← All team members
       </Link>
-      <div className="pr-section-label">
-        <h2>
-          {person.name}
-          {clientName ? <span> · {clientName}</span> : null}
-        </h2>
+      <div className="tm-person-head">
+        <div className="pr-section-label">
+          <h2>
+            {person.name}
+            {person.role ? <span> · {person.role}</span> : null}
+          </h2>
+        </div>
+        {person.status ? <span className={`tm-status tm-status-${person.status}`}>{statusLabel(person.status)}</span> : null}
       </div>
       <div className="tm-kpis">
-        <article className="pr-kpi">
-          <span>Total hours</span>
-          <strong>{formatHours(person.minutes / 60)}</strong>
-          <small>All Tempo time</small>
-        </article>
-        <article className="pr-kpi">
-          <span>Active clients</span>
-          <strong>{person.activeClients}</strong>
-          <small>{formatHours(person.internalMinutes / 60)}h internal</small>
-        </article>
-        <article className="pr-kpi">
-          <span>Labor cost</span>
-          <strong>{person.labor == null ? "—" : formatMoney(person.labor)}</strong>
-          <small>{person.labor == null ? "Missing a cost rate" : "Hours logged × hourly cost"}</small>
-        </article>
+        {person.kind === "employee" ? (
+          <>
+            <article className="pr-kpi">
+              <span>Capacity</span>
+              <strong>{hoursLabel(person.capacityMinutes)}</strong>
+              <small>Weekly hours prorated to this period</small>
+            </article>
+            <article className="pr-kpi">
+              <span>Logged</span>
+              <strong>{hoursLabel(person.minutes)}</strong>
+              <small>{person.utilization == null ? "No capacity set" : `${formatPct(person.utilization)}% of capacity`}</small>
+            </article>
+            <article className="pr-kpi">
+              <span>Client work</span>
+              <strong>{person.clientPct == null ? "—" : `${formatPct(person.clientPct)}%`}</strong>
+              <small>{person.clientCount} clients</small>
+            </article>
+            <article className="pr-kpi">
+              <span>Brandastic</span>
+              <strong>{hoursLabel(person.internalMinutes)}</strong>
+              <small>{person.internalPct == null ? "No hours logged" : `${formatPct(person.internalPct)}% of logged hours`}</small>
+            </article>
+          </>
+        ) : (
+          <>
+            <article className="pr-kpi">
+              <span>Hours</span>
+              <strong>{hoursLabel(person.minutes)}</strong>
+              <small>Logged this period</small>
+            </article>
+            <article className="pr-kpi">
+              <span>Clients</span>
+              <strong>{person.clientCount}</strong>
+              <small>Jira clients with time</small>
+            </article>
+            <article className="pr-kpi">
+              <span>Vs {compareLabel}</span>
+              <strong>{changeLabel(person.minutes, person.previousMinutes)}</strong>
+              <small>{person.previousMinutes == null ? "Not enough earlier hours to compare" : "Change in logged hours"}</small>
+            </article>
+          </>
+        )}
       </div>
 
       <article className="pr-panel">
-        <div className="pr-panel-head">
-          <h3>Client allocation</h3>
+        <div className="tm-section">
+          <h3>Hours by Jira client</h3>
+          <p>Every client this person logged time to.</p>
         </div>
-        {concentration != null && largest ? (
-          <p className="tm-note">
-            {largest.name} is {formatPct(concentration)}% of logged hours.
-          </p>
-        ) : (
-          <p className="tm-note">No tracked time in this period.</p>
-        )}
-        <AllocationDonut
-          clients={person.clients}
-          totalMinutes={person.minutes}
-          range={range}
-          reportSlugs={reportSlugs}
-          activeSlug={client}
-        />
-      </article>
-
-      <article className="pr-panel">
-        <div className="pr-panel-head">
-          <h3>{range === "month" ? "Hours this month" : "Hours this quarter"}</h3>
+        {person.kind === "employee" ? <StackBar segments={person.segments} markerPct={person.markerPct} /> : <StackBar segments={person.segments} />}
+        <div className="pr-table-wrap">
+          <table className="pr-table">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Hours</th>
+                <th>Share</th>
+                {showMoney ? <th>Cost</th> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {person.clients.map((slice) => (
+                <tr key={slice.slug}>
+                  <td>
+                    {reportSlugs.has(slice.slug) ? (
+                      <Link to={profitHref(slice.slug, range)}>{slice.name}</Link>
+                    ) : (
+                      <span className="tm-project">{slice.name}</span>
+                    )}
+                  </td>
+                  <td>{hoursLabel(slice.minutes)}</td>
+                  <td>{person.minutes > 0 ? `${formatPct((slice.minutes / person.minutes) * 100)}%` : "—"}</td>
+                  {showMoney ? <td>{slice.labor == null ? "—" : formatMoney(slice.labor)}</td> : null}
+                </tr>
+              ))}
+              {!person.clients.length ? (
+                <tr>
+                  <td className="pr-empty" colSpan={showMoney ? 4 : 3}>
+                    No tracked time in this period.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
         </div>
-        <TrendChart buckets={trend} />
       </article>
 
       <TimeLog
@@ -404,142 +506,17 @@ function PersonView({
   );
 }
 
-function TrendChart({ buckets }: { buckets: ReturnType<typeof personTrend> }) {
-  const [active, setActive] = useState<string | null>(null);
-  const max = Math.max(...buckets.map((bucket) => bucket.minutes), 1);
-  const current = buckets.flatMap((bucket) => bucket.segments.map((segment) => ({ ...segment, bucket: bucket.label }))).find((segment) => `${segment.bucket}-${segment.key}` === active);
-  return (
-    <div className="tm-trend" onMouseLeave={() => setActive(null)}>
-      {buckets.map((bucket) => (
-        <div key={bucket.key} className="tm-trend-col">
-          <div className="tm-trend-plot">
-            <div className="tm-trend-stack" style={{ height: `${(bucket.minutes / max) * 100}%` }}>
-              {[...bucket.segments].reverse().map((segment) => (
-                <span
-                  key={segment.key}
-                  style={{ flexGrow: segment.minutes, background: segment.color }}
-                  onMouseEnter={() => setActive(`${bucket.label}-${segment.key}`)}
-                />
-              ))}
-            </div>
-          </div>
-          <span>{bucket.label}</span>
-        </div>
-      ))}
-      {current ? (
-        <span className="pr-tip" role="tooltip">
-          <strong>{current.bucket}</strong>
-          {current.name}
-          <br />
-          {formatHours(current.minutes / 60)}h
-        </span>
-      ) : null}
-    </div>
-  );
+function hoursLabel(minutes: number) {
+  const rounded = Math.round((minutes / 60) * 10) / 10;
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return `${text}h`;
 }
 
-const ALLOC_COLORS = ["#5b21b6", "#7c3aed", "#2563eb", "#0f766e", "#0369a1", "#4c1d95", "#6d28d9", "#3b82f6"];
-
-function allocationColor(slug: string, index: number) {
-  if (slug === INTERNAL_SLUG) return "#94a3b8";
-  if (slug === OTHER_TRACKED_SLUG) return "#64748b";
-  return ALLOC_COLORS[index % ALLOC_COLORS.length];
-}
-
-function AllocationDonut({
-  clients,
-  totalMinutes,
-  range,
-  reportSlugs,
-  activeSlug,
-}: {
-  clients: ClientSlice[];
-  totalMinutes: number;
-  range: TeamRange;
-  reportSlugs: Set<string>;
-  activeSlug?: string;
-}) {
-  const [hover, setHover] = useState<string | null>(null);
-  const slices = clients.filter((slice) => slice.minutes > 0);
-  const active = hover || activeSlug || null;
-  const radius = 68;
-  const circumference = 2 * Math.PI * radius;
-  let cursor = 0;
-  const activeSlice = slices.find((slice) => slice.slug === active);
-  if (!slices.length || totalMinutes <= 0) return null;
-
-  return (
-    <div className="pr-donut-wrap tm-alloc-donut">
-      <div className="pr-donut">
-        <svg viewBox="0 0 200 200" role="img" aria-label="Client allocation">
-          <g transform="rotate(-90 100 100)">
-            {slices.map((slice, index) => {
-              const length = (slice.minutes / totalMinutes) * circumference;
-              const gap = length > 6 ? 2 : 0;
-              const visible = Math.max(length - gap, 0);
-              const dash = `${visible} ${circumference - visible}`;
-              const offset = -cursor;
-              cursor += length;
-              return (
-                <circle
-                  key={slice.slug}
-                  cx="100"
-                  cy="100"
-                  r={radius}
-                  fill="none"
-                  stroke={allocationColor(slice.slug, index)}
-                  strokeWidth="26"
-                  strokeDasharray={dash}
-                  strokeDashoffset={offset}
-                  opacity={!active || active === slice.slug ? 1 : 0.35}
-                  onMouseEnter={() => setHover(slice.slug)}
-                  onMouseLeave={() => setHover(null)}
-                />
-              );
-            })}
-          </g>
-          <text x="100" y="96" textAnchor="middle" className="pr-donut-value">
-            {formatHours(totalMinutes / 60)}h
-          </text>
-          <text x="100" y="116" textAnchor="middle" className="pr-donut-sub">
-            logged
-          </text>
-        </svg>
-        {activeSlice ? (
-          <div className="pr-tip floating" role="tooltip">
-            <strong>{activeSlice.name}</strong>
-            {formatPct((activeSlice.minutes / totalMinutes) * 100)}% · {formatHoursMinutes(activeSlice.minutes)}
-            {activeSlice.labor == null ? "" : ` · ${formatMoney(activeSlice.labor)}`}
-          </div>
-        ) : null}
-      </div>
-      <ul className="pr-donut-legend">
-        {slices.map((slice, index) => {
-          const pct = (slice.minutes / totalMinutes) * 100;
-          return (
-            <li
-              key={slice.slug}
-              className={active === slice.slug ? "active" : ""}
-              onMouseEnter={() => setHover(slice.slug)}
-              onMouseLeave={() => setHover(null)}
-            >
-              <i style={{ background: allocationColor(slice.slug, index) }} />
-              <ProjectName slug={slice.slug} name={slice.name} range={range} linked={reportSlugs.has(slice.slug)} />
-              <em>
-                {formatPct(pct)}% · {formatHoursMinutes(slice.minutes)}
-              </em>
-              <b>{slice.labor == null ? "—" : formatMoney(slice.labor)}</b>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
-function ProjectName({ slug, name, range, linked }: { slug: string; name: string; range: TeamRange; linked: boolean }) {
-  if (!linked) return <span className="tm-project">{name}</span>;
-  return <Link to={`/profitability/${slug}?range=${range}`}>{name}</Link>;
+function changeLabel(current: number, previous: number | null) {
+  if (previous == null) return "—";
+  const delta = Math.round((current - previous) / 60);
+  if (delta === 0) return "No change";
+  return `${delta > 0 ? "+" : "−"}${Math.abs(delta)}h`;
 }
 
 function TimeLog({
@@ -627,12 +604,11 @@ function TimeLog({
               <tr key={`${entry.date}-${entry.clientSlug}-${index}`}>
                 <td>{formatEntryDate(entry.date)}</td>
                 <td>
-                  <ProjectName
-                    slug={entry.clientSlug}
-                    name={names.get(entry.clientSlug) || entry.clientSlug}
-                    range={range}
-                    linked={reportSlugs.has(entry.clientSlug)}
-                  />
+                  {reportSlugs.has(entry.clientSlug) ? (
+                    <Link to={profitHref(entry.clientSlug, range)}>{names.get(entry.clientSlug) || entry.clientSlug}</Link>
+                  ) : (
+                    <span className="tm-project">{names.get(entry.clientSlug) || entry.clientSlug}</span>
+                  )}
                 </td>
                 <td className="pr-duration">{formatHoursMinutes(entry.minutes)}</td>
                 <td className="tm-note-cell" title={entry.description}>

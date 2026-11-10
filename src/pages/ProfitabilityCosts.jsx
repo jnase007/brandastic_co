@@ -2,7 +2,7 @@ import LaborRates from '../components/LaborRates'
 import { useLaborRateRows } from '../lib/laborRates'
 
 export default function ProfitabilityCosts() {
-  const { rows, setRows, overhead, setOverhead, missing, overheadMissing, error, ready } = useLaborRateRows()
+  const { rows, setRows, overhead, setOverhead, missing, overheadMissing, profileReady, error, ready } = useLaborRateRows()
 
   if (!ready) {
     return (
@@ -26,6 +26,7 @@ export default function ProfitabilityCosts() {
         fallbackOverhead={null}
         missing={missing || overheadMissing}
         overheadMissing={overheadMissing}
+        profileReady={profileReady}
         onSaved={(savedRows, savedOverhead) => {
           setRows(savedRows)
           setOverhead(savedOverhead)

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import '../profitability.css'
 import { TeamDashboard } from '../components/TeamDashboard'
+import { useAuth } from '../contexts/AuthContext'
 import { teamRange } from '../lib/team'
 import { cachedTeam, fetchTeam } from '../lib/profitabilityCache'
 import { applyProfitInputs, useLaborRateRows } from '../lib/laborRates'
@@ -9,6 +10,7 @@ import { applyProfitInputs, useLaborRateRows } from '../lib/laborRates'
 export default function ProfitabilityTeam() {
   const { member } = useParams()
   const [searchParams] = useSearchParams()
+  const { isAdmin } = useAuth()
   const [data, setData] = useState(() => cachedTeam())
   const [error, setError] = useState('')
   const { rows, overhead } = useLaborRateRows()
@@ -61,6 +63,7 @@ export default function ProfitabilityTeam() {
       member={member}
       range={range}
       client={client}
+      showMoney={isAdmin}
     />
   )
 }

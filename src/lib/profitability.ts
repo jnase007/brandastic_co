@@ -53,7 +53,15 @@ export type TempoCoverage = {
   allocatedCount: number;
 };
 
-export type CostRate = { name: string; hourly: number };
+export type CostRate = {
+  name: string;
+  hourly: number;
+  /** Employee or contractor. Missing means employee. */
+  workerType?: "employee" | "contractor";
+  /** Weekly capacity for employees. Null uses 40. Contractors ignore this. */
+  weeklyCapacity?: number | null;
+  role?: string | null;
+};
 
 export type ProfitabilityData = {
   clients: ProfitClient[];
@@ -466,19 +474,24 @@ function normalizeName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-export function hourlyCostFor(member: string, rates: CostRate[]): number | null {
+export function findCostRate(member: string, rates: CostRate[]): CostRate | null {
   const key = normalizeName(member);
   if (!key) return null;
   const target = key === "unassigned" ? "unassigned" : RATE_ALIASES[key] || key;
   const exact = rates.find((rate) => normalizeName(rate.name) === target);
-  if (exact) return exact.hourly;
+  if (exact) return exact;
   if (key === "unassigned") return null;
   const first = key.split(" ")[0];
   const hits = rates.filter((rate) => {
     const name = normalizeName(rate.name);
     return name === first || name.startsWith(`${first} `);
   });
-  return hits.length === 1 ? hits[0].hourly : null;
+  return hits.length === 1 ? hits[0] : null;
+}
+
+export function hourlyCostFor(member: string, rates: CostRate[]): number | null {
+  const rate = findCostRate(member, rates);
+  return rate ? rate.hourly : null;
 }
 
 export function formatMoney(value: number) {
