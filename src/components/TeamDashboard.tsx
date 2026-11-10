@@ -173,26 +173,10 @@ function Overview({ report, range }: { report: AllocationReport; range: TeamRang
           <p>Who is overbooked and who has room?</p>
         </div>
         {report.employees.length ? (
-          <div className="pr-table-wrap">
-            <table className="pr-table tm-alloc-table">
-              <thead>
-                <tr>
-                  <th>Person</th>
-                  <th>Allocation</th>
-                  <th>Capacity</th>
-                  <th>Logged</th>
-                  <th>Utilization</th>
-                  <th>Client</th>
-                  <th>Brandastic</th>
-                  <th>Clients</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.employees.map((person) => (
-                  <EmployeeRow key={person.slug} person={person} range={range} />
-                ))}
-              </tbody>
-            </table>
+          <div className="tm-emp-grid">
+            {report.employees.map((person) => (
+              <EmployeeCard key={person.slug} person={person} range={range} />
+            ))}
           </div>
         ) : (
           <p className="pr-note">No employees in this period.</p>
@@ -278,27 +262,100 @@ function ContractorRow({ person, range }: { person: AllocationPerson; range: Tea
   );
 }
 
-function EmployeeRow({ person, range }: { person: AllocationPerson; range: TeamRange }) {
+function EmployeeCard({ person, range }: { person: AllocationPerson; range: TeamRange }) {
   const navigate = useNavigate();
+  const slices = person.segments.filter((segment) => segment.minutes > 0);
   return (
-    <tr className="tm-row" onClick={(event) => openRow(event, () => navigate(teamHref(range, person.slug)))}>
-      <td>
+    <article className="tm-emp-card" onClick={(event) => openRow(event, () => navigate(teamHref(range, person.slug)))}>
+      <header>
         <div className="tm-person">
           <Link to={teamHref(range, person.slug)}>{person.name}</Link>
           {person.role ? <small className="tm-role">{person.role}</small> : null}
-          {person.status ? <span className={`tm-status tm-status-${person.status}`}>{statusLabel(person.status)}</span> : null}
         </div>
-      </td>
-      <td className="tm-bar-cell">
-        <StackBar segments={person.segments} markerPct={person.markerPct} />
-      </td>
-      <td>{hoursLabel(person.capacityMinutes)}</td>
-      <td>{hoursLabel(person.minutes)}</td>
-      <td>{person.utilization == null ? "—" : `${formatPct(person.utilization)}%`}</td>
-      <td>{person.clientPct == null ? "—" : `${formatPct(person.clientPct)}%`}</td>
-      <td>{person.internalPct == null ? "—" : `${formatPct(person.internalPct)}%`}</td>
-      <td>{person.clientCount}</td>
-    </tr>
+        {person.status ? <span className={`tm-status tm-status-${person.status}`}>{statusLabel(person.status)}</span> : null}
+      </header>
+      <AllocationDonut
+        segments={slices}
+        center={person.utilization == null ? "—" : `${formatPct(person.utilization)}%`}
+        caption="of capacity"
+      />
+      <ul className="tm-emp-legend">
+        {slices.map((segment) => (
+          <li key={segment.key}>
+            <i style={{ background: segment.color }} />
+            <span>{segment.name}</span>
+            <em>{hoursLabel(segment.minutes)}</em>
+          </li>
+        ))}
+      </ul>
+      <dl className="tm-emp-stats">
+        <div>
+          <dt>Capacity</dt>
+          <dd>{hoursLabel(person.capacityMinutes)}</dd>
+        </div>
+        <div>
+          <dt>Logged</dt>
+          <dd>{hoursLabel(person.minutes)}</dd>
+        </div>
+        <div>
+          <dt>Client</dt>
+          <dd>{person.clientPct == null ? "—" : `${formatPct(person.clientPct)}%`}</dd>
+        </div>
+        <div>
+          <dt>Brandastic</dt>
+          <dd>{person.internalPct == null ? "—" : `${formatPct(person.internalPct)}%`}</dd>
+        </div>
+      </dl>
+      <p className="tm-emp-count">{person.clientCount} clients</p>
+    </article>
+  );
+}
+
+function AllocationDonut({ segments, center, caption }: { segments: HourSegment[]; center: string; caption: string }) {
+  const total = segments.reduce((sum, segment) => sum + segment.minutes, 0);
+  const radius = 68;
+  const circumference = 2 * Math.PI * radius;
+  let cursor = 0;
+  return (
+    <div className="tm-card-donut">
+      <svg viewBox="0 0 200 200" role="img" aria-label={`${center} ${caption}`}>
+        <g transform="rotate(-90 100 100)">
+          {total > 0 ? (
+            segments.map((segment) => {
+              const length = (segment.minutes / total) * circumference;
+              const gap = length > 8 ? 2.5 : 0;
+              const visible = Math.max(length - gap, 0);
+              const dash = `${visible} ${circumference - visible}`;
+              const offset = -cursor;
+              cursor += length;
+              return (
+                <circle
+                  key={segment.key}
+                  cx="100"
+                  cy="100"
+                  r={radius}
+                  fill="none"
+                  stroke={segment.color}
+                  strokeWidth="22"
+                  strokeDasharray={dash}
+                  strokeDashoffset={offset}
+                >
+                  <title>{`${segment.name}: ${hoursLabel(segment.minutes)}`}</title>
+                </circle>
+              );
+            })
+          ) : (
+            <circle cx="100" cy="100" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="22" />
+          )}
+        </g>
+        <text x="100" y="96" textAnchor="middle" className="pr-donut-value">
+          {center}
+        </text>
+        <text x="100" y="116" textAnchor="middle" className="pr-donut-sub">
+          {caption}
+        </text>
+      </svg>
+    </div>
   );
 }
 

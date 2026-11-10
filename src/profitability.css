@@ -1413,6 +1413,118 @@
   line-height: 1.35;
 }
 
+.tm-emp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.tm-emp-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.tm-emp-card:hover {
+  border-color: #c4b5fd;
+  background: #fff;
+}
+
+.tm-emp-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.tm-card-donut {
+  width: 148px;
+  margin: 0 auto;
+}
+
+.tm-card-donut svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.tm-emp-legend {
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+}
+
+.tm-emp-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tm-emp-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  flex: none;
+}
+
+.tm-emp-legend span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tm-emp-legend em {
+  margin-left: auto;
+  font-style: normal;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.tm-emp-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.tm-emp-stats div {
+  display: grid;
+  gap: 2px;
+}
+
+.tm-emp-stats dt {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tm-emp-stats dd {
+  margin: 0;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.tm-emp-count {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .tm-person {
   display: grid;
   justify-items: start;
