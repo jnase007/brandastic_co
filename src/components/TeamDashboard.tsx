@@ -154,10 +154,12 @@ function Overview({ report, range }: { report: AllocationReport; range: TeamRang
           <small>Employee hours on client work ÷ logged hours</small>
         </article>
         <article className="pr-kpi">
-          <span>Brandastic</span>
+          <span>Internal</span>
           <strong>{hoursLabel(report.employeeInternalMinutes)}</strong>
           <small>
-            {report.internalPct == null ? "No employee hours logged" : `${formatPct(report.internalPct)}% of employee hours`}
+            {report.internalPct == null
+              ? "No employee hours logged"
+              : `Brandastic Marketing + Admin, ${formatPct(report.internalPct)}% of employee hours`}
           </small>
         </article>
         <article className="pr-kpi">
@@ -302,7 +304,7 @@ function EmployeeCard({ person, range }: { person: AllocationPerson; range: Team
           <dd>{person.clientPct == null ? "—" : `${formatPct(person.clientPct)}%`}</dd>
         </div>
         <div>
-          <dt>Brandastic</dt>
+          <dt>Internal</dt>
           <dd>{person.internalPct == null ? "—" : `${formatPct(person.internalPct)}%`}</dd>
         </div>
       </dl>
@@ -493,7 +495,7 @@ function PersonView({
               <small>{person.clientCount} clients</small>
             </article>
             <article className="pr-kpi">
-              <span>Brandastic</span>
+              <span>Internal</span>
               <strong>{hoursLabel(person.internalMinutes)}</strong>
               <small>{person.internalPct == null ? "No hours logged" : `${formatPct(person.internalPct)}% of logged hours`}</small>
             </article>

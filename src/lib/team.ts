@@ -26,7 +26,8 @@ export type TeamRange = (typeof TEAM_RANGES)[number]["id"];
 
 const SEGMENT_COLORS = ["#5b21b6", "#6d28d9", "#7c3aed", "#2563eb", "#3b82f6", "#0f766e", "#0369a1", "#4c1d95"];
 const PERSON_COLORS = ["#5b21b6", "#2563eb", "#0f766e", "#c026d3", "#b45309", "#0369a1", "#be185d", "#4338ca", "#0e7490", "#65a30d"];
-const BRAND_COLOR = "#94a3b8";
+const MARKETING_COLOR = "#94a3b8";
+const ADMIN_COLOR = "#475569";
 const OTHER_CLIENT_COLOR = "#64748b";
 const OTHER_TRACKED_COLOR = "#78716c";
 const UNUSED_COLOR = "#cbd5e1";
@@ -119,17 +120,20 @@ export function buildTeam(
     for (const entry of list) {
       minutes += entry.minutes;
       byClient.set(entry.clientSlug, (byClient.get(entry.clientSlug) || 0) + entry.minutes);
-      if (countsAsClient(entry.clientSlug) && entry.minutes > 0) active.add(entry.clientSlug);
+      if (isClientWork(entry.clientSlug, names.get(entry.clientSlug) || entry.clientSlug) && entry.minutes > 0) {
+        active.add(entry.clientSlug);
+      }
     }
     const slices = [...byClient.entries()]
       .map(([slug, clientMinutes]) => ({
         slug,
-        name: names.get(slug) || slug,
+        name: clientDisplayName(slug, names.get(slug) || slug),
         minutes: clientMinutes,
         labor: hourly == null ? null : (clientMinutes / 60) * hourly,
       }))
       .sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name));
-    const internalMinutes = byClient.get(INTERNAL_SLUG) || 0;
+    const internalMinutes = internalMinutesIn(byClient, names);
+    const trackedMinutes = trackedMinutesIn(byClient, names);
     const personUncosted = hourly == null ? minutes / 60 : 0;
     if (hourly == null) uncostedHours += personUncosted;
     else labor += (minutes / 60) * hourly;
@@ -138,9 +142,9 @@ export function buildTeam(
       name,
       slug: memberSlug(name),
       minutes,
-      clientMinutes: minutes - internalMinutes,
+      clientMinutes: Math.max(0, minutes - internalMinutes - trackedMinutes),
       internalMinutes,
-      activeClients: slices.filter((slice) => countsAsClient(slice.slug) && slice.minutes > 0).length,
+      activeClients: slices.filter((slice) => isClientWork(slice.slug, slice.name) && slice.minutes > 0).length,
       labor: hourly == null ? null : (minutes / 60) * hourly,
       uncostedHours: personUncosted,
       clients: slices,
@@ -217,10 +221,6 @@ export function personTrend(
     const minutes = [...totals.values()].reduce((sum, value) => sum + value, 0);
     return { key: bucket.key, label: bucket.label, minutes, segments };
   });
-}
-
-function countsAsClient(slug: string) {
-  return slug !== INTERNAL_SLUG && slug !== OTHER_TRACKED_SLUG;
 }
 
 function periodBuckets(range: TeamRange, bounds: DateBounds) {
@@ -480,7 +480,7 @@ function slicesFrom(buckets: Map<string, number>, names: Map<string, string>, ho
   return [...buckets.entries()]
     .map(([slug, minutes]) => ({
       slug,
-      name: names.get(slug) || slug,
+      name: clientDisplayName(slug, names.get(slug) || slug),
       minutes,
       labor: hourly == null ? null : (minutes / 60) * hourly,
     }))
@@ -506,9 +506,13 @@ function allocationSegments(slices: ClientSlice[], capacityMinutes: number, logg
   if (tracked > 0) {
     segments.push({ key: "tracked", name: "Other tracked time", slug: null, minutes: tracked, color: OTHER_TRACKED_COLOR });
   }
-  const internal = slices.filter((slice) => slice.minutes > 0 && isInternal(slice.slug, slice.name)).reduce((sum, slice) => sum + slice.minutes, 0);
-  if (internal > 0) {
-    segments.push({ key: "brandastic", name: "Brandastic", slug: INTERNAL_SLUG, minutes: internal, color: BRAND_COLOR });
+  const marketing = minutesOfKind(slices, "marketing");
+  if (marketing > 0) {
+    segments.push({ key: "brandastic-marketing", name: "Brandastic Marketing", slug: INTERNAL_SLUG, minutes: marketing, color: MARKETING_COLOR });
+  }
+  const admin = minutesOfKind(slices, "admin");
+  if (admin > 0) {
+    segments.push({ key: "brandastic-admin", name: "Brandastic Admin", slug: "key-bc", minutes: admin, color: ADMIN_COLOR });
   }
   const unused = Math.max(0, capacityMinutes - loggedMinutes);
   if (unused > 0) {
@@ -536,13 +540,15 @@ function clientRows(
   }
   return [...byClient.entries()]
     .map(([slug, people]) => {
-      const name = names.get(slug) || slug;
+      const sourceName = names.get(slug) || slug;
+      const name = clientDisplayName(slug, sourceName);
       const list = [...people.values()].sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name));
       const minutes = list.reduce((sum, person) => sum + person.minutes, 0);
       return {
         slug,
         name,
         minutes,
+        internal: internalKind(slug, sourceName),
         linked: linked.has(slug),
         people: list.map((person) => ({
           key: memberSlug(person.name),
@@ -554,7 +560,19 @@ function clientRows(
       };
     })
     .filter((row) => row.minutes > 0)
-    .sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name));
+    .sort((a, b) => {
+      const group = Number(Boolean(a.internal)) - Number(Boolean(b.internal));
+      if (group !== 0) return group;
+      if (a.internal && b.internal && a.internal !== b.internal) return a.internal === "marketing" ? -1 : 1;
+      return b.minutes - a.minutes || a.name.localeCompare(b.name);
+    })
+    .map((row) => ({
+      slug: row.slug,
+      name: row.name,
+      minutes: row.minutes,
+      linked: row.linked,
+      people: row.people,
+    }));
 }
 
 function internalMinutesIn(buckets: Map<string, number>, names: Map<string, string>) {
@@ -573,8 +591,40 @@ function trackedMinutesIn(buckets: Map<string, number>, names: Map<string, strin
   return total;
 }
 
+type InternalKind = "marketing" | "admin";
+
+function internalKind(slug: string, name: string): InternalKind | null {
+  const label = name.trim().toLowerCase().replace(/\s+/g, " ");
+  if (label === "brandastic collateral" || label === "brandastic admin" || matchesProject(slug, name, ["bc", "brandastic-collateral"])) {
+    return "admin";
+  }
+  if (label === "brandastic" || label === "brandastic marketing" || matchesProject(slug, name, ["brandastic", "sbr"])) {
+    return "marketing";
+  }
+  return null;
+}
+
+function matchesProject(slug: string, name: string, keys: string[]) {
+  const slugKey = slug.trim().toLowerCase();
+  const label = name.trim().toLowerCase().replace(/\s+/g, " ");
+  return keys.some((key) => slugKey === key || slugKey === `key-${key}` || label === key);
+}
+
+export function clientDisplayName(slug: string, name: string) {
+  const kind = internalKind(slug, name);
+  if (kind === "marketing") return "Brandastic Marketing";
+  if (kind === "admin") return "Brandastic Admin";
+  return name;
+}
+
+function minutesOfKind(slices: ClientSlice[], kind: InternalKind) {
+  return slices
+    .filter((slice) => slice.minutes > 0 && internalKind(slice.slug, slice.name) === kind)
+    .reduce((sum, slice) => sum + slice.minutes, 0);
+}
+
 function isInternal(slug: string, name: string) {
-  return slug === INTERNAL_SLUG || slug === "key-brandastic" || name.trim().toLowerCase() === "brandastic";
+  return internalKind(slug, name) != null;
 }
 
 function isTracked(slug: string, name: string) {
