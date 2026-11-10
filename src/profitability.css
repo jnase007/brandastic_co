@@ -1518,6 +1518,48 @@
   font-weight: 700;
 }
 
+.tm-split {
+  display: grid;
+  gap: 6px;
+}
+
+.tm-split-track {
+  display: flex;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.tm-split-track span {
+  height: 100%;
+}
+
+.tm-split-client {
+  background: #2563eb;
+}
+
+.tm-split-internal {
+  background: #94a3b8;
+}
+
+.tm-split-key {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tm-split-key i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
+  border-radius: 99px;
+}
+
 .tm-card-donut {
   position: relative;
 }

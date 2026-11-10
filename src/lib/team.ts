@@ -25,7 +25,6 @@ export const TEAM_RANGES = [
 export type TeamRange = (typeof TEAM_RANGES)[number]["id"];
 
 const SEGMENT_COLORS = ["#5b21b6", "#6d28d9", "#7c3aed", "#2563eb", "#3b82f6", "#0f766e", "#0369a1", "#4c1d95"];
-const PERSON_COLORS = ["#5b21b6", "#2563eb", "#0f766e", "#c026d3", "#b45309", "#0369a1", "#be185d", "#4338ca", "#0e7490", "#65a30d"];
 const MARKETING_COLOR = "#94a3b8";
 const ADMIN_COLOR = "#475569";
 const OTHER_CLIENT_COLOR = "#64748b";
@@ -302,18 +301,9 @@ export type AllocationPerson = {
   clients: ClientSlice[];
 };
 
-export type ClientTeamRow = {
-  slug: string;
-  name: string;
-  minutes: number;
-  linked: boolean;
-  people: HourSegment[];
-};
-
 export type AllocationReport = {
   employees: AllocationPerson[];
   contractors: AllocationPerson[];
-  clients: ClientTeamRow[];
   employeeMinutes: number;
   employeeCapacityMinutes: number;
   employeeClientMinutes: number;
@@ -346,11 +336,9 @@ export function buildAllocation(
   rates: CostRate[],
   roster: string[],
   range: TeamRange,
-  bounds: DateBounds,
-  reportSlugs: string[] = []
+  bounds: DateBounds
 ): AllocationReport {
   const names = new Map(clients.map((client) => [client.slug, client.name]));
-  const linked = new Set(reportSlugs);
   const currentWindow = periodWindow(range, bounds);
   const previous = previousWindow(range, bounds);
   const currentEntries = entries.filter((entry) => entry.date >= currentWindow.start && entry.date <= currentWindow.end);
@@ -429,7 +417,6 @@ export function buildAllocation(
   return {
     employees,
     contractors,
-    clients: clientRows(currentEntries, rates, names, linked),
     employeeMinutes,
     employeeCapacityMinutes,
     employeeClientMinutes,
@@ -521,60 +508,6 @@ function allocationSegments(slices: ClientSlice[], capacityMinutes: number, logg
   return segments;
 }
 
-function clientRows(
-  entries: TimeEntry[],
-  rates: CostRate[],
-  names: Map<string, string>,
-  linked: Set<string>
-): ClientTeamRow[] {
-  const byClient = new Map<string, Map<string, { name: string; minutes: number }>>();
-  for (const entry of entries) {
-    if (entry.minutes <= 0) continue;
-    const rate = findCostRate(entry.member, rates);
-    const personName = rate?.name || entry.member || "Unassigned";
-    const people = byClient.get(entry.clientSlug) || new Map<string, { name: string; minutes: number }>();
-    const current = people.get(personName) || { name: personName, minutes: 0 };
-    current.minutes += entry.minutes;
-    people.set(personName, current);
-    byClient.set(entry.clientSlug, people);
-  }
-  return [...byClient.entries()]
-    .map(([slug, people]) => {
-      const sourceName = names.get(slug) || slug;
-      const name = clientDisplayName(slug, sourceName);
-      const list = [...people.values()].sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name));
-      const minutes = list.reduce((sum, person) => sum + person.minutes, 0);
-      return {
-        slug,
-        name,
-        minutes,
-        internal: internalKind(slug, sourceName),
-        linked: linked.has(slug),
-        people: list.map((person) => ({
-          key: memberSlug(person.name),
-          name: person.name,
-          slug: memberSlug(person.name),
-          minutes: person.minutes,
-          color: person.name === "Unassigned" ? UNUSED_COLOR : personColor(person.name),
-        })),
-      };
-    })
-    .filter((row) => row.minutes > 0)
-    .sort((a, b) => {
-      const group = Number(Boolean(a.internal)) - Number(Boolean(b.internal));
-      if (group !== 0) return group;
-      if (a.internal && b.internal && a.internal !== b.internal) return a.internal === "marketing" ? -1 : 1;
-      return b.minutes - a.minutes || a.name.localeCompare(b.name);
-    })
-    .map((row) => ({
-      slug: row.slug,
-      name: row.name,
-      minutes: row.minutes,
-      linked: row.linked,
-      people: row.people,
-    }));
-}
-
 function internalMinutesIn(buckets: Map<string, number>, names: Map<string, string>) {
   let total = 0;
   for (const [slug, minutes] of buckets) {
@@ -633,12 +566,6 @@ function isTracked(slug: string, name: string) {
 
 function isClientWork(slug: string, name: string) {
   return !isInternal(slug, name) && !isTracked(slug, name);
-}
-
-function personColor(name: string) {
-  let hash = 0;
-  for (const char of name) hash = (hash * 33 + char.charCodeAt(0)) >>> 0;
-  return PERSON_COLORS[hash % PERSON_COLORS.length];
 }
 
 function normalize(value: string) {

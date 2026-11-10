@@ -16,7 +16,6 @@ import {
   statusLabel,
   type AllocationPerson,
   type AllocationReport,
-  type ClientTeamRow,
   type HourSegment,
   type TeamRange,
 } from "@/lib/team";
@@ -51,7 +50,7 @@ export function TeamDashboard({
 }) {
   const navigate = useNavigate();
   const report = useMemo(
-    () => buildAllocation(data.entries, data.clients, data.costRates || [], data.roster || [], range, data.bounds, data.reportSlugs || []),
+    () => buildAllocation(data.entries, data.clients, data.costRates || [], data.roster || [], range, data.bounds),
     [data, range]
   );
   const people = useMemo(() => [...report.employees, ...report.contractors], [report]);
@@ -213,33 +212,6 @@ function Overview({ report, range }: { report: AllocationReport; range: TeamRang
           <p className="pr-note">No contractors yet. On Costs, set Type to Contractor for anyone who is not an employee.</p>
         )}
       </section>
-
-      <section className="pr-panel" aria-label="By client">
-        <div className="tm-section">
-          <h2>By client</h2>
-          <p>Who is working on each client?</p>
-        </div>
-        {report.clients.length ? (
-          <div className="pr-table-wrap">
-            <table className="pr-table tm-alloc-table">
-              <thead>
-                <tr>
-                  <th>Client</th>
-                  <th>Hours</th>
-                  <th>People</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.clients.map((row) => (
-                  <ClientRow key={row.slug} row={row} range={range} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="pr-note">No tracked time in this period.</p>
-        )}
-      </section>
     </section>
   );
 }
@@ -276,11 +248,7 @@ function EmployeeCard({ person, range }: { person: AllocationPerson; range: Team
         </div>
         {person.status ? <span className={`tm-status tm-status-${person.status}`}>{statusLabel(person.status)}</span> : null}
       </header>
-      <AllocationDonut
-        segments={slices}
-        center={person.utilization == null ? "—" : `${formatPct(person.utilization)}%`}
-        caption="of capacity"
-      />
+      <AllocationDonut segments={slices} center={person.utilization == null ? "—" : `${formatPct(person.utilization)}%`} />
       <ul className="tm-emp-legend">
         {slices.map((segment) => (
           <li key={segment.key}>
@@ -299,20 +267,38 @@ function EmployeeCard({ person, range }: { person: AllocationPerson; range: Team
           <dt>Logged</dt>
           <dd>{hoursLabel(person.minutes)}</dd>
         </div>
-        <div>
-          <dt>Client</dt>
-          <dd>{person.clientPct == null ? "—" : `${formatPct(person.clientPct)}%`}</dd>
-        </div>
-        <div>
-          <dt>Internal</dt>
-          <dd>{person.internalPct == null ? "—" : `${formatPct(person.internalPct)}%`}</dd>
-        </div>
       </dl>
+      <SplitBar clientPct={person.clientPct} internalPct={person.internalPct} />
     </article>
   );
 }
 
-function AllocationDonut({ segments, center, caption }: { segments: HourSegment[]; center: string; caption: string }) {
+function SplitBar({ clientPct, internalPct }: { clientPct: number | null; internalPct: number | null }) {
+  const client = clientPct ?? 0;
+  const internal = internalPct ?? 0;
+  const clientLabel = clientPct == null ? "—" : `${formatPct(clientPct)}%`;
+  const internalLabel = internalPct == null ? "—" : `${formatPct(internalPct)}%`;
+  return (
+    <div className="tm-split">
+      <div className="tm-split-track" aria-hidden={clientPct == null}>
+        {client > 0 ? <span className="tm-split-client" style={{ width: `${client}%` }} title={`Client ${clientLabel}`} /> : null}
+        {internal > 0 ? <span className="tm-split-internal" style={{ width: `${internal}%` }} title={`Internal ${internalLabel}`} /> : null}
+      </div>
+      <div className="tm-split-key">
+        <span>
+          <i className="tm-split-client" />
+          Client {clientLabel}
+        </span>
+        <span>
+          <i className="tm-split-internal" />
+          Internal {internalLabel}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function AllocationDonut({ segments, center }: { segments: HourSegment[]; center: string }) {
   const [active, setActive] = useState<string | null>(null);
   const total = segments.reduce((sum, segment) => sum + segment.minutes, 0);
   const radius = 68;
@@ -320,7 +306,7 @@ function AllocationDonut({ segments, center, caption }: { segments: HourSegment[
   let angle = -Math.PI / 2;
   return (
     <div className="tm-card-donut">
-      <svg viewBox="0 0 200 200" role="img" aria-label={`${center} ${caption}`} onMouseLeave={() => setActive(null)}>
+      <svg viewBox="0 0 200 200" role="img" aria-label={center} onMouseLeave={() => setActive(null)}>
         {total > 0 ? (
           segments.map((segment) => {
             const sweep = (segment.minutes / total) * Math.PI * 2;
@@ -345,11 +331,8 @@ function AllocationDonut({ segments, center, caption }: { segments: HourSegment[
         ) : (
           <circle cx="100" cy="100" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="22" />
         )}
-        <text x="100" y="96" textAnchor="middle" className="pr-donut-value">
+        <text x="100" y="100" textAnchor="middle" dominantBaseline="middle" className="pr-donut-value">
           {center}
-        </text>
-        <text x="100" y="116" textAnchor="middle" className="pr-donut-sub">
-          {caption}
         </text>
       </svg>
       {current ? (
@@ -371,23 +354,6 @@ function donutArc(cx: number, cy: number, radius: number, start: number, end: nu
   const y2 = cy + radius * Math.sin(drawEnd);
   const large = drawEnd - start > Math.PI ? 1 : 0;
   return `M ${x1} ${y1} A ${radius} ${radius} 0 ${large} 1 ${x2} ${y2}`;
-}
-
-function ClientRow({ row, range }: { row: ClientTeamRow; range: TeamRange }) {
-  return (
-    <tr>
-      <td>
-        {row.linked ? <Link to={profitHref(row.slug, range)}>{row.name}</Link> : <span className="tm-project">{row.name}</span>}
-      </td>
-      <td>{hoursLabel(row.minutes)}</td>
-      <td className="tm-bar-cell">
-        <StackBar segments={row.people} />
-        <small className="tm-people">
-          {row.people.map((person) => `${person.name} ${hoursLabel(person.minutes)}`).join(" · ")}
-        </small>
-      </td>
-    </tr>
-  );
 }
 
 function openRow(event: ReactMouseEvent, open: () => void) {
