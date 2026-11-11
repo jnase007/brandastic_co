@@ -39,6 +39,7 @@ export default function ScoreCardPipeline() {
   const [selected, setSelected] = useState(() => new Set())
   const selectedRef = useRef(selected)
   selectedRef.current = selected
+  const lastAnchorRef = useRef(null)
 
   const load = async () => {
     setLoading(true)
@@ -76,6 +77,40 @@ export default function ScoreCardPipeline() {
       else next.delete(String(id))
       return next
     })
+    lastAnchorRef.current = String(id)
+  }
+
+  function onCardCheck(event, row, cards) {
+    event.stopPropagation()
+    const id = String(row.id)
+    if (event.nativeEvent.shiftKey && lastAnchorRef.current) {
+      const ids = cards.map((card) => String(card.id))
+      const start = ids.indexOf(lastAnchorRef.current)
+      const end = ids.indexOf(id)
+      if (start >= 0 && end >= 0) {
+        const lo = Math.min(start, end)
+        const hi = Math.max(start, end)
+        setSelected((current) => {
+          const next = new Set(current)
+          for (let i = lo; i <= hi; i += 1) next.add(ids[i])
+          return next
+        })
+        return
+      }
+    }
+    toggleSelected(id, event.target.checked)
+  }
+
+  function selectColumn(cards, on) {
+    setSelected((current) => {
+      const next = new Set(current)
+      for (const card of cards) {
+        if (on) next.add(String(card.id))
+        else next.delete(String(card.id))
+      }
+      return next
+    })
+    if (cards[0]) lastAnchorRef.current = String(cards[0].id)
   }
 
   async function persistStages(ids, stageId) {
@@ -119,7 +154,7 @@ export default function ScoreCardPipeline() {
               <h1 className="text-2xl font-bold sm:text-4xl">Deal Pipeline</h1>
             </div>
             <p className="text-sm text-slate-500 sm:text-lg">
-              Same people as Score Card. Check several cards, then drag any one of them into the next column — all selected move together.
+              Check one card, scroll, Shift-click another to grab the whole stretch (50+). Drag any selected card into the next column — they all move.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -178,6 +213,12 @@ export default function ScoreCardPipeline() {
                 return (
                   <div key={stage.id} className="flex w-[260px] min-w-[260px] shrink-0 flex-col">
                     <div className="mb-3 flex items-center gap-2 px-1">
+                      <input
+                        type="checkbox"
+                        title="Select all in this column"
+                        checked={cards.length > 0 && cards.every((card) => selected.has(String(card.id)))}
+                        onChange={(event) => selectColumn(cards, event.target.checked)}
+                      />
                       <div className={cn('h-2 w-2 rounded-full', stage.color)} />
                       <h3 className="text-sm font-semibold">{stage.title}</h3>
                       <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs">{cards.length}</span>
@@ -213,8 +254,17 @@ export default function ScoreCardPipeline() {
                                         className="mt-1 shrink-0"
                                         checked={selected.has(String(row.id))}
                                         onMouseDown={(event) => event.stopPropagation()}
-                                        onClick={(event) => event.stopPropagation()}
-                                        onChange={(event) => toggleSelected(row.id, event.target.checked)}
+                                        onClick={(event) => {
+                                          event.stopPropagation()
+                                          if (event.shiftKey) {
+                                            event.preventDefault()
+                                            onCardCheck(event, row, cards)
+                                          }
+                                        }}
+                                        onChange={(event) => {
+                                          if (event.nativeEvent.shiftKey) return
+                                          onCardCheck(event, row, cards)
+                                        }}
                                       />
                                       <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
                                       <div className="min-w-0 flex-1 overflow-hidden">
