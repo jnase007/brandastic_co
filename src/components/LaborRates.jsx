@@ -1,5 +1,9 @@
 import { useState } from 'react'
+import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { saveLaborRates, saveMonthlyOverhead } from '../lib/laborRates'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { cn } from '../lib/utils'
 
 function draftFrom(rows) {
   return (rows || []).map((row) => ({
@@ -23,6 +27,9 @@ function commaNumber(value) {
 function overheadText(value) {
   return value == null || value === '' ? '' : commaNumber(value)
 }
+
+const fieldClass = 'h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm shadow-sm focus-visible:ring-[#FF6B00]/40'
+const moneyWrap = 'flex h-10 items-center rounded-lg border border-slate-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-[#FF6B00]/40'
 
 export default function LaborRates({ rows, fallback, overhead, fallbackOverhead, missing, overheadMissing, profileReady = true, onSaved, alwaysOpen = false }) {
   const editable = Array.isArray(rows)
@@ -96,123 +103,182 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
   }
 
   return (
-    <section className="pr-panel pr-rates">
-      <div className="pr-panel-head">
-        <h3>Costs</h3>
+    <section className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#FF6B00]">Profitability</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">Costs</h1>
+          <p className="mt-2 max-w-2xl text-sm text-slate-500">
+            Hourly cost and monthly overhead feed every profitability view. Tempo still supplies hours. Employees default to 40 hours a week.
+          </p>
+        </div>
         {alwaysOpen ? null : (
-          <button type="button" className="pr-rates-toggle" onClick={() => setOpen((value) => !value)}>
+          <Button variant="outline" type="button" onClick={() => setOpen((value) => !value)}>
             {open ? 'Hide' : 'Edit'}
-          </button>
+          </Button>
         )}
       </div>
+
       {alwaysOpen || open ? (
         <>
           {missing || overheadMissing ? (
-            <p className="pr-note">
-              These numbers are still read from the cost sheet. In Supabase, open the SQL editor and run supabase/labor-rates.sql once. Then they can be edited here.
-            </p>
-          ) : (
-            <p className="pr-note">
-              Profitability uses these hourly costs and the monthly overhead. Hours still come from Tempo. Team uses type, weekly hours, and role. Weekly hours are for employees and start at 40.
-            </p>
-          )}
-          <label className="pr-rates-overhead">
-            <span>Monthly overhead</span>
-            <input
-              aria-label="Monthly overhead"
-              inputMode="decimal"
-              value={overheadDraft}
-              disabled={!overheadEditable || saving}
-              onChange={(event) => {
-                setSaved(false)
-                setOverheadDraft(commaNumber(event.target.value))
-              }}
-            />
-          </label>
-          <p className="pr-rates-label">People</p>
-          <div className="pr-rates-grid">
-            <div className="pr-rates-head">
-              <span>Name</span>
-              <span>Type</span>
-              <span>Role</span>
-              <span>Weekly hours</span>
-              <span>Hourly cost</span>
-              <span />
-            </div>
-            {draft.map((row, index) => (
-              <div className="pr-rates-row" key={row.id || `new-${index}`}>
-                <input
-                  aria-label="Name"
-                  value={row.name}
-                  disabled={!editable || saving}
-                  onChange={(event) => update(index, 'name', event.target.value)}
-                />
-                <select
-                  aria-label={`Type for ${row.name || 'person'}`}
-                  value={row.workerType}
-                  disabled={!editable || saving}
-                  onChange={(event) => update(index, 'workerType', event.target.value)}
-                >
-                  <option value="employee">Employee</option>
-                  <option value="contractor">Contractor</option>
-                </select>
-                <input
-                  aria-label={`Role for ${row.name || 'person'}`}
-                  value={row.role}
-                  placeholder="Optional"
-                  disabled={!editable || saving}
-                  onChange={(event) => update(index, 'role', event.target.value)}
-                />
-                <input
-                  aria-label={`Weekly hours for ${row.name || 'person'}`}
-                  inputMode="decimal"
-                  value={row.workerType === 'contractor' ? '' : row.weeklyCapacity}
-                  placeholder={row.workerType === 'contractor' ? '—' : '40'}
-                  disabled={!editable || saving || row.workerType === 'contractor'}
-                  onChange={(event) => update(index, 'weeklyCapacity', event.target.value)}
-                />
-                <input
-                  aria-label={`Hourly cost for ${row.name || 'person'}`}
-                  inputMode="decimal"
-                  value={row.hourly}
-                  disabled={!editable || saving}
-                  onChange={(event) => update(index, 'hourly', commaNumber(event.target.value))}
-                />
-                {editable ? (
-                  <button
-                    type="button"
-                    className="pr-rates-remove"
-                    disabled={saving}
-                    onClick={() => {
-                      setSaved(false)
-                      setDraft((current) => current.filter((_, rowIndex) => rowIndex !== index))
-                    }}
-                  >
-                    Remove
-                  </button>
-                ) : null}
-              </div>
-            ))}
-          </div>
-          {editable ? (
-            <div className="pr-rates-actions">
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => {
-                  setSaved(false)
-                  setDraft((current) => [...current, { name: '', hourly: '', workerType: 'employee', weeklyCapacity: '40', role: '' }])
-                }}
-              >
-                Add person
-              </button>
-              <button type="button" className="pr-rates-save" disabled={saving} onClick={save}>
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-              {saved ? <span>Saved</span> : null}
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+              These numbers are still read from the cost sheet. Run supabase/labor-rates.sql once, then they can be edited here.
             </div>
           ) : null}
-          {error ? <p className="pr-rates-error">{error}</p> : null}
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Monthly overhead</p>
+            <p className="mt-1 text-sm text-slate-500">Rent, tools, and everything that isn’t a person on this list.</p>
+            <div className={cn(moneyWrap, 'mt-4 max-w-xs')}>
+              <span className="pl-3 text-slate-400">$</span>
+              <input
+                aria-label="Monthly overhead"
+                inputMode="decimal"
+                className="h-10 flex-1 border-0 bg-transparent px-2 text-lg font-semibold tabular-nums outline-none"
+                value={overheadDraft}
+                disabled={!overheadEditable || saving}
+                onChange={(event) => {
+                  setSaved(false)
+                  setOverheadDraft(commaNumber(event.target.value))
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b px-5 py-4">
+              <div>
+                <h2 className="text-base font-semibold">People</h2>
+                <p className="text-sm text-slate-500">{draft.length} on the cost list</p>
+              </div>
+              {editable ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={saving}
+                  onClick={() => {
+                    setSaved(false)
+                    setDraft((current) => [...current, { name: '', hourly: '', workerType: 'employee', weeklyCapacity: '40', role: '' }])
+                  }}
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  Add person
+                </Button>
+              ) : null}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-[900px] w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3">Name</th>
+                    <th className="px-3 py-3">Type</th>
+                    <th className="px-3 py-3">Role</th>
+                    <th className="px-3 py-3">Weekly hours</th>
+                    <th className="px-3 py-3">Hourly cost</th>
+                    <th className="px-3 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {draft.map((row, index) => (
+                    <tr key={row.id || `new-${index}`} className="border-t">
+                      <td className="px-5 py-2">
+                        <Input
+                          className={fieldClass}
+                          aria-label="Name"
+                          value={row.name}
+                          disabled={!editable || saving}
+                          onChange={(event) => update(index, 'name', event.target.value)}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <select
+                          aria-label={`Type for ${row.name || 'person'}`}
+                          className={fieldClass}
+                          value={row.workerType}
+                          disabled={!editable || saving}
+                          onChange={(event) => update(index, 'workerType', event.target.value)}
+                        >
+                          <option value="employee">Employee</option>
+                          <option value="contractor">Contractor</option>
+                        </select>
+                      </td>
+                      <td className="px-3 py-2">
+                        <Input
+                          className={fieldClass}
+                          aria-label={`Role for ${row.name || 'person'}`}
+                          value={row.role}
+                          placeholder="Optional"
+                          disabled={!editable || saving}
+                          onChange={(event) => update(index, 'role', event.target.value)}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <Input
+                          className={fieldClass}
+                          aria-label={`Weekly hours for ${row.name || 'person'}`}
+                          inputMode="decimal"
+                          value={row.workerType === 'contractor' ? '' : row.weeklyCapacity}
+                          placeholder={row.workerType === 'contractor' ? '—' : '40'}
+                          disabled={!editable || saving || row.workerType === 'contractor'}
+                          onChange={(event) => update(index, 'weeklyCapacity', event.target.value)}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className={cn(moneyWrap, 'w-[140px]')}>
+                          <span className="pl-3 text-slate-400">$</span>
+                          <input
+                            aria-label={`Hourly cost for ${row.name || 'person'}`}
+                            inputMode="decimal"
+                            className="h-10 w-full border-0 bg-transparent px-2 font-medium tabular-nums outline-none"
+                            value={row.hourly}
+                            disabled={!editable || saving}
+                            onChange={(event) => update(index, 'hourly', commaNumber(event.target.value))}
+                          />
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        {editable ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-slate-400 hover:text-red-600"
+                            disabled={saving}
+                            onClick={() => {
+                              setSaved(false)
+                              setDraft((current) => current.filter((_, rowIndex) => rowIndex !== index))
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {editable ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                className="bg-[#FF6B00] text-white hover:bg-[#e05f00]"
+                disabled={saving}
+                onClick={save}
+              >
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {saving ? 'Saving…' : 'Save costs'}
+              </Button>
+              {saved ? <span className="text-sm font-medium text-green-600">Saved</span> : null}
+              {error ? <p className="text-sm text-red-600">{error}</p> : null}
+            </div>
+          ) : error ? (
+            <p className="text-sm text-red-600">{error}</p>
+          ) : null}
         </>
       ) : null}
     </section>
