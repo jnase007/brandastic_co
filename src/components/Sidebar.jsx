@@ -158,7 +158,7 @@ export default function Sidebar({
     window.addEventListener('storage', handleStorage)
     
     // Also poll periodically for same-tab updates
-    const interval = setInterval(loadRecent, 2000)
+    const interval = setInterval(loadRecent, 15000)
     
     return () => {
       window.removeEventListener('storage', handleStorage)

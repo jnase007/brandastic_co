@@ -25,6 +25,7 @@ import {
   formatMoney,
   jiraUrl,
   monthLabel,
+  parseJiraKey,
   sheetRowsToLeads,
 } from '../lib/leads'
 
@@ -59,6 +60,7 @@ function CellSelect({ className, value, options, allowBlank, onSave }) {
       value={value || ''}
       onChange={(event) => onSave(event.target.value)}
       onClick={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
     >
       {allowBlank ? <option value=""></option> : null}
       {options.map((item) => (
@@ -186,7 +188,7 @@ export default function Leads({ embedded = false }) {
       const number = Number(value)
       return Number.isFinite(number) ? number : null
     }
-    const jira = draft.jira_key.trim()
+    const jira = parseJiraKey(draft.jira_key)
     return {
       source: draft.source.trim(),
       first_contact_date: draft.first_contact_date || null,
@@ -235,13 +237,22 @@ export default function Leads({ embedded = false }) {
   async function patchRow(id, fields) {
     if (setupNeeded) return
     const nextFields = { ...fields, updated_at: new Date().toISOString() }
-    if (nextFields.jira_key && !nextFields.quality) {
-      const current = rows.find((row) => row.id === id)
-      if (!current?.quality) nextFields.quality = 'Good Lead'
+    if ('jira_key' in nextFields) {
+      nextFields.jira_key = parseJiraKey(nextFields.jira_key)
+      if (nextFields.jira_key) {
+        const current = rows.find((row) => row.id === id)
+        if (!current?.quality || current.quality === 'New lead') nextFields.quality = 'Good Lead'
+        if (!current?.pipeline_stage) nextFields.pipeline_stage = 'lead'
+      }
     }
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...nextFields } : row)))
-    const { error } = await supabase.from('sales_leads').update(nextFields).eq('id', id)
+    let { error } = await supabase.from('sales_leads').update(nextFields).eq('id', id)
+    if (error && String(error.message || '').includes('pipeline_stage')) {
+      const { pipeline_stage, ...rest } = nextFields
+      error = (await supabase.from('sales_leads').update(rest).eq('id', id)).error
+    }
     if (error) toast({ title: 'Could not save', description: error.message, variant: 'destructive' })
+    else if (nextFields.jira_key) toast({ title: `${nextFields.jira_key} is on the pipeline as a Lead` })
   }
 
   async function deleteLead() {
@@ -280,7 +291,7 @@ export default function Leads({ embedded = false }) {
       return
     }
     const today = new Date().toISOString().slice(0, 10)
-    const jira = quick.jira_key.trim()
+    const jira = parseJiraKey(quick.jira_key)
     const payload = {
       source: quick.source,
       name: quick.name.trim(),
@@ -384,7 +395,7 @@ export default function Leads({ embedded = false }) {
         </div>
       )}
 
-      <p className="mb-2 text-sm text-muted-foreground">{shown.length} showing · click a cell to edit · Jira key sends them to the pipeline</p>
+      <p className="mb-2 text-sm text-muted-foreground">{shown.length} showing · click a row to open the contact · paste a Jira key or Atlassian link to drop them on the pipeline</p>
 
       <div className="overflow-auto rounded-xl border bg-white shadow-sm" style={{ maxHeight: '70vh' }}>
         <table className="min-w-[1500px] w-full text-left text-sm">
@@ -404,7 +415,7 @@ export default function Leads({ embedded = false }) {
               const link = jiraUrl(row.jira_key)
               const cell = 'border-t px-2 py-1.5 align-middle'
               return (
-                <tr key={row.id} className="hover:bg-slate-50">
+                <tr key={row.id} className="cursor-pointer hover:bg-slate-50" onClick={() => { if (!setupNeeded) openEdit(row) }}>
                   <td className={`${cell} whitespace-nowrap`}>
                     <input className="h-8 w-[132px] rounded border-0 bg-transparent px-1 text-sm" type="date" defaultValue={row.first_contact_date || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { first_contact_date: event.target.value || null, month: monthLabel(event.target.value) })} />
                   </td>
@@ -459,7 +470,7 @@ export default function Leads({ embedded = false }) {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Edit lead' : 'Add lead'}</DialogTitle>
+            <DialogTitle>{editingId ? 'Contact' : 'New contact'}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Source">
@@ -472,7 +483,7 @@ export default function Leads({ embedded = false }) {
               <Input type="date" value={draft.first_contact_date} onChange={(event) => updateDraft('first_contact_date', event.target.value)} />
             </Field>
             <Field label="Jira key">
-              <Input value={draft.jira_key} placeholder="CCE-1" onChange={(event) => updateDraft('jira_key', event.target.value)} />
+              <Input value={draft.jira_key} placeholder="CCE-1 or paste Jira URL" onChange={(event) => updateDraft('jira_key', event.target.value)} />
             </Field>
             <Field label="Month">
               <Input value={draft.month} onChange={(event) => updateDraft('month', event.target.value)} />

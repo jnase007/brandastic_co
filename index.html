@@ -19,7 +19,8 @@
     <meta name="apple-mobile-web-app-title" content="Brandastic" />
     <meta name="format-detection" content="telephone=no" />
     
-    <!-- Font: Helvetica (system font, no external load needed) -->
+    <!-- Helvetica only — no Google Fonts. Inputs inherit so the UI stays one typeface. -->
+    <style>html,body,button,input,select,textarea{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}</style>
     
     <!-- Preload critical assets for faster loading -->
     <link rel="preload" href="https://auth.brandastic.co/storage/v1/object/public/images/mark.png" as="image" />

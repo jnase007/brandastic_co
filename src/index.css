@@ -75,11 +75,19 @@
     @apply border-border;
   }
 
+  html {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  button, input, select, textarea {
+    font-family: inherit;
   }
 
   /* Custom scrollbar */

@@ -60,10 +60,18 @@ export const SHEET_CSV_URL =
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
+export function parseJiraKey(value) {
+  const text = String(value || '').trim()
+  const fromUrl = text.match(/browse\/([A-Z][A-Z0-9]+-\d+)/i)
+  const key = (fromUrl ? fromUrl[1] : text).toUpperCase()
+  if (!/^[A-Z][A-Z0-9]+-\d+$/.test(key)) return ''
+  return key
+}
+
 export function jiraUrl(key) {
-  const trimmed = String(key || '').trim()
-  if (!/^[A-Z][A-Z0-9]+-\d+$/i.test(trimmed)) return null
-  return `https://brandastic.atlassian.net/browse/${trimmed.toUpperCase()}`
+  const parsed = parseJiraKey(key)
+  if (!parsed) return null
+  return `https://brandastic.atlassian.net/browse/${parsed}`
 }
 
 export function monthLabel(isoDate) {
