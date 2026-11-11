@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import {
   FEATURE_SHEET_CSV_URL,
-  groupFeatures,
+  groupByTier,
   parseFeatureSheet,
   sectionId,
 } from '../lib/featureList'
@@ -18,28 +18,10 @@ function sectionNumber(index) {
   return String(index + 1).padStart(2, '0')
 }
 
-const SORT_RANK = {
-  difficulty: { Easy: 0, Medium: 1, Hard: 2 },
-  priority: { High: 0, Medium: 1, Low: 2 },
-}
-
-function sortFeatures(features, sortBy) {
-  if (sortBy === 'sheet') return features
-  return features
-    .map((feature, index) => ({ feature, index }))
-    .sort((a, b) => {
-      const rank = (feature) => {
-        if (sortBy === 'goal') return feature.goal || '\uffff'
-        const table = SORT_RANK[sortBy]
-        return table[feature[sortBy]] ?? 99
-      }
-      const left = rank(a.feature)
-      const right = rank(b.feature)
-      if (left < right) return -1
-      if (left > right) return 1
-      return a.index - b.index
-    })
-    .map((item) => item.feature)
+const PRIORITY_STYLE = {
+  High: 'bg-[#fef3c7] text-[#b45309]',
+  Medium: 'bg-[#e0f2fe] text-[#0369a1]',
+  Low: 'bg-[#f1f5f9] text-[#64748b]',
 }
 
 function featureKey(feature) {
@@ -73,7 +55,8 @@ export default function FeatureList() {
   const [error, setError] = useState('')
   const [savingKey, setSavingKey] = useState('')
   const [cardErrors, setCardErrors] = useState({})
-  const [sortBy, setSortBy] = useState('sheet')
+  const [category, setCategory] = useState('')
+  const [showCompleted, setShowCompleted] = useState(false)
   const [activeId, setActiveId] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -123,10 +106,20 @@ export default function FeatureList() {
     }
   }
 
-  const groups = useMemo(() => groupFeatures(features).map((group) => ({
-    ...group,
-    features: sortFeatures(group.features, sortBy),
-  })), [features, sortBy])
+  const categories = useMemo(() => {
+    const counts = new Map()
+    for (const feature of features) counts.set(feature.category, (counts.get(feature.category) || 0) + 1)
+    return [...counts.entries()].map(([name, count]) => ({ name, count }))
+  }, [features])
+  const listed = useMemo(
+    () => (category ? features.filter((feature) => feature.category === category) : features),
+    [features, category],
+  )
+  const groups = useMemo(() => groupByTier(listed), [listed])
+  const quickWins = useMemo(
+    () => features.filter((feature) => !feature.complete && feature.priority === 'High' && feature.difficulty === 'Easy').length,
+    [features],
+  )
 
   useEffect(() => {
     if (status !== 'ready' || groups.length === 0) return undefined
@@ -191,14 +184,14 @@ export default function FeatureList() {
             <p className="text-xs font-semibold tracking-[0.2em] text-[#8eb4ff]">BRANDASTIC · FEATURE LIST</p>
             <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">What brandastic.co should do</h1>
             <p className="mt-4 max-w-md text-lg leading-relaxed text-white/75">
-              The working list of features, grouped the way the sheet groups them. The team can read it here instead of scrolling a spreadsheet.
+              Sorted by what to work on next
             </p>
             <p className="mt-10 text-sm font-semibold tracking-[0.22em]">BRANDASTIC</p>
             <p className="mt-2 text-sm text-white/60">One list. <span className="text-[#8eb4ff]">One product.</span></p>
           </div>
           <div className="flex flex-col justify-center gap-3 bg-[#182033] p-8 sm:p-12">
             <Stat value={status === 'ready' ? String(features.length) : '—'} label="Features on the list" />
-            <Stat value={status === 'ready' ? String(groups.length) : '—'} label="Areas" />
+            <Stat value={status === 'ready' ? String(quickWins) : '—'} label="Quick wins" />
             <Stat
               value={status === 'ready' ? `${counts.easy} · ${counts.medium} · ${counts.hard}` : '—'}
               label="Easy · Medium · Hard"
@@ -219,24 +212,27 @@ export default function FeatureList() {
 
         {status === 'ready' ? (
           <>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <FilterChip
+                label="All"
+                count={features.length}
+                active={!category}
+                onClick={() => setCategory('')}
+              />
+              {categories.map((item) => (
+                <FilterChip
+                  key={item.name}
+                  label={item.name}
+                  count={item.count}
+                  active={category === item.name}
+                  onClick={() => setCategory(item.name)}
+                />
+              ))}
+            </div>
+
             <section className="mt-6 rounded-3xl bg-white p-6 shadow-sm sm:p-10">
               <p className="text-xs font-semibold tracking-[0.18em] text-[#9aa8b5]">WHAT WE ARE GOING TO COVER</p>
               <h2 className="mt-2 text-3xl font-semibold tracking-tight">Contents</h2>
-              <label className="mt-4 flex flex-wrap items-center gap-3 text-sm text-[#3d4d5c]">
-                <span className="text-xs font-medium uppercase tracking-wide text-[#8b98a5]">Sort cards</span>
-                <select
-                  className="h-10 rounded-lg border border-[#d5dde6] bg-white px-3 text-sm text-[#15202b]"
-                  value={sortBy}
-                  aria-label="Sort cards"
-                  onChange={(event) => setSortBy(event.target.value)}
-                >
-                  <option value="sheet">Sheet order</option>
-                  <option value="difficulty">Difficulty</option>
-                  <option value="priority">Priority</option>
-                  <option value="goal">Goal</option>
-                </select>
-                <span>Inside each category.</span>
-              </label>
               <div className="mt-6 grid gap-x-10 md:grid-cols-2">
                 {groups.map((group, index) => (
                   <button
@@ -263,6 +259,7 @@ export default function FeatureList() {
             </section>
 
             <div className="mt-6">
+              {groups.length ? (
                 <div className="sticky top-14 z-30 mb-4 lg:hidden">
                   <button
                     type="button"
@@ -271,7 +268,7 @@ export default function FeatureList() {
                     aria-expanded={menuOpen}
                   >
                     <span>
-                      <span className="block text-xs font-medium uppercase tracking-wide text-[#8b98a5]">Category</span>
+                      <span className="block text-xs font-medium uppercase tracking-wide text-[#8b98a5]">Section</span>
                       <span className="font-medium">{activeGroup?.name || groups[0].name}</span>
                     </span>
                     <ChevronDown className={`h-4 w-4 text-[#8b98a5] ${menuOpen ? 'rotate-180' : ''}`} />
@@ -295,7 +292,10 @@ export default function FeatureList() {
                     </div>
                   ) : null}
                 </div>
-            {groups.map((group, index) => (
+              ) : null}
+            {groups.map((group, index) => {
+              const collapsed = group.name === 'Completed' && !showCompleted
+              return (
               <section
                 key={group.name}
                 data-feature-section={sectionId(group.name)}
@@ -305,70 +305,124 @@ export default function FeatureList() {
                   {sectionNumber(index)} · {group.name.toUpperCase()}
                 </p>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight">{group.name}</h2>
-                <p className="mt-1 text-sm text-[#5c6b7a]">{featureCountLabel(group.features.length, group.features.filter((feature) => feature.complete).length)}</p>
+                <p className="mt-1 text-sm text-[#5c6b7a]">{group.blurb}</p>
+                <p className="mt-1 text-sm text-[#5c6b7a]">{group.features.length} {group.features.length === 1 ? 'feature' : 'features'}</p>
+                {group.name === 'Completed' ? (
+                  <button
+                    type="button"
+                    className="mt-4 text-sm font-semibold text-[#1644ED]"
+                    aria-expanded={showCompleted}
+                    onClick={() => setShowCompleted((open) => !open)}
+                  >
+                    {showCompleted ? `Hide ${group.features.length} completed` : `Show ${group.features.length} completed`}
+                  </button>
+                ) : null}
+                {collapsed ? null : (
                 <div className="mt-6 grid gap-4 md:grid-cols-2">
                   {group.features.map((feature) => (
-                    <article key={`${group.name}-${feature.name}`} className="rounded-2xl border border-[#e6ebf2] bg-[#f8fafc] p-5">
-                      <div className="flex items-start justify-between gap-3">
-                        <h3 className="text-lg font-semibold leading-snug">{feature.name}</h3>
-                        {feature.complete ? (
-                          <span className="shrink-0 rounded-full bg-[#dcfce7] px-2.5 py-1 text-xs font-medium text-[#15803d]">Complete</span>
-                        ) : feature.difficulty ? (
-                          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${DIFFICULTY_STYLE[feature.difficulty] || 'bg-slate-100 text-slate-700'}`}>
-                            {feature.difficulty}
-                          </span>
-                        ) : null}
-                      </div>
-                      {feature.description ? (
-                        <p className="mt-3 text-sm leading-6 text-[#3d4d5c]">{feature.description}</p>
-                      ) : null}
-                      {feature.goal || feature.source ? (
-                        <dl className="mt-4 space-y-2 text-sm">
-                          {feature.goal ? (
-                            <div>
-                              <dt className="text-xs font-medium uppercase tracking-wide text-[#8b98a5]">Goal</dt>
-                              <dd className="mt-0.5 text-[#15202b]">{feature.goal}</dd>
-                            </div>
-                          ) : null}
-                          {feature.source ? (
-                            <div>
-                              <dt className="text-xs font-medium uppercase tracking-wide text-[#8b98a5]">Current tool</dt>
-                              <dd className="mt-0.5 text-[#15202b]">{feature.source}</dd>
-                            </div>
-                          ) : null}
-                        </dl>
-                      ) : null}
-                      {feature.notes ? (
-                        <p className="mt-4 border-t border-[#e6ebf2] pt-3 text-sm leading-6 text-[#5c6b7a]">{feature.notes}</p>
-                      ) : null}
-                      <label className="mt-4 block border-t border-[#e6ebf2] pt-4">
-                        <span className="text-xs font-medium uppercase tracking-wide text-[#8b98a5]">Priority</span>
-                        <select
-                          className="mt-1 h-10 w-full rounded-lg border border-[#d5dde6] bg-white px-3 text-sm text-[#15202b]"
-                          value={feature.priority}
-                          disabled={savingKey === featureKey(feature)}
-                          aria-label={`Priority for ${feature.name}`}
-                          onChange={(event) => updatePriority(feature, event.target.value)}
-                        >
-                          <option value="">Not set</option>
-                          <option value="High">High</option>
-                          <option value="Medium">Medium</option>
-                          <option value="Low">Low</option>
-                        </select>
-                        {cardErrors[featureKey(feature)] ? (
-                          <span className="mt-1 block text-xs text-[#dc2626]">{cardErrors[featureKey(feature)]}</span>
-                        ) : null}
-                      </label>
-                    </article>
+                    <FeatureCard
+                      key={`${group.name}|${feature.category}|${feature.name}`}
+                      feature={feature}
+                      saving={savingKey === featureKey(feature)}
+                      error={cardErrors[featureKey(feature)]}
+                      onPriority={(priority) => updatePriority(feature, priority)}
+                    />
                   ))}
                 </div>
+                )}
               </section>
-            ))}
+              )
+            })}
             </div>
           </>
         ) : null}
       </div>
     </div>
+  )
+}
+
+function FeatureCard({ feature, saving, error, onPriority }) {
+  const [open, setOpen] = useState(false)
+  const hasDetails = Boolean(feature.goal || feature.source || feature.notes)
+  return (
+    <article className="rounded-2xl border border-[#e6ebf2] bg-[#f8fafc] p-5">
+      <h3 className="text-lg font-semibold leading-snug">{feature.name}</h3>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${PRIORITY_STYLE[feature.priority] || 'bg-[#f1f5f9] text-[#94a3b8]'}`}>
+          {feature.priority || 'Not set'}
+        </span>
+        {feature.difficulty ? (
+          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${DIFFICULTY_STYLE[feature.difficulty] || 'bg-slate-100 text-slate-700'}`}>
+            {feature.difficulty}
+          </span>
+        ) : null}
+        <span className="rounded-full bg-[#eef2f6] px-2.5 py-1 text-xs font-medium text-[#64748b]">{feature.category}</span>
+      </div>
+      {feature.description ? (
+        <p className="mt-3 text-sm leading-6 text-[#3d4d5c]">{feature.description}</p>
+      ) : null}
+      {hasDetails ? (
+        <>
+          <button
+            type="button"
+            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#64748b]"
+            aria-expanded={open}
+            onClick={() => setOpen((current) => !current)}
+          >
+            Details
+            <ChevronDown className={`h-4 w-4 ${open ? 'rotate-180' : ''}`} />
+          </button>
+          {open ? (
+            <div className="mt-3 space-y-2 text-sm">
+              {feature.goal ? (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-[#8b98a5]">Goal</p>
+                  <p className="mt-0.5 text-[#15202b]">{feature.goal}</p>
+                </div>
+              ) : null}
+              {feature.source ? (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-[#8b98a5]">Current tool</p>
+                  <p className="mt-0.5 text-[#15202b]">{feature.source}</p>
+                </div>
+              ) : null}
+              {feature.notes ? (
+                <p className="border-t border-[#e6ebf2] pt-3 leading-6 text-[#5c6b7a]">{feature.notes}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </>
+      ) : null}
+      <label className="mt-4 block border-t border-[#e6ebf2] pt-4">
+        <span className="text-xs font-medium uppercase tracking-wide text-[#8b98a5]">Priority</span>
+        <select
+          className="mt-1 h-10 w-full rounded-lg border border-[#d5dde6] bg-white px-3 text-sm text-[#15202b]"
+          value={feature.priority}
+          disabled={saving}
+          aria-label={`Priority for ${feature.name}`}
+          onChange={(event) => onPriority(event.target.value)}
+        >
+          <option value="">Not set</option>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
+        {error ? <span className="mt-1 block text-xs text-[#dc2626]">{error}</span> : null}
+      </label>
+    </article>
+  )
+}
+
+function FilterChip({ label, count, active, onClick }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`rounded-full px-3 py-1.5 text-sm font-medium ${active ? 'bg-[#15202b] text-white' : 'border border-[#d5dde6] bg-white text-[#3d4d5c]'}`}
+    >
+      {label} <span className={active ? 'text-white/70' : 'text-[#8b98a5]'}>{count}</span>
+    </button>
   )
 }
 

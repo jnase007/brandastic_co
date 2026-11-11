@@ -49,3 +49,69 @@ export function groupFeatures(features) {
   }
   return groups
 }
+
+const DIFFICULTY_RANK = { Easy: 0, Medium: 1, Hard: 2 }
+const PRIORITY_RANK = { High: 0, Medium: 1, Low: 2 }
+
+function compareBy(fields) {
+  return (a, b) => {
+    for (const field of fields) {
+      const table = field === 'priority' ? PRIORITY_RANK : DIFFICULTY_RANK
+      const delta = (table[a.feature[field]] ?? 99) - (table[b.feature[field]] ?? 99)
+      if (delta) return delta
+    }
+    return a.index - b.index
+  }
+}
+
+const bySheet = (a, b) => a.index - b.index
+
+export function groupByTier(features) {
+  const indexed = (features || []).map((feature, index) => ({ feature, index }))
+  const used = new Set()
+  const take = (match, compare) => {
+    const picked = indexed.filter((item) => !used.has(item.index) && match(item.feature))
+    picked.sort(compare)
+    picked.forEach((item) => used.add(item.index))
+    return picked.map((item) => item.feature)
+  }
+  const open = (feature) => !feature.complete
+  const tiers = [
+    {
+      name: 'Quick wins',
+      blurb: 'High priority and easy, start here',
+      features: take((feature) => open(feature) && feature.priority === 'High' && feature.difficulty === 'Easy', bySheet),
+    },
+    {
+      name: 'High priority',
+      blurb: 'High priority, and more than a quick job',
+      features: take((feature) => open(feature) && feature.priority === 'High' && (feature.difficulty === 'Medium' || feature.difficulty === 'Hard'), compareBy(['difficulty'])),
+    },
+    {
+      name: 'Easy pickups',
+      blurb: 'Easy work at medium or low priority',
+      features: take((feature) => open(feature) && feature.difficulty === 'Easy' && (feature.priority === 'Medium' || feature.priority === 'Low'), compareBy(['priority'])),
+    },
+    {
+      name: 'Everything else',
+      blurb: 'Medium or low priority, and not a quick job',
+      features: take((feature) => open(feature) && (feature.priority === 'Medium' || feature.priority === 'Low') && (feature.difficulty === 'Medium' || feature.difficulty === 'Hard'), compareBy(['priority', 'difficulty'])),
+    },
+    {
+      name: 'Needs a priority',
+      blurb: 'Set a priority so these can be sorted',
+      features: take((feature) => open(feature) && !feature.priority, compareBy(['difficulty'])),
+    },
+    {
+      name: 'Completed',
+      blurb: 'Already done',
+      features: take((feature) => feature.complete, bySheet),
+    },
+  ]
+  const leftover = indexed.filter((item) => !used.has(item.index))
+  if (leftover.length) {
+    leftover.sort(bySheet)
+    tiers[3].features.push(...leftover.map((item) => item.feature))
+  }
+  return tiers.filter((tier) => tier.features.length)
+}
