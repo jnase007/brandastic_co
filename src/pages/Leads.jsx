@@ -52,7 +52,23 @@ function missingTable(error) {
   return text.includes('sales_leads') || text.includes('PGRST205') || text.includes('42P01')
 }
 
-export default function Leads() {
+function CellSelect({ className, value, options, allowBlank, onSave }) {
+  return (
+    <select
+      className={className}
+      value={value || ''}
+      onChange={(event) => onSave(event.target.value)}
+      onClick={(event) => event.stopPropagation()}
+    >
+      {allowBlank ? <option value=""></option> : null}
+      {options.map((item) => (
+        <option key={item} value={item}>{item}</option>
+      ))}
+    </select>
+  )
+}
+
+export default function Leads({ embedded = false }) {
   const { toast } = useToast()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -65,6 +81,7 @@ export default function Leads() {
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [quick, setQuick] = useState({ name: '', company: '', source: 'Direct', jira_key: '' })
 
   const load = async () => {
     setLoading(true)
@@ -104,11 +121,20 @@ export default function Leads() {
     load()
   }, [])
 
+  const counts = useMemo(() => ({
+    all: rows.length,
+    jira: rows.filter((row) => row.jira_key).length,
+    good: rows.filter((row) => row.quality === 'Good Lead' || row.jira_key).length,
+    proposal: rows.filter((row) => row.quality === 'Proposal sent').length,
+    closed: rows.filter((row) => row.quality === 'Closed').length,
+  }), [rows])
+
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return rows.filter((row) => {
       if (quality === 'blank' && row.quality) return false
-      if (quality !== 'all' && quality !== 'blank' && row.quality !== quality) return false
+      if (quality === 'pipeline' && !row.jira_key) return false
+      if (quality !== 'all' && quality !== 'blank' && quality !== 'pipeline' && row.quality !== quality) return false
       if (source !== 'all' && row.source !== source) return false
       if (!needle) return true
       return [row.source, row.name, row.company, row.email, row.telephone, row.notes, row.jira_key, row.referred_by]
@@ -187,9 +213,16 @@ export default function Leads() {
     }
     setSaving(true)
     const payload = payloadFromDraft()
-    const result = editingId
+    if (payload.jira_key && !editingId) payload.pipeline_stage = 'lead'
+    let result = editingId
       ? await supabase.from('sales_leads').update(payload).eq('id', editingId)
       : await supabase.from('sales_leads').insert(payload)
+    if (result.error && String(result.error.message || '').includes('pipeline_stage')) {
+      const { pipeline_stage, ...rest } = payload
+      result = editingId
+        ? await supabase.from('sales_leads').update(rest).eq('id', editingId)
+        : await supabase.from('sales_leads').insert(rest)
+    }
     setSaving(false)
     if (result.error) {
       toast({ title: 'Could not save lead', description: result.error.message, variant: 'destructive' })
@@ -197,6 +230,18 @@ export default function Leads() {
     }
     setDialogOpen(false)
     await load()
+  }
+
+  async function patchRow(id, fields) {
+    if (setupNeeded) return
+    const nextFields = { ...fields, updated_at: new Date().toISOString() }
+    if (nextFields.jira_key && !nextFields.quality) {
+      const current = rows.find((row) => row.id === id)
+      if (!current?.quality) nextFields.quality = 'Good Lead'
+    }
+    setRows((current) => current.map((row) => (row.id === id ? { ...row, ...nextFields } : row)))
+    const { error } = await supabase.from('sales_leads').update(nextFields).eq('id', id)
+    if (error) toast({ title: 'Could not save', description: error.message, variant: 'destructive' })
   }
 
   async function deleteLead() {
@@ -229,86 +274,181 @@ export default function Leads() {
     }
   }
 
+  async function quickAdd() {
+    if (!quick.name.trim() && !quick.company.trim()) {
+      toast({ title: 'Add a name or company', variant: 'destructive' })
+      return
+    }
+    const today = new Date().toISOString().slice(0, 10)
+    const jira = quick.jira_key.trim()
+    const payload = {
+      source: quick.source,
+      name: quick.name.trim(),
+      company: quick.company.trim(),
+      jira_key: jira,
+      first_contact_date: today,
+      month: monthLabel(today),
+      quality: jira ? 'Good Lead' : 'New lead',
+      pipeline_stage: jira ? 'lead' : null,
+      updated_at: new Date().toISOString(),
+    }
+    let result = await supabase.from('sales_leads').insert(payload)
+    if (result.error && String(result.error.message || '').includes('pipeline_stage')) {
+      const { pipeline_stage, ...rest } = payload
+      result = await supabase.from('sales_leads').insert(rest)
+    }
+    if (result.error) {
+      toast({ title: 'Could not add lead', description: result.error.message, variant: 'destructive' })
+      return
+    }
+    setQuick({ name: '', company: '', source: 'Direct', jira_key: '' })
+    await load()
+  }
+
+  const filters = [
+    { id: 'all', label: `All ${counts.all}` },
+    { id: 'pipeline', label: `On pipeline ${counts.jira}` },
+    { id: 'Good Lead', label: `Good ${counts.good}` },
+    { id: 'Proposal sent', label: `Proposal ${counts.proposal}` },
+    { id: 'Closed', label: `Closed ${counts.closed}` },
+  ]
+
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+    <div className={embedded ? 'px-4 pb-8 pt-4' : 'min-h-screen bg-background p-4 sm:p-6 lg:p-8'}>
+      {!embedded ? (
+        <div className="mb-4">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Leads</p>
           <h1 className="mt-1 text-2xl font-semibold">All leads</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{shown.length} of {rows.length} leads</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={importSheet} disabled={importing || setupNeeded}>
-            {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-            Import sheet
-          </Button>
-          <Button className={BLUE_BUTTON} onClick={openNew} disabled={setupNeeded}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add lead
-          </Button>
-        </div>
-      </div>
-
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" value={query} placeholder="Search name, company, email, notes" onChange={(event) => setQuery(event.target.value)} />
-        </div>
-        <select className="h-10 rounded-lg border bg-background px-3 text-sm" value={source} onChange={(event) => setSource(event.target.value)}>
-          <option value="all">All sources</option>
-          {LEAD_SOURCES.map((item) => <option key={item} value={item}>{item}</option>)}
-        </select>
-        <select className="h-10 rounded-lg border bg-background px-3 text-sm" value={quality} onChange={(event) => setQuality(event.target.value)}>
-          <option value="all">All qualities</option>
-          <option value="blank">No quality yet</option>
-          {LEAD_QUALITIES.map((item) => <option key={item} value={item}>{item}</option>)}
-        </select>
-      </div>
-
-      {setupNeeded ? (
-        <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-          This list is the All Leads sheet. Add and Import stay off until the leads table exists. In Supabase, open the SQL editor and run <span className="font-medium">supabase/sales-leads.sql</span> once.
         </div>
       ) : null}
 
-      <div className="mt-4 overflow-x-auto rounded-lg border">
-        <table className="min-w-[1400px] w-full text-left text-sm">
-          <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+      <div className="mb-4 grid gap-2 sm:grid-cols-4">
+        {[
+          { label: 'Leads', value: counts.all, className: 'bg-[#cfe8f8]' },
+          { label: 'With Jira / pipeline', value: counts.jira, className: 'bg-[#b6d7a8]' },
+          { label: 'Proposals', value: counts.proposal, className: 'bg-[#fee6b8]' },
+          { label: 'Closed', value: counts.closed, className: 'bg-[#bbf7d0]' },
+        ].map((card) => (
+          <div key={card.label} className={`rounded-xl px-4 py-3 ${card.className}`}>
+            <div className="text-xs font-medium uppercase tracking-wide opacity-70">{card.label}</div>
+            <div className="text-2xl font-bold">{card.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mb-3 flex flex-wrap gap-2">
+        {filters.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setQuality(item.id)}
+            className={`rounded-full px-3 py-1 text-sm font-medium ${quality === item.id ? 'bg-slate-900 text-white' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mb-3 flex flex-col gap-2 lg:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input className="pl-9" value={query} placeholder="Search name, company, email, Jira, notes" onChange={(event) => setQuery(event.target.value)} />
+        </div>
+        <select className="h-10 rounded-lg border bg-background px-3 text-sm" value={source} onChange={(event) => setSource(event.target.value)}>
+          <option value="all">All channels</option>
+          {LEAD_SOURCES.map((item) => <option key={item} value={item}>{item}</option>)}
+        </select>
+        <Button variant="outline" onClick={importSheet} disabled={importing || setupNeeded}>
+          {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+          Import sheet
+        </Button>
+        <Button className={BLUE_BUTTON} onClick={openNew} disabled={setupNeeded}>
+          <Plus className="mr-2 h-4 w-4" />
+          Full add
+        </Button>
+      </div>
+
+      {!setupNeeded ? (
+        <div className="mb-3 grid gap-2 rounded-xl border bg-muted/30 p-3 md:grid-cols-5">
+          <Input placeholder="Name" value={quick.name} onChange={(event) => setQuick((c) => ({ ...c, name: event.target.value }))} />
+          <Input placeholder="Company" value={quick.company} onChange={(event) => setQuick((c) => ({ ...c, company: event.target.value }))} />
+          <select className="h-10 rounded-lg border bg-background px-3 text-sm" value={quick.source} onChange={(event) => setQuick((c) => ({ ...c, source: event.target.value }))}>
+            {LEAD_SOURCES.map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+          <Input placeholder="Jira key → pipeline" value={quick.jira_key} onChange={(event) => setQuick((c) => ({ ...c, jira_key: event.target.value }))} />
+          <Button className={BLUE_BUTTON} onClick={quickAdd}>Add lead</Button>
+        </div>
+      ) : (
+        <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          Showing the Google Sheet copy. Add and inline edit turn on after the leads table exists — run supabase/sales-leads.sql in Supabase.
+        </div>
+      )}
+
+      <p className="mb-2 text-sm text-muted-foreground">{shown.length} showing · click a cell to edit · Jira key sends them to the pipeline</p>
+
+      <div className="overflow-auto rounded-xl border bg-white shadow-sm" style={{ maxHeight: '70vh' }}>
+        <table className="min-w-[1500px] w-full text-left text-sm">
+          <thead className="sticky top-0 z-10 bg-slate-900 text-xs uppercase tracking-wide text-white">
             <tr>
-              {['Date', 'Source', 'Jira', 'Name', 'Company', 'Phone', 'Email', 'Notes', 'Month', 'Quality', 'Close amount', 'Referred by', 'Deal type', '2026 value'].map((label) => (
-                <th key={label} className="px-3 py-2 font-medium">{label}</th>
+              {['Date', 'Channel', 'Jira', 'Name', 'Company', 'Phone', 'Email', 'Notes', 'Month', 'Quality', 'Close $', 'Referred by', 'Deal type', '2026 value'].map((label) => (
+                <th key={label} className="whitespace-nowrap px-3 py-3 font-medium">{label}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={14} className="px-3 py-8 text-muted-foreground">Loading leads…</td></tr>
+              <tr><td colSpan={14} className="px-3 py-10 text-muted-foreground">Loading leads…</td></tr>
             ) : shown.length === 0 ? (
-              <tr><td colSpan={14} className="px-3 py-8 text-muted-foreground">No leads match.</td></tr>
+              <tr><td colSpan={14} className="px-3 py-10 text-muted-foreground">Nothing matches. Add a lead above.</td></tr>
             ) : shown.map((row) => {
               const link = jiraUrl(row.jira_key)
+              const cell = 'border-t px-2 py-1.5 align-middle'
               return (
-                <tr
-                  key={row.id}
-                  className={setupNeeded ? 'border-t' : 'cursor-pointer border-t hover:bg-muted/40'}
-                  onClick={() => { if (!setupNeeded) openEdit(row) }}
-                >
-                  <td className="whitespace-nowrap px-3 py-2">{displayDate(row.first_contact_date)}</td>
-                  <td className="whitespace-nowrap px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${chipClass(CHANNEL_COLORS, row.source)}`}>{row.source}</span></td>
-                  <td className="whitespace-nowrap px-3 py-2" onClick={(event) => event.stopPropagation()}>
-                    {link ? <a className="inline-flex items-center gap-1 text-[#1644ED] hover:underline" href={link} target="_blank" rel="noreferrer">{row.jira_key} <ExternalLink className="h-3 w-3" /></a> : row.jira_key}
+                <tr key={row.id} className="hover:bg-slate-50">
+                  <td className={`${cell} whitespace-nowrap`}>
+                    <input className="h-8 w-[132px] rounded border-0 bg-transparent px-1 text-sm" type="date" defaultValue={row.first_contact_date || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { first_contact_date: event.target.value || null, month: monthLabel(event.target.value) })} />
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2 font-medium">{row.name}</td>
-                  <td className="whitespace-nowrap px-3 py-2">{row.company}</td>
-                  <td className="whitespace-nowrap px-3 py-2">{row.telephone}</td>
-                  <td className="whitespace-nowrap px-3 py-2">{row.email}</td>
-                  <td className="max-w-[240px] truncate px-3 py-2" title={row.notes}>{row.notes}</td>
-                  <td className="px-3 py-2">{row.month}</td>
-                  <td className="whitespace-nowrap px-3 py-2">{row.quality ? <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${chipClass(QUALITY_COLORS, row.quality)}`}>{row.quality}</span> : null}</td>
-                  <td className="whitespace-nowrap px-3 py-2">{formatMoney(row.close_amount)}</td>
-                  <td className="max-w-[180px] truncate px-3 py-2">{row.referred_by}</td>
-                  <td className="whitespace-nowrap px-3 py-2">{row.deal_type}</td>
-                  <td className="whitespace-nowrap px-3 py-2">{formatMoney(row.value_2026)}</td>
+                  <td className={cell}>
+                    <CellSelect
+                      className={`h-8 max-w-[170px] rounded-full px-2 text-xs font-semibold ${chipClass(CHANNEL_COLORS, row.source)}`}
+                      value={row.source}
+                      options={LEAD_SOURCES}
+                      onSave={(value) => patchRow(row.id, { source: value })}
+                    />
+                  </td>
+                  <td className={`${cell} whitespace-nowrap`}>
+                    <div className="flex items-center gap-1">
+                      <input className="h-8 w-24 rounded border px-1.5 text-sm" defaultValue={row.jira_key || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { jira_key: event.target.value.trim() })} />
+                      {link ? <a className="text-[#1644ED]" href={link} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}><ExternalLink className="h-3.5 w-3.5" /></a> : null}
+                    </div>
+                  </td>
+                  <td className={cell}><input className="h-8 w-full min-w-[110px] rounded border-0 bg-transparent px-1 font-medium" defaultValue={row.name || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { name: event.target.value.trim() })} /></td>
+                  <td className={cell}><input className="h-8 w-full min-w-[120px] rounded border-0 bg-transparent px-1" defaultValue={row.company || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { company: event.target.value.trim() })} /></td>
+                  <td className={cell}><input className="h-8 w-full min-w-[110px] rounded border-0 bg-transparent px-1" defaultValue={row.telephone || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { telephone: event.target.value.trim() })} /></td>
+                  <td className={cell}><input className="h-8 w-full min-w-[150px] rounded border-0 bg-transparent px-1" defaultValue={row.email || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { email: event.target.value.trim() })} /></td>
+                  <td className={cell}>
+                    <button type="button" className="max-w-[180px] truncate text-left text-muted-foreground hover:text-foreground" onClick={() => openEdit(row)}>{row.notes || 'Notes…'}</button>
+                  </td>
+                  <td className={cell}><input className="h-8 w-16 rounded border-0 bg-transparent px-1" defaultValue={row.month || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { month: event.target.value.trim() })} /></td>
+                  <td className={cell}>
+                    <CellSelect
+                      className={`h-8 max-w-[190px] rounded-full px-2 text-xs font-semibold ${chipClass(QUALITY_COLORS, row.quality)}`}
+                      value={row.quality}
+                      options={LEAD_QUALITIES}
+                      allowBlank
+                      onSave={(value) => patchRow(row.id, { quality: value })}
+                    />
+                  </td>
+                  <td className={`${cell} whitespace-nowrap`}>
+                    <input className="h-8 w-24 rounded border-0 bg-transparent px-1" defaultValue={row.close_amount ?? ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { close_amount: event.target.value === '' ? null : Number(event.target.value) })} />
+                  </td>
+                  <td className={cell}><input className="h-8 w-full min-w-[110px] rounded border-0 bg-transparent px-1" defaultValue={row.referred_by || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { referred_by: event.target.value.trim() })} /></td>
+                  <td className={cell}>
+                    <CellSelect className="h-8 rounded bg-transparent text-sm" value={row.deal_type} options={DEAL_TYPES} allowBlank onSave={(value) => patchRow(row.id, { deal_type: value || null })} />
+                  </td>
+                  <td className={`${cell} whitespace-nowrap`}>
+                    <input className="h-8 w-24 rounded border-0 bg-transparent px-1" defaultValue={row.value_2026 ?? ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { value_2026: event.target.value === '' ? null : Number(event.target.value) })} />
+                  </td>
                 </tr>
               )
             })}
@@ -396,7 +536,7 @@ export default function Leads() {
 function Field({ label, children }) {
   return (
     <label className="block space-y-1.5">
-      <Label>{label}</Label>
+      <Label>{label}</label>
       {children}
     </label>
   )

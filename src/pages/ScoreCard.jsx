@@ -137,16 +137,18 @@ export default function ScoreCard() {
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] text-[#8eb4ff]">SCORE CARD V2 2026</p>
           <h1 className="text-xl font-bold">Score Card</h1>
+          <p className="text-sm text-muted-foreground">Click any cell to edit. Jira key = real conversation → pipeline.</p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => setTab('leads')} className={cn('rounded-lg px-3 py-1.5 text-sm font-medium', tab === 'leads' ? 'bg-brand-orange text-white' : 'border hover:bg-muted')}>All Leads</button>
           <button type="button" onClick={() => setTab('financials')} className={cn('rounded-lg px-3 py-1.5 text-sm font-medium', tab === 'financials' ? 'bg-brand-orange text-white' : 'border hover:bg-muted')}>Financials</button>
+          <a href="/deals" className="rounded-lg border px-3 py-1.5 text-sm hover:bg-muted">Pipeline</a>
           <a href={`${SHEET}/edit`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm hover:bg-muted">
             Original sheet <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>
       </div>
-      {tab === 'leads' ? <Leads /> : <FinancialsLive />}
+      {tab === 'leads' ? <Leads embedded /> : <FinancialsLive />}
     </div>
   )
 }
