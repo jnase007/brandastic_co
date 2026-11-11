@@ -7,6 +7,7 @@ import {
   Search, ChevronRight, Zap, Bell, BookOpen, ActivitySquare, Settings,
   ListTodo, Lightbulb, Target, ListChecks,
   Server,
+  Globe,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
@@ -63,6 +64,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
     : [
         { path: '/profitability', icon: BarChart3, label: 'Profitability' },
         { path: '/profitability/team', icon: Users2, label: 'Team' },
+        { path: '/profitability/websites', icon: Globe, label: 'Websites' },
         { path: '/hosting', icon: Server, label: 'Hosting' },
         { path: '/feature-list', icon: ListChecks, label: 'Features' },
       ]
@@ -93,9 +95,11 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
             const Icon = item.icon
             const isActive = item.path === '/profitability/team'
               ? location.pathname.startsWith('/profitability/team')
-              : item.path === '/profitability'
-                ? location.pathname.startsWith('/profitability') && !location.pathname.startsWith('/profitability/team')
-                : item.path && location.pathname === item.path
+              : item.path === '/profitability/websites'
+                ? location.pathname.startsWith('/profitability/websites')
+                : item.path === '/profitability'
+                  ? location.pathname.startsWith('/profitability') && !location.pathname.startsWith('/profitability/team') && !location.pathname.startsWith('/profitability/websites')
+                  : item.path && location.pathname === item.path
             
             if (item.action === 'timer') {
               return (

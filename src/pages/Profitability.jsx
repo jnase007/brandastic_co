@@ -9,7 +9,7 @@ import { applyProfitInputs, useLaborRateRows } from '../lib/laborRates'
 function clientSlugFromPath(pathname) {
   const parts = String(pathname || '').split('/').filter(Boolean)
   if (parts[0] !== 'profitability') return ''
-  if (!parts[1] || parts[1] === 'team' || parts[1] === 'costs') return ''
+  if (!parts[1] || parts[1] === 'team' || parts[1] === 'costs' || parts[1] === 'websites') return ''
   return parts[1]
 }
 
@@ -64,7 +64,10 @@ export default function Profitability() {
   return (
     <>
       <div className="px-7 pt-3 lg:hidden">
-        <Link to="/profitability/costs" className="text-sm font-medium text-[#1644ED]">Costs</Link>
+        <span className="flex gap-3">
+          <Link to="/profitability/costs" className="text-sm font-medium text-[#1644ED]">Costs</Link>
+          <Link to="/profitability/websites" className="text-sm font-medium text-[#1644ED]">Websites</Link>
+        </span>
       </div>
       <ProfitabilityDashboard
         data={applyProfitInputs(data, rows, overhead)}

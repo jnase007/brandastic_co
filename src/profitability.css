@@ -1560,6 +1560,186 @@
   border-radius: 99px;
 }
 
+.ws-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ws-list {
+  display: grid;
+  gap: 12px;
+}
+
+.ws-card {
+  display: grid;
+  gap: 12px;
+}
+
+.ws-head,
+.ws-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ws-head a {
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.ws-head a:hover {
+  color: #5b21b6;
+}
+
+.ws-head p,
+.ws-people p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.ws-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.ws-status,
+.ws-badge {
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ws-status {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.ws-badge {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.ws-progress {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.ws-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.ws-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.ws-fill.ws-ok,
+.ws-pct.ws-ok {
+  background: #16a34a;
+  color: #15803d;
+}
+
+.ws-fill.ws-warn,
+.ws-pct.ws-warn {
+  background: #f59e0b;
+  color: #c2410c;
+}
+
+.ws-fill.ws-over,
+.ws-pct.ws-over {
+  background: #dc2626;
+  color: #b91c1c;
+}
+
+.ws-pct {
+  background: transparent;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ws-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+}
+
+.ws-metrics div {
+  display: grid;
+  gap: 2px;
+}
+
+.ws-metrics dt {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ws-metrics dd {
+  margin: 0;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.ws-negative {
+  color: #b91c1c;
+}
+
+.ws-actions button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #5b21b6;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ws-notes {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: help;
+}
+
+.ws-people .pr-table {
+  margin-top: 8px;
+}
+
+.ws-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: auto;
+}
+
+@media (max-width: 700px) {
+  .ws-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .tm-card-donut {
   position: relative;
 }

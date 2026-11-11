@@ -37,6 +37,7 @@ import {
   Lightbulb,
   ListChecks,
   Server,
+  Globe,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
@@ -72,6 +73,7 @@ const navItems = [
 const simpleNavItems = [
   { path: '/profitability', icon: BarChart3, label: 'Profitability' },
   { path: '/profitability/team', icon: Users2, label: 'Team' },
+  { path: '/profitability/websites', icon: Globe, label: 'Websites' },
   { path: '/hosting', icon: Server, label: 'Hosting' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
 ]
@@ -330,10 +332,12 @@ export default function Sidebar({
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
         {visibleNavItems.map((item) => {
           const isActive = item.path === '/profitability'
-            ? (location.pathname === '/profitability' || (location.pathname.startsWith('/profitability/') && !location.pathname.startsWith('/profitability/team')))
+            ? (location.pathname === '/profitability' || (location.pathname.startsWith('/profitability/') && !location.pathname.startsWith('/profitability/team') && !location.pathname.startsWith('/profitability/websites')))
             : item.path === '/profitability/team'
               ? location.pathname.startsWith('/profitability/team')
-              : location.pathname === item.path
+              : item.path === '/profitability/websites'
+                ? location.pathname.startsWith('/profitability/websites')
+                : location.pathname === item.path
           const sections = item.path === '/feature-list' && location.pathname === '/feature-list' && !collapsed ? featureNav?.sections : null
           return (
             <div key={item.path}>
@@ -378,6 +382,17 @@ export default function Sidebar({
                     )}
                   >
                     Costs
+                  </Link>
+                  <Link
+                    to="/profitability/websites"
+                    className={cn(
+                      "flex w-full rounded-lg px-2 py-1.5 text-left text-sm",
+                      location.pathname.startsWith('/profitability/websites')
+                        ? "bg-[#e8eeff] font-medium text-[#1644ED]"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    Websites
                   </Link>
                 </div>
               ) : null}
