@@ -35,6 +35,7 @@ const Mission = lazy(() => import('./pages/Mission'))
 const Strategy = lazy(() => import('./pages/Strategy'))
 const IdealTargetClient = lazy(() => import('./pages/IdealTargetClient'))
 const ScoreCard = lazy(() => import('./pages/ScoreCard'))
+const ScoreCardPipeline = lazy(() => import('./pages/ScoreCardPipeline'))
 const Financials = lazy(() => import('./pages/Financials'))
 const FeatureList = lazy(() => import('./pages/FeatureList'))
 const Hosting = lazy(() => import('./pages/Hosting'))
@@ -1037,6 +1038,14 @@ function App() {
                 element={
                   <TeamRoute>
                     <SalesPipeline />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/deals"
+                element={
+                  <TeamRoute>
+                    <ScoreCardPipeline />
                   </TeamRoute>
                 }
               />

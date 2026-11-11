@@ -13,6 +13,7 @@ export const LEAD_SOURCES = [
 /** Quality values currently on the All Leads sheet. Blank is allowed. */
 export const LEAD_QUALITIES = [
   'New lead',
+  'Good Lead',
   'Proposal sent',
   'Closed',
   'No response from emails & calls',
@@ -24,6 +25,35 @@ export const LEAD_QUALITIES = [
 ]
 
 export const DEAL_TYPES = ['One-time', 'Monthly']
+
+export const CHANNEL_COLORS = {
+  Direct: 'bg-[#cfe8f8] text-[#23637d]',
+  'Chamber + Events': 'bg-[#c2e4e1] text-[#07514a]',
+  Meta: 'bg-[#e9d4fd] text-[#5c2e87]',
+  'SEO (organic)': 'bg-[#c7f0d6] text-[#126432]',
+  'Google Ads': 'bg-[#fddcc4] text-[#883c0c]',
+  Referral: 'bg-[#f9ecc1] text-[#80620a]',
+  'Outbound (LinkedIn + Email)': 'bg-[#d8dce2] text-[#374151]',
+  'OpenAI/ChatGPT': 'bg-[#facfe5] text-[#812854]',
+  'Existing client': 'bg-[#e5e7eb] text-[#374151]',
+}
+
+export const QUALITY_COLORS = {
+  'New lead': 'bg-[#dbeafe] text-[#1e3a8a]',
+  'Good Lead': 'bg-[#b6d7a8] text-[#234d1a]',
+  'Proposal sent': 'bg-[#fee6b8] text-[#92400e]',
+  Closed: 'bg-[#bbf7d0] text-[#166534]',
+  'No response from emails & calls': 'bg-[#e5e7eb] text-[#4b5563]',
+  'No show at KO': 'bg-[#fecaca] text-[#991b1b]',
+  'No show for KO': 'bg-[#fecaca] text-[#991b1b]',
+  'Vendor selling to us': 'bg-[#e5e7eb] text-[#4b5563]',
+  'Looking for a job': 'bg-[#e5e7eb] text-[#4b5563]',
+  Spam: 'bg-[#f3f4f6] text-[#6b7280]',
+}
+
+export function chipClass(map, value) {
+  return map[value] || 'bg-muted text-foreground'
+}
 
 export const SHEET_CSV_URL =
   'https://docs.google.com/spreadsheets/d/1h-O3MynKwL9MhxO2Ytly5gtHd_udyqNJ6n4_OfXLCgY/export?format=csv'

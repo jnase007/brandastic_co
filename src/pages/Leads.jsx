@@ -14,10 +14,13 @@ import {
   DialogTitle,
 } from '../components/ui/dialog'
 import {
+  CHANNEL_COLORS,
   DEAL_TYPES,
   LEAD_QUALITIES,
   LEAD_SOURCES,
+  QUALITY_COLORS,
   SHEET_CSV_URL,
+  chipClass,
   displayDate,
   formatMoney,
   jiraUrl,
@@ -157,17 +160,18 @@ export default function Leads() {
       const number = Number(value)
       return Number.isFinite(number) ? number : null
     }
+    const jira = draft.jira_key.trim()
     return {
       source: draft.source.trim(),
       first_contact_date: draft.first_contact_date || null,
-      jira_key: draft.jira_key.trim(),
+      jira_key: jira,
       name: draft.name.trim(),
       company: draft.company.trim(),
       telephone: draft.telephone.trim(),
       email: draft.email.trim(),
       notes: draft.notes.trim(),
       month: draft.month.trim() || monthLabel(draft.first_contact_date),
-      quality: draft.quality.trim(),
+      quality: draft.quality.trim() || (jira ? 'Good Lead' : ''),
       close_amount: amount(draft.close_amount),
       referred_by: draft.referred_by.trim(),
       deal_type: draft.deal_type || null,
@@ -290,7 +294,7 @@ export default function Leads() {
                   onClick={() => { if (!setupNeeded) openEdit(row) }}
                 >
                   <td className="whitespace-nowrap px-3 py-2">{displayDate(row.first_contact_date)}</td>
-                  <td className="whitespace-nowrap px-3 py-2">{row.source}</td>
+                  <td className="whitespace-nowrap px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${chipClass(CHANNEL_COLORS, row.source)}`}>{row.source}</span></td>
                   <td className="whitespace-nowrap px-3 py-2" onClick={(event) => event.stopPropagation()}>
                     {link ? <a className="inline-flex items-center gap-1 text-[#1644ED] hover:underline" href={link} target="_blank" rel="noreferrer">{row.jira_key} <ExternalLink className="h-3 w-3" /></a> : row.jira_key}
                   </td>
@@ -300,7 +304,7 @@ export default function Leads() {
                   <td className="whitespace-nowrap px-3 py-2">{row.email}</td>
                   <td className="max-w-[240px] truncate px-3 py-2" title={row.notes}>{row.notes}</td>
                   <td className="px-3 py-2">{row.month}</td>
-                  <td className="whitespace-nowrap px-3 py-2">{row.quality}</td>
+                  <td className="whitespace-nowrap px-3 py-2">{row.quality ? <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${chipClass(QUALITY_COLORS, row.quality)}`}>{row.quality}</span> : null}</td>
                   <td className="whitespace-nowrap px-3 py-2">{formatMoney(row.close_amount)}</td>
                   <td className="max-w-[180px] truncate px-3 py-2">{row.referred_by}</td>
                   <td className="whitespace-nowrap px-3 py-2">{row.deal_type}</td>
