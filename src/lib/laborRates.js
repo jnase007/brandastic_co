@@ -105,6 +105,17 @@ function applyAnnounceProfiles(people, profileRows) {
   })
 }
 
+const ANNOUNCE_COLUMNS = 'id, name, birthday, start_date, show_on_announcements'
+
+export async function fetchAnnouncementPeople() {
+  const { data, error } = await supabase.from('labor_rates').select(ANNOUNCE_COLUMNS).order('name')
+  if (error) {
+    if (isMissingTable(error, 'labor_rates')) return null
+    throw error
+  }
+  return { rows: (data || []).filter((row) => !isProfileRow(row)) }
+}
+
 export async function fetchLaborRates() {
   const full = await supabase.from('labor_rates').select(RATE_COLUMNS).order('position').order('name')
   if (!full.error) return { rows: (full.data || []).filter((row) => !isProfileRow(row)), profileReady: true }

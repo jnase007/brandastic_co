@@ -5,6 +5,7 @@ import CompanyHolidays from '../components/CompanyHolidays'
 import {
   addDays,
   buildAnnouncements,
+  celebrationLabel,
   expandHolidays,
   itemsThisWeek,
   losAngelesToday,
@@ -13,7 +14,7 @@ import {
   weekdayDate,
 } from '../lib/announcements'
 import { fetchCompanyHolidays, holidayRuleFromRow } from '../lib/companyHolidays'
-import { fetchLaborRates } from '../lib/laborRates'
+import { fetchAnnouncementPeople } from '../lib/laborRates'
 import { supabase } from '../lib/supabase'
 
 const TYPES = {
@@ -24,6 +25,10 @@ const TYPES = {
 }
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+function isCelebration(item) {
+  return item.type === 'birthday' || item.type === 'anniversary'
+}
 
 function monthName(monthKey) {
   const [year, month] = monthKey.split('-').map(Number)
@@ -122,7 +127,7 @@ export default function Announcements() {
 
   useEffect(() => {
     let cancel = false
-    Promise.allSettled([fetchLaborRates(), fetchCompanyHolidays(), fetchOutings()]).then(([rateResult, holidayResult, outingResult]) => {
+    Promise.allSettled([fetchAnnouncementPeople(), fetchCompanyHolidays(), fetchOutings()]).then(([rateResult, holidayResult, outingResult]) => {
       if (cancel) return
       if (rateResult.status === 'fulfilled' && rateResult.value?.rows) {
         setPeople(rateResult.value.rows)
@@ -217,8 +222,8 @@ export default function Announcements() {
                           <ul className="mt-2 space-y-2">
                             {group.map((item) => (
                               <li key={`${item.type}-${item.date}-${item.title}`} className={`rounded-2xl px-3 py-2 text-sm ${meta.chip}`}>
-                                <span className="font-semibold">{item.title}</span>
-                                {item.detail ? <span> · {item.detail}</span> : null}
+                                <span className="font-semibold">{isCelebration(item) ? celebrationLabel(item) : item.title}</span>
+                                {isCelebration(item) || !item.detail ? null : <span> · {item.detail}</span>}
                                 <span className="text-[#3d4d5c]"> · {weekdayDate(item.date)}</span>
                               </li>
                             ))}
@@ -279,7 +284,7 @@ export default function Announcements() {
                         <ul className="mt-2 space-y-2">
                           {byDay.get(selectedDay).map((item) => (
                             <li key={`${item.type}-${item.title}-${item.rangeStart || item.date}`} className={`rounded-2xl px-3 py-2 text-sm ${TYPES[item.type].chip}`}>
-                              {TYPES[item.type].label}: {item.title}{item.detail ? ` · ${item.detail}` : ''}
+                              {isCelebration(item) ? celebrationLabel(item) : `${TYPES[item.type].label}: ${item.title}${item.detail ? ` · ${item.detail}` : ''}`}
                             </li>
                           ))}
                         </ul>
@@ -296,7 +301,7 @@ export default function Announcements() {
                         <ul className="mt-2 space-y-2">
                           {group.items.map((item) => (
                             <li key={`${item.type}-${item.date}-${item.title}`} className="flex items-baseline justify-between gap-3 text-sm">
-                              <span><span className="font-semibold">{item.title}</span>{item.detail ? ` · ${item.detail}` : ''}</span>
+                              <span><span className="font-semibold">{isCelebration(item) ? celebrationLabel(item) : item.title}</span>{isCelebration(item) || !item.detail ? '' : ` · ${item.detail}`}</span>
                               <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${TYPES[item.type].chip}`}>{weekdayDate(item.date)}</span>
                             </li>
                           ))}

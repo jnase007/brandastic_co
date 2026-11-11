@@ -20,6 +20,28 @@ export function mondayOf(iso) {
   return addDays(iso, day === 0 ? -6 : 1 - day)
 }
 
+function firstName(name) {
+  return String(name || '').trim().split(/\s+/)[0] || ''
+}
+
+function possessive(name) {
+  const first = firstName(name)
+  if (!first) return ''
+  return /s$/i.test(first) ? `${first}'` : `${first}'s`
+}
+
+export function celebrationLabel(item) {
+  if (item?.type === 'birthday') {
+    return `🎂 ${possessive(item.title)} Birthday! Wish them a happy birthday`
+  }
+  if (item?.type === 'anniversary') {
+    const years = Number(String(item.detail || '').match(/\d+/)?.[0] || 0)
+    const span = years === 1 ? '1-year' : `${years}-year`
+    return `🎉 ${possessive(item.title)} ${span} work anniversary! Congratulate them`
+  }
+  return item?.title || ''
+}
+
 export function weekdayDate(iso) {
   const [year, month, day] = iso.split('-').map(Number)
   const date = new Date(Date.UTC(year, month - 1, day, 12))
@@ -274,14 +296,33 @@ export function itemsThisWeek(today, items) {
   return items.filter((item) => inThisWeek(item.date, today))
 }
 
+function weeksInRange(start, end) {
+  const mondays = []
+  let cursor = mondayOf(start)
+  const last = mondayOf(end)
+  while (cursor <= last && mondays.length < 54) {
+    mondays.push(cursor)
+    cursor = addDays(cursor, 7)
+  }
+  return mondays
+}
+
 export function weekGroups(today, items) {
   const current = mondayOf(today)
   const groups = new Map()
-  for (const item of items) {
-    const monday = mondayOf(item.date)
+  const add = (monday, item) => {
     const list = groups.get(monday) || []
     list.push(item)
     groups.set(monday, list)
+  }
+  for (const item of items) {
+    if (item.type === 'holiday') {
+      const start = item.rangeStart || item.date
+      const end = item.rangeEnd && item.rangeEnd >= start ? item.rangeEnd : start
+      for (const monday of weeksInRange(start, end)) add(monday, item)
+    } else {
+      add(mondayOf(item.date), item)
+    }
   }
   return [...groups.entries()]
     .sort(([a], [b]) => a.localeCompare(b))

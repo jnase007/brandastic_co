@@ -92,7 +92,8 @@ function calendarPlugin(env) {
           const body = await loadTeamOutings(env)
           res.statusCode = 200
           res.setHeader('Content-Type', 'application/json')
-          res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800')
+          res.setHeader('Cache-Control', 'private, s-maxage=300, stale-while-revalidate=1800')
+          res.setHeader('Vary', 'Authorization')
           res.end(JSON.stringify(body))
         } catch (error) {
           res.statusCode = 500

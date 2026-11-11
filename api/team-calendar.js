@@ -14,7 +14,8 @@ export default async function handler(req, res) {
   }
   try {
     const body = await loadTeamOutings(process.env)
-    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800')
+    res.setHeader('Cache-Control', 'private, s-maxage=300, stale-while-revalidate=1800')
+    res.setHeader('Vary', 'Authorization')
     res.status(200).json(body)
   } catch (error) {
     res.status(500).json({ error: error.message || 'Could not load the team calendar' })
