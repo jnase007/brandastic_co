@@ -149,7 +149,7 @@ export default function ScoreCardPipeline() {
                 const total = cards.reduce((sum, row) => sum + amountOf(row), 0)
                 const weighted = total * stage.weight
                 return (
-                  <div key={stage.id} className="flex w-[240px] min-w-[240px] shrink-0 flex-col">
+                  <div key={stage.id} className="flex w-[260px] min-w-[260px] shrink-0 flex-col">
                     <div className="mb-3 flex items-center gap-2 px-1">
                       <div className={cn('h-2 w-2 rounded-full', stage.color)} />
                       <h3 className="text-sm font-semibold">{stage.title}</h3>
@@ -179,12 +179,12 @@ export default function ScoreCardPipeline() {
                                       snap.isDragging ? 'rotate-2 shadow-lg ring-2 ring-purple-500' : 'cursor-grab hover:shadow-md'
                                     )}
                                   >
-                                    <div className="mb-2 flex items-center gap-2">
-                                      <GripVertical className="h-4 w-4 shrink-0 text-slate-400" />
-                                      <div className="min-w-0">
-                                        <button type="button" className="truncate text-left font-semibold hover:underline" onClick={(event) => { event.stopPropagation(); setEditingLead(row); setDialogOpen(true) }}>{row.company || row.name || 'Untitled'}</button>
+                                    <div className="mb-2 flex items-start gap-2">
+                                      <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                                      <div className="min-w-0 flex-1 overflow-hidden">
+                                        <button type="button" className="w-full break-words text-left text-sm font-semibold leading-snug hover:underline" onClick={(event) => { event.stopPropagation(); setEditingLead(row); setDialogOpen(true) }}>{row.company || row.name || 'Untitled'}</button>
                                         {row.name && row.company ? (
-                                          <div className="truncate text-xs text-slate-500">{row.name}</div>
+                                          <div className="mt-0.5 break-words text-xs text-slate-500">{row.name}</div>
                                         ) : null}
                                       </div>
                                     </div>
