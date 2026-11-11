@@ -5,15 +5,23 @@ function draftFrom(rows) {
   return (rows || []).map((row) => ({
     id: row.id,
     name: row.name,
-    hourly: row.hourly == null ? '' : String(row.hourly),
+    hourly: row.hourly == null ? '' : commaNumber(row.hourly),
     workerType: row.worker_type === 'contractor' ? 'contractor' : 'employee',
     weeklyCapacity: row.weekly_capacity == null || row.weekly_capacity === '' ? '40' : String(row.weekly_capacity),
     role: row.role || '',
   }))
 }
 
+function commaNumber(value) {
+  const cleaned = String(value ?? '').replace(/[^0-9.]/g, '')
+  if (!cleaned) return ''
+  const [whole, fraction] = cleaned.split('.')
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return fraction != null && fraction !== '' ? `${grouped}.${fraction.slice(0, 2)}` : grouped
+}
+
 function overheadText(value) {
-  return value == null || value === '' ? '' : String(value)
+  return value == null || value === '' ? '' : commaNumber(value)
 }
 
 export default function LaborRates({ rows, fallback, overhead, fallbackOverhead, missing, overheadMissing, profileReady = true, onSaved, alwaysOpen = false }) {
@@ -38,7 +46,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
     const cleaned = draft.map((row) => ({
       id: row.id,
       name: row.name.trim(),
-      hourly: row.hourly,
+      hourly: String(row.hourly).replace(/[$,]/g, ''),
       workerType: row.workerType === 'contractor' ? 'contractor' : 'employee',
       weeklyCapacity: row.weeklyCapacity,
       role: row.role,
@@ -47,7 +55,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
       setError('Every person needs a name.')
       return
     }
-    if (cleaned.some((row) => !(Number(row.hourly) > 0))) {
+    if (cleaned.some((row) => !(Number(String(row.hourly).replace(/[$,]/g, '')) > 0))) {
       setError('Every hourly cost has to be greater than 0.')
       return
     }
@@ -117,7 +125,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
               disabled={!overheadEditable || saving}
               onChange={(event) => {
                 setSaved(false)
-                setOverheadDraft(event.target.value)
+                setOverheadDraft(commaNumber(event.target.value))
               }}
             />
           </label>
@@ -168,7 +176,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                   inputMode="decimal"
                   value={row.hourly}
                   disabled={!editable || saving}
-                  onChange={(event) => update(index, 'hourly', event.target.value)}
+                  onChange={(event) => update(index, 'hourly', commaNumber(event.target.value))}
                 />
                 {editable ? (
                   <button

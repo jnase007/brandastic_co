@@ -98,7 +98,16 @@ function leadMonth(row) {
   return Number.isFinite(month) && month >= 1 && month <= 12 ? month : null
 }
 
+function commaNumber(value) {
+  const cleaned = String(value ?? '').replace(/[^0-9.]/g, '')
+  if (!cleaned) return ''
+  const [whole, fraction] = cleaned.split('.')
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return fraction != null && fraction !== '' ? `${grouped}.${fraction.slice(0, 2)}` : grouped
+}
+
 function Pie({ slices, title }) {
+  const [hover, setHover] = useState(null)
   const total = slices.reduce((sum, slice) => sum + slice.value, 0)
   const size = 180
   const r = 70
@@ -121,11 +130,13 @@ function Pie({ slices, title }) {
     const y1 = cy + r * Math.sin(angle)
     const x2 = cx + r * Math.cos(next)
     const y2 = cy + r * Math.sin(next)
+    const percent = Math.round((slice.value / total) * 1000) / 10
     paths.push({
       d: `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`,
       color: slice.color,
       label: slice.label,
       value: slice.value,
+      percent,
     })
     angle = next
   })
@@ -133,16 +144,41 @@ function Pie({ slices, title }) {
     <div className="rounded-xl border bg-white p-4">
       <h3 className="mb-3 text-sm font-semibold">{title}</h3>
       <div className="flex flex-col items-center gap-3 sm:flex-row">
-        <svg width={size} height={size} viewBox="0 0 180 180">
-          {paths.map((path) => (
-            <path key={path.label} d={path.d} fill={path.color} />
-          ))}
-        </svg>
+        <div className="relative">
+          <svg width={size} height={size} viewBox="0 0 180 180">
+            {paths.map((path) => (
+              <path
+                key={path.label}
+                d={path.d}
+                fill={path.color}
+                className="cursor-pointer"
+                opacity={hover && hover.label !== path.label ? 0.45 : 1}
+                onMouseEnter={() => setHover(path)}
+                onMouseLeave={() => setHover(null)}
+              >
+                <title>{`${path.label}: ${path.percent}%`}</title>
+              </path>
+            ))}
+          </svg>
+          {hover ? (
+            <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 w-40 -translate-x-1/2 -translate-y-1/2 rounded-lg bg-slate-900 px-3 py-2 text-center text-xs text-white shadow-lg">
+              <div className="font-semibold">{hover.label}</div>
+              <div className="mt-0.5 text-sm font-bold">{hover.percent}%</div>
+              <div className="text-slate-300">{formatMoney(hover.value) || hover.value}</div>
+            </div>
+          ) : null}
+        </div>
         <ul className="space-y-1 text-xs">
           {paths.map((path) => (
-            <li key={path.label} className="flex items-center gap-2">
+            <li
+              key={path.label}
+              className={cn('flex items-center gap-2', hover?.label === path.label && 'font-semibold')}
+              onMouseEnter={() => setHover(path)}
+              onMouseLeave={() => setHover(null)}
+            >
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: path.color }} />
               <span>{path.label}</span>
+              <span className="text-muted-foreground">{path.percent}%</span>
             </li>
           ))}
         </ul>
@@ -247,7 +283,7 @@ export default function ScoreCardFinancials() {
   function setCell(channel, monthId, value) {
     setSpend((current) => ({
       ...current,
-      [channel]: { ...(current[channel] || {}), [monthKey(monthId)]: value },
+      [channel]: { ...(current[channel] || {}), [monthKey(monthId)]: commaNumber(value).replace(/,/g, '') },
     }))
   }
 
@@ -304,8 +340,8 @@ export default function ScoreCardFinancials() {
                 {MONTHS.map((month) => (
                   <td key={month.id} className="px-1 py-1">
                     <Input
-                      className="h-8 w-[72px] bg-white/90 px-1 text-right text-xs"
-                      value={spend[channel]?.[monthKey(month.id)] ?? ''}
+                      className="h-8 w-[88px] bg-white/90 px-1 text-right text-xs"
+                      value={commaNumber(spend[channel]?.[monthKey(month.id)] ?? '')}
                       onChange={(event) => setCell(channel, month.id, event.target.value)}
                     />
                   </td>
