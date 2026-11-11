@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ExternalLink, Loader2, Plus, Search, Upload } from 'lucide-react'
+import { ExternalLink, Loader2, Plus, Search, Sparkles, Upload } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../hooks/useToast'
 import { Button } from '../components/ui/button'
@@ -499,14 +499,29 @@ export default function Leads({ embedded = false }) {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>{editingId ? (draft.company || draft.name || 'Contact') : 'New contact'}</DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              {editingId ? [draft.name, draft.source].filter(Boolean).join(' · ') : 'Name or company required. Save puts them on Score Card.'}
+        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-t-3xl border-0 bg-[#f7f8fb] sm:max-w-2xl sm:rounded-3xl sm:p-8">
+          <DialogHeader className="text-left">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-orange text-white">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              <DialogTitle className="text-xl font-bold">
+                {editingId ? (draft.company || draft.name || 'Contact') : 'Add contact'}
+              </DialogTitle>
+            </div>
+            <p className="text-sm text-slate-500">
+              {editingId ? [draft.name, draft.source].filter(Boolean).join(' · ') : 'One place for the person, channel, and deal. Save and they’re on Score Card.'}
             </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {['Who', 'Channel', 'Deal'].map((step, index) => (
+                <span key={step} className="inline-flex items-center gap-1.5 rounded-full bg-brand-orange px-3 py-1 text-xs font-semibold text-white">
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/20 text-[10px]">{index + 1}</span>
+                  {step}
+                </span>
+              ))}
+            </div>
           </DialogHeader>
-          <div className="space-y-5">
+          <div className="space-y-5 rounded-2xl bg-white p-4 shadow-sm sm:p-5">
             <section>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Who</p>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -568,13 +583,13 @@ export default function Leads({ embedded = false }) {
               <Textarea rows={4} value={draft.notes} onChange={(event) => updateDraft('notes', event.target.value)} />
             </Field>
           </div>
-          <DialogFooter className="gap-2 sm:justify-between">
+          <DialogFooter className="gap-2 pt-2 sm:justify-between">
             {editingId ? (
-              <Button variant="outline" onClick={deleteLead} disabled={saving}>Delete</Button>
+              <Button variant="ghost" className="text-red-600" onClick={deleteLead} disabled={saving}>Delete</Button>
             ) : <span />}
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button className={BLUE_BUTTON} onClick={saveLead} disabled={saving}>
+              <Button variant="ghost" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button className="rounded-full bg-brand-orange px-6 text-white hover:bg-brand-orange/90" onClick={saveLead} disabled={saving}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save contact
               </Button>
@@ -589,7 +604,7 @@ export default function Leads({ embedded = false }) {
 function Field({ label, children }) {
   return (
     <label className="block space-y-1.5">
-      <Label>{label}</Label>
+      <Label className="text-sm font-semibold text-slate-800">{label}</Label>
       {children}
     </label>
   )
