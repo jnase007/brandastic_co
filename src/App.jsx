@@ -32,6 +32,9 @@ const ClientPublic = lazy(() => import('./pages/ClientPublic'))
 const ClientLogin = lazy(() => import('./pages/ClientLogin'))
 const ClientDashboard = lazy(() => import('./pages/ClientDashboard'))
 const Mission = lazy(() => import('./pages/Mission'))
+const Strategy = lazy(() => import('./pages/Strategy'))
+const IdealTargetClient = lazy(() => import('./pages/IdealTargetClient'))
+const ScoreCard = lazy(() => import('./pages/ScoreCard'))
 const Financials = lazy(() => import('./pages/Financials'))
 const FeatureList = lazy(() => import('./pages/FeatureList'))
 const Hosting = lazy(() => import('./pages/Hosting'))
@@ -1120,13 +1123,36 @@ function App() {
                 }
               />
 
-              {/* Mission Dashboard */}
               <Route
                 path="/mission"
                 element={
-                  <AdminRoute>
+                  <TeamRoute>
                     <Mission />
-                  </AdminRoute>
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/strategy"
+                element={
+                  <TeamRoute>
+                    <Strategy />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/ideal-target-client"
+                element={
+                  <TeamRoute>
+                    <IdealTargetClient />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/score-card"
+                element={
+                  <TeamRoute>
+                    <ScoreCard />
+                  </TeamRoute>
                 }
               />
 

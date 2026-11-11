@@ -38,6 +38,9 @@ import {
   ListChecks,
   Server,
   Globe,
+  Compass,
+  Crosshair,
+  ClipboardList,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
@@ -61,6 +64,9 @@ const navItems = [
   { path: '/hosting', icon: Server, label: 'Hosting' },
   { path: '/pipeline', icon: Target, label: 'Sales Pipeline' },
   { path: '/mission', icon: Target, label: 'Mission', shortcut: 'G M' },
+  { path: '/strategy', icon: Compass, label: 'Strategy' },
+  { path: '/ideal-target-client', icon: Crosshair, label: 'Ideal Target Client' },
+  { path: '/score-card', icon: ClipboardList, label: 'Score Card' },
   { path: '/docs', icon: BookOpen, label: 'Internal Docs', shortcut: 'G N' },
   { path: '/taskboard', icon: Kanban, label: 'Task Board', shortcut: 'G K' },
   { path: '/reports', icon: BarChart3, label: 'Reports', shortcut: 'G R' },
@@ -76,6 +82,10 @@ const simpleNavItems = [
   { path: '/profitability/websites', icon: Globe, label: 'Websites' },
   { path: '/hosting', icon: Server, label: 'Hosting' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
+  { path: '/mission', icon: Target, label: 'Mission' },
+  { path: '/strategy', icon: Compass, label: 'Strategy' },
+  { path: '/ideal-target-client', icon: Crosshair, label: 'Ideal Target Client' },
+  { path: '/score-card', icon: ClipboardList, label: 'Score Card' },
 ]
 
 const adminNavItems = [

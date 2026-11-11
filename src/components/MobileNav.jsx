@@ -8,6 +8,9 @@ import {
   ListTodo, Lightbulb, Target, ListChecks,
   Server,
   Globe,
+  Compass,
+  Crosshair,
+  ClipboardList,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
@@ -32,6 +35,10 @@ const navItems = [
   { path: '/clients', icon: Building2, label: 'Clients' },
   { path: '/pipeline', icon: Target, label: 'Sales Pipeline' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
+  { path: '/mission', icon: Target, label: 'Mission' },
+  { path: '/strategy', icon: Compass, label: 'Strategy' },
+  { path: '/ideal-target-client', icon: Crosshair, label: 'Ideal Target Client' },
+  { path: '/score-card', icon: ClipboardList, label: 'Score Card' },
   { path: '/hosting', icon: Server, label: 'Hosting' },
   { path: '/docs', icon: BookOpen, label: 'Internal Docs' },
   { path: '/taskboard', icon: ListTodo, label: 'Task Board' },
