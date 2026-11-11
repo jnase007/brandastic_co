@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { GripVertical, Loader2, Plus, RefreshCw, Target } from 'lucide-react'
 import { supabase, ensureValidSession } from '../lib/supabase'
@@ -37,6 +37,8 @@ export default function ScoreCardPipeline() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingLead, setEditingLead] = useState(null)
   const [selected, setSelected] = useState(() => new Set())
+  const selectedRef = useRef(selected)
+  selectedRef.current = selected
 
   const load = async () => {
     setLoading(true)
@@ -100,7 +102,8 @@ export default function ScoreCardPipeline() {
     if (!result.destination) return
     if (result.source.droppableId === result.destination.droppableId) return
     const dragged = String(result.draggableId)
-    const ids = selected.has(dragged) && selected.size > 1 ? [...selected] : [dragged]
+    const checked = selectedRef.current
+    const ids = checked.has(dragged) && checked.size > 1 ? [...checked] : [dragged]
     persistStages(ids, result.destination.droppableId)
   }
 
@@ -216,6 +219,9 @@ export default function ScoreCardPipeline() {
                                       <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
                                       <div className="min-w-0 flex-1 overflow-hidden">
                                         <button type="button" className="w-full break-words text-left text-sm font-semibold leading-snug hover:underline" onClick={(event) => { event.stopPropagation(); setEditingLead(row); setDialogOpen(true) }}>{row.company || row.name || 'Untitled'}</button>
+                                        {snap.isDragging && selected.has(String(row.id)) && selected.size > 1 ? (
+                                          <div className="mt-1 inline-flex rounded-full bg-purple-600 px-2 py-0.5 text-[11px] font-semibold text-white">+{selected.size - 1} more</div>
+                                        ) : null}
                                         {row.name && row.company ? (
                                           <div className="mt-0.5 break-words text-xs text-slate-500">{row.name}</div>
                                         ) : null}
