@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Beer, Cake, Palmtree, PartyPopper } from 'lucide-react'
 import CompanyHolidays from '../components/CompanyHolidays'
 import {
@@ -15,7 +14,6 @@ import {
 } from '../lib/announcements'
 import { fetchCompanyHolidays, holidayRuleFromRow } from '../lib/companyHolidays'
 import { fetchAnnouncementPeople } from '../lib/laborRates'
-import { supabase } from '../lib/supabase'
 
 const TYPES = {
   birthday: { label: 'Birthdays', icon: Cake, dot: 'bg-[#ec4899]', chip: 'bg-[#fce7f3] text-[#be185d]' },
@@ -100,16 +98,6 @@ function visibleHolidays(holidays, today, windowEnd) {
   return expandHolidays(holidays, today, monthEnd(windowEnd)).map((range) => holidayCalendarItem(range, today))
 }
 
-async function fetchOutings() {
-  const { data } = await supabase.auth.getSession()
-  const token = data.session?.access_token
-  if (!token) throw new Error('Sign in required')
-  const response = await fetch('/api/team-calendar', { headers: { Authorization: `Bearer ${token}` } })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body.error || 'Could not load the team calendar')
-  return body.outings || []
-}
-
 export default function Announcements() {
   const today = useMemo(() => losAngelesToday(), [])
   const [people, setPeople] = useState([])
@@ -119,15 +107,13 @@ export default function Announcements() {
   const [holidaysMissing, setHolidaysMissing] = useState(false)
   const [holidayColumnsMissing, setHolidayColumnsMissing] = useState(false)
   const [holidayError, setHolidayError] = useState('')
-  const [outings, setOutings] = useState([])
-  const [calendarError, setCalendarError] = useState('')
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState('calendar')
   const [selectedDay, setSelectedDay] = useState(today)
 
   useEffect(() => {
     let cancel = false
-    Promise.allSettled([fetchAnnouncementPeople(), fetchCompanyHolidays(), fetchOutings()]).then(([rateResult, holidayResult, outingResult]) => {
+    Promise.allSettled([fetchAnnouncementPeople(), fetchCompanyHolidays()]).then(([rateResult, holidayResult]) => {
       if (cancel) return
       if (rateResult.status === 'fulfilled' && rateResult.value?.rows) {
         setPeople(rateResult.value.rows)
@@ -144,8 +130,6 @@ export default function Announcements() {
       } else {
         setHolidayError(holidayResult.reason?.message || 'Could not load holidays')
       }
-      if (outingResult.status === 'fulfilled') setOutings(outingResult.value)
-      else setCalendarError(outingResult.reason?.message || 'Could not load the team calendar')
       setLoading(false)
     })
     return () => { cancel = true }
@@ -159,8 +143,7 @@ export default function Announcements() {
       showOnAnnouncements: row.show_on_announcements !== false,
     })),
     holidays,
-    outings,
-  }), [today, people, holidays, outings])
+  }), [today, people, holidays])
   const week = itemsThisWeek(today, items)
   const groups = weekGroups(today, items)
   const windowEnd = addDays(today, 30)
@@ -180,8 +163,6 @@ export default function Announcements() {
     }
     return map
   }, [items, calendarHolidays])
-  const missing = people.filter((row) => row.name && row.name.toLowerCase() !== 'unassigned' && (!row.birthday || !row.start_date))
-
   return (
     <div className="min-h-screen bg-[#f4f7fa] px-4 py-6 text-[#15202b] sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
@@ -196,7 +177,6 @@ export default function Announcements() {
         {loading ? <p className="mt-8 text-sm text-[#5c6b7a]">Loading announcements…</p> : null}
         {peopleError ? <p className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">{peopleError}</p> : null}
         {holidayError ? <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">{holidayError}</p> : null}
-        {calendarError ? <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">{calendarError} Birthdays, anniversaries, and holidays are still shown.</p> : null}
 
         {!loading ? (
           <>
@@ -312,13 +292,6 @@ export default function Announcements() {
                 )}
               </section>
             </div>
-
-            {missing.length ? (
-              <p className="mt-6 text-sm text-[#5c6b7a]">
-                Missing dates: {missing.map((row) => row.name).join(', ')}.{' '}
-                <Link to="/profitability/costs" className="font-semibold text-[#1644ED]">Add them on Costs</Link>
-              </p>
-            ) : null}
 
             <div className="mt-6">
               <CompanyHolidays

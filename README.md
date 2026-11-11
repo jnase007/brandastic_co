@@ -226,13 +226,11 @@ Update `index.html` to change fonts.
 
 ## Company Announcements
 
-The page at `/announcements` lists birthdays, work anniversaries, company holidays, and monthly outings for the next 30 days.
+The page at `/announcements` lists birthdays, work anniversaries, and company holidays for the next 30 days.
 
 Run `supabase/announcements.sql` once in the Supabase SQL editor. It adds birthday, start date, and an announce flag to `labor_rates`, and creates `company_holidays`.
 
 Run `supabase/holidays-recurring.sql` once after that. It lets each company holiday repeat every year. Safe to run again.
-
-Set `TEAM_CALENDAR_ICS_URL` in Vercel, and in `.env.local` while developing. It is the secret iCal address for the shared Brandastic team calendar. Do not commit the value.
 
 ## License
 

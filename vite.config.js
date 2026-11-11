@@ -5,7 +5,6 @@ import fs from 'fs'
 import { writeFeaturePriority } from './server/featurePriority.js'
 import { assertTeam, loadHostingPortfolio } from './server/hostingData.js'
 import { loadWebsites } from './server/websitesData.js'
-import { loadTeamOutings } from './server/teamCalendar.js'
 
 // Generate a build version for cache busting
 const buildVersion = Date.now().toString(36)
@@ -62,43 +61,6 @@ function hostingPlugin(env) {
           res.statusCode = 500
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify({ error: error.message || 'Could not load hosting' }))
-        }
-      })
-    },
-  }
-}
-
-function calendarPlugin(env) {
-  return {
-    name: 'team-calendar-api',
-    configureServer(server) {
-      server.middlewares.use(async (req, res, next) => {
-        const pathname = req.url?.split('?')[0]
-        if (pathname !== '/api/team-calendar') return next()
-        if (req.method !== 'GET') {
-          res.statusCode = 405
-          res.end()
-          return
-        }
-        try {
-          const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')
-          const gate = await assertTeam(env, token)
-          if (!gate.ok) {
-            res.statusCode = gate.status
-            res.setHeader('Content-Type', 'application/json')
-            res.end(JSON.stringify({ error: gate.error }))
-            return
-          }
-          const body = await loadTeamOutings(env)
-          res.statusCode = 200
-          res.setHeader('Content-Type', 'application/json')
-          res.setHeader('Cache-Control', 'private, s-maxage=300, stale-while-revalidate=1800')
-          res.setHeader('Vary', 'Authorization')
-          res.end(JSON.stringify(body))
-        } catch (error) {
-          res.statusCode = 500
-          res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify({ error: error.message || 'Could not load the team calendar' }))
         }
       })
     },
@@ -177,7 +139,6 @@ export default defineConfig(({ mode }) => {
     featurePriorityPlugin(env),
     hostingPlugin(env),
     websitesPlugin(env),
-    calendarPlugin(env),
     // Generate version.json on build for detecting new deployments
     {
       name: 'generate-version',
