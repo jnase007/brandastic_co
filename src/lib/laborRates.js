@@ -98,9 +98,9 @@ function applyAnnounceProfiles(people, profileRows) {
     if (!extra) return { ...row, birthday: row.birthday || null, start_date: row.start_date || null, show_on_announcements: row.show_on_announcements !== false }
     return {
       ...row,
-      birthday: extra.birthday || null,
-      start_date: extra.startDate || null,
-      show_on_announcements: extra.showOnAnnouncements === false ? false : true,
+      birthday: row.birthday || extra.birthday || null,
+      start_date: row.start_date || extra.startDate || null,
+      show_on_announcements: row.show_on_announcements === false ? false : extra.showOnAnnouncements !== false,
     }
   })
 }
@@ -113,12 +113,16 @@ export async function fetchAnnouncementPeople() {
     if (isMissingTable(error, 'labor_rates')) return null
     throw error
   }
-  return { rows: (data || []).filter((row) => !isProfileRow(row)) }
+  const all = data || []
+  return { rows: applyAnnounceProfiles(all.filter((row) => !isProfileRow(row)), all.filter(isProfileRow)) }
 }
 
 export async function fetchLaborRates() {
   const full = await supabase.from('labor_rates').select(RATE_COLUMNS).order('position').order('name')
-  if (!full.error) return { rows: (full.data || []).filter((row) => !isProfileRow(row)), profileReady: true }
+  if (!full.error) {
+    const all = full.data || []
+    return { rows: applyAnnounceProfiles(all.filter((row) => !isProfileRow(row)), all.filter(isProfileRow)), profileReady: true }
+  }
   if (isMissingAnnounceColumn(full.error) && !isMissingWorkerColumn(full.error)) {
     const worker = await supabase.from('labor_rates').select(WORKER_COLUMNS).order('position').order('name')
     if (worker.error) throw worker.error
