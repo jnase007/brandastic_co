@@ -235,8 +235,8 @@ export default function Mission() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-xl bg-[#1644ED] p-4 text-white">
-                <p className="font-semibold">Scenario: ~$3.6M annual agency fees by 2030</p>
-                <p className="text-sm text-white/80">40 clients × $90K/year; excludes media. More than all of Brandastic’s recurring revenue today ($1.44M).</p>
+                <p className="font-semibold">Goal: $3.5M by 2030</p>
+                <p className="text-sm text-white/80">40 education retainers × about $90K/year; excludes media. More than today’s $1.44M recurring book. Ramp math below is ~$3.6M — we hold the company target at $3.5M.</p>
               </div>
               <div className="overflow-auto">
                 <table className="min-w-full text-sm">

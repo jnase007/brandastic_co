@@ -1,17 +1,26 @@
 import { Compass, Target, TrendingUp } from 'lucide-react'
 
 const PILLARS = [
-  { title: 'Focus', body: 'Businesses with $10M+ in sales. Annual retainers. Holistic presence across channels — not one-off projects.' },
-  { title: 'Growth', body: 'Increase revenue 25% YoY. One new deal a month. Team on billable work 80% of the time.' },
-  { title: 'Margin', body: 'Positive bottom line each month. Higher rates ($175–$195/hr). Lifetime clients, not churn-and-burn.' },
+  {
+    title: 'Focus',
+    body: 'Enrollment directors at private and public charter K–12. Families who need to find the school. Not district public. Not one-off projects.',
+  },
+  {
+    title: 'Growth',
+    body: 'Bring in education retainers on a 6 / 10 / 13 / 18 school ramp. About $7.5K/mo each. Land at $3.5M by 2030.',
+  },
+  {
+    title: 'Keep',
+    body: 'Assume 15% leave each year. 40 active schools by 2030. Lifetime retainers, not churn-and-burn.',
+  },
 ]
 
 const MOVES = [
-  'Grow rev — 25% YoY, 6 new contracts toward $3M ARR',
-  'Efficiency — billable work is the default, not the exception',
-  'Team — growth mindset that shows up in client results',
-  'Cash / margin — black each month',
-  'Leadership owns it before it becomes a fire',
+  'Sell to enrollment directors, heads of school, and marketing directors at private + charter schools',
+  'Add schools so 2030 is 40 active and $3.5M in agency fees',
+  'Keep CalOPS + Heart Christian as the base while new education retainers stack',
+  'Holistic presence so families can find the school — search and ads that become applications',
+  'Score Card + pipeline: a closed school deal shows up in Financials by channel',
 ]
 
 export default function Strategy() {
@@ -20,7 +29,10 @@ export default function Strategy() {
       <p className="text-xs font-semibold tracking-[0.2em] text-[#8eb4ff]">BRANDASTIC · STRATEGY</p>
       <h1 className="mt-2 text-3xl font-bold">Strategy</h1>
       <p className="mt-3 text-lg text-muted-foreground">
-        Rally cry: <span className="font-semibold text-foreground">Focused. Growth.</span>
+        Rally cry: <span className="font-semibold text-foreground">Focused. Growth.</span> · 2027
+      </p>
+      <p className="mt-3 max-w-2xl text-muted-foreground">
+        Built around education clients. Overall we want to be at <span className="font-semibold text-foreground">$3.5 million by 2030</span>.
       </p>
       <div className="mt-8 grid gap-4 md:grid-cols-3">
         {PILLARS.map((p) => (
@@ -34,7 +46,7 @@ export default function Strategy() {
         ))}
       </div>
       <div className="mt-8 rounded-xl border bg-card p-6">
-        <h2 className="font-semibold">What we run this year</h2>
+        <h2 className="font-semibold">What we run</h2>
         <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
           {MOVES.map((m) => (
             <li key={m} className="flex gap-2">
