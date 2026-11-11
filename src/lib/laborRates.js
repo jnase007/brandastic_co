@@ -239,25 +239,27 @@ async function writeLaborRates(payload, columns) {
     if (error) return { error }
   }
   if (inserts.length) {
-    const { error } = await supabase.from('labor_rates').insert(inserts, { defaultToNull: false })
+    const { error } = await supabase.from('labor_rates').upsert(inserts, { onConflict: 'name', defaultToNull: false })
     if (error) return { error }
   }
   return supabase.from('labor_rates').select(columns).order('position')
 }
 
 async function replaceProfileRows(storedProfiles, rows) {
-  if (storedProfiles.length) {
-    const { error } = await supabase.from('labor_rates').delete().in('id', storedProfiles.map((row) => row.id))
-    if (error) throw error
-  }
   const profilePayload = rows.map((row) => ({
     name: encodeProfileRow(row),
     hourly: 0.01,
     position: 10000,
     updated_at: new Date().toISOString(),
   }))
-  const stored = await supabase.from('labor_rates').insert(profilePayload, { defaultToNull: false }).select('id, name')
+  const stored = await supabase.from('labor_rates').upsert(profilePayload, { onConflict: 'name', defaultToNull: false }).select('id, name')
   if (stored.error) throw stored.error
+  const kept = new Set((stored.data || []).map((row) => row.id))
+  const stale = storedProfiles.map((row) => row.id).filter((id) => !kept.has(id))
+  if (stale.length) {
+    const { error } = await supabase.from('labor_rates').delete().in('id', stale)
+    if (error) throw error
+  }
   return stored.data || []
 }
 
