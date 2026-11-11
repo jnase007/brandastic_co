@@ -86,6 +86,7 @@ const simpleNavItems = [
   { path: '/strategy', icon: Compass, label: 'Strategy' },
   { path: '/ideal-target-client', icon: Crosshair, label: 'Ideal Target Client' },
   { path: '/score-card', icon: ClipboardList, label: 'Score Card' },
+  { path: '/pipeline', icon: Target, label: 'Sales Pipeline' },
 ]
 
 const adminNavItems = [
