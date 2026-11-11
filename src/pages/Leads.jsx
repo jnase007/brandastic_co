@@ -56,6 +56,7 @@ export default function Leads({ embedded = false }) {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingLead, setEditingLead] = useState(null)
   const [importing, setImporting] = useState(false)
+  const [selected, setSelected] = useState(() => new Set())
   const [quick, setQuick] = useState({ name: '', company: '', source: 'Direct', jira_key: '' })
 
   const load = async () => {
@@ -167,6 +168,43 @@ export default function Leads({ embedded = false }) {
     }
     if (error) toast({ title: 'Could not save', description: error.message, variant: 'destructive' })
     else if (nextFields.jira_key) toast({ title: `${nextFields.jira_key} is on the pipeline as a Lead` })
+  }
+
+  function toggleSelected(id, on) {
+    setSelected((current) => {
+      const next = new Set(current)
+      if (on) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  function toggleShown(on) {
+    setSelected((current) => {
+      const next = new Set(current)
+      for (const row of shown) {
+        if (on) next.add(row.id)
+        else next.delete(row.id)
+      }
+      return next
+    })
+  }
+
+  async function bulkStage(stageId, quality) {
+    const ids = [...selected]
+    if (!ids.length) return
+    const patch = { pipeline_stage: stageId, quality, updated_at: new Date().toISOString() }
+    setRows((current) => current.map((row) => (ids.includes(row.id) ? { ...row, ...patch } : row)))
+    let { error } = await supabase.from('sales_leads').update(patch).in('id', ids)
+    if (error && String(error.message || '').includes('pipeline_stage')) {
+      const { pipeline_stage, ...rest } = patch
+      error = (await supabase.from('sales_leads').update(rest).in('id', ids)).error
+    }
+    if (error) toast({ title: 'Could not move leads', description: error.message, variant: 'destructive' })
+    else {
+      toast({ title: `${ids.length} moved to ${quality || stageId}` })
+      setSelected(new Set())
+    }
   }
 
   async function importSheet() {
@@ -296,12 +334,29 @@ export default function Leads({ embedded = false }) {
         </div>
       )}
 
-      <p className="mb-2 text-sm text-muted-foreground">{shown.length} showing · click a row to open the contact · paste a Jira key or Atlassian link to drop them on the pipeline</p>
+      <p className="mb-2 text-sm text-muted-foreground">{shown.length} showing · check rows to move many at once · click a name row to open the contact</p>
+
+      {selected.size ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-brand-orange/30 bg-orange-50 px-3 py-2 text-sm">
+          <span className="font-semibold">{selected.size} selected</span>
+          <Button size="sm" className="rounded-full bg-green-600 text-white hover:bg-green-700" onClick={() => bulkStage('won', 'Closed')}>Mark closed won</Button>
+          <Button size="sm" variant="outline" onClick={() => bulkStage('proposal', 'Proposal sent')}>Proposal sent</Button>
+          <Button size="sm" variant="outline" onClick={() => bulkStage('lead', 'Good Lead')}>Back to lead</Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Clear</Button>
+        </div>
+      ) : null}
 
       <div className="overflow-auto rounded-xl border bg-white shadow-sm" style={{ maxHeight: '70vh' }}>
         <table className="min-w-[1500px] w-full text-left text-sm">
           <thead className="sticky top-0 z-10 bg-slate-900 text-xs uppercase tracking-wide text-white">
             <tr>
+              <th className="px-2 py-3">
+                <input
+                  type="checkbox"
+                  checked={shown.length > 0 && shown.every((row) => selected.has(row.id))}
+                  onChange={(event) => toggleShown(event.target.checked)}
+                />
+              </th>
               {['Date', 'Channel', 'Jira', 'Name', 'Company', 'Phone', 'Email', 'Notes', 'Month', 'Quality', 'Close $', 'Referred by', 'Deal type', '2026 value'].map((label) => (
                 <th key={label} className="whitespace-nowrap px-3 py-3 font-medium">{label}</th>
               ))}
@@ -309,14 +364,17 @@ export default function Leads({ embedded = false }) {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={14} className="px-3 py-10 text-muted-foreground">Loading leads…</td></tr>
+              <tr><td colSpan={15} className="px-3 py-10 text-muted-foreground">Loading leads…</td></tr>
             ) : shown.length === 0 ? (
-              <tr><td colSpan={14} className="px-3 py-10 text-muted-foreground">Nothing matches. Add a lead above.</td></tr>
+              <tr><td colSpan={15} className="px-3 py-10 text-muted-foreground">Nothing matches. Add a lead above.</td></tr>
             ) : shown.map((row) => {
               const link = jiraUrl(row.jira_key)
               const cell = 'border-t px-2 py-1.5 align-middle'
               return (
                 <tr key={row.id} className="cursor-pointer hover:bg-slate-50" onClick={() => { if (!setupNeeded) openEdit(row) }}>
+                  <td className={`${cell}`} onClick={(event) => event.stopPropagation()}>
+                    <input type="checkbox" checked={selected.has(row.id)} onChange={(event) => toggleSelected(row.id, event.target.checked)} />
+                  </td>
                   <td className={`${cell} whitespace-nowrap`}>
                     <input className="h-8 w-[132px] rounded border-0 bg-transparent px-1 text-sm" type="date" defaultValue={row.first_contact_date || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { first_contact_date: event.target.value || null, month: monthLabel(event.target.value) })} />
                   </td>
