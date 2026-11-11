@@ -2,17 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { GripVertical, Loader2, Plus, RefreshCw, Target } from 'lucide-react'
 import { supabase, ensureValidSession } from '../lib/supabase'
-import { CHANNEL_COLORS, LEAD_SOURCES, chipClass, displayDate, formatMoney, jiraUrl } from '../lib/leads'
+import { CHANNEL_COLORS, chipClass, displayDate, formatMoney, jiraUrl } from '../lib/leads'
 import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '../components/ui/dialog'
+import LeadContactDialog from '../components/LeadContactDialog'
 import { useToast } from '../hooks/useToast'
 import { cn } from '../lib/utils'
 
@@ -24,15 +16,6 @@ const STAGES = [
   { id: 'won', title: 'Closed Won', quality: 'Closed', weight: 1, color: 'bg-green-500' },
   { id: 'lost', title: 'Closed Lost', quality: 'No response from emails & calls', weight: 0, color: 'bg-red-500' },
 ]
-
-const EMPTY = {
-  name: '',
-  company: '',
-  source: 'Direct',
-  value_2026: '',
-  notes: '',
-  jira_key: '',
-}
 
 function stageFromLead(row) {
   const stage = String(row.pipeline_stage || '').toLowerCase()
@@ -52,8 +35,7 @@ export default function ScoreCardPipeline() {
   const [rows, setRows] = useState([])
   const [setupNeeded, setSetupNeeded] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [draft, setDraft] = useState(EMPTY)
-  const [saving, setSaving] = useState(false)
+  const [editingLead, setEditingLead] = useState(null)
 
   const load = async () => {
     setLoading(true)
@@ -107,38 +89,6 @@ export default function ScoreCardPipeline() {
     persistStage(result.draggableId, result.destination.droppableId)
   }
 
-  async function addProspect() {
-    if (!draft.name.trim() && !draft.company.trim()) {
-      toast({ title: 'Add a name or company', variant: 'destructive' })
-      return
-    }
-    setSaving(true)
-    const today = new Date().toISOString().slice(0, 10)
-    const payload = {
-      name: draft.name.trim(),
-      company: draft.company.trim(),
-      source: draft.source,
-      notes: draft.notes.trim(),
-      jira_key: draft.jira_key.trim() || null,
-      value_2026: Number(draft.value_2026 || 0) || null,
-      first_contact_date: today,
-      month: today.slice(0, 7),
-      quality: 'Good Lead',
-      pipeline_stage: 'lead',
-      updated_at: new Date().toISOString(),
-    }
-    const { data, error } = await supabase.from('sales_leads').insert(payload).select('*').single()
-    setSaving(false)
-    if (error) {
-      toast({ title: 'Could not add prospect', description: error.message, variant: 'destructive' })
-      return
-    }
-    setRows((current) => [data, ...current])
-    setDialogOpen(false)
-    setDraft(EMPTY)
-    toast({ title: 'Added to pipeline' })
-  }
-
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
@@ -159,7 +109,7 @@ export default function ScoreCardPipeline() {
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
-            <Button size="sm" className="bg-purple-500 text-white hover:bg-purple-600" onClick={() => setDialogOpen(true)}>
+            <Button size="sm" className="bg-purple-500 text-white hover:bg-purple-600" onClick={() => { setEditingLead(null); setDialogOpen(true) }}>
               <Plus className="mr-2 h-4 w-4" />
               Add Prospect
             </Button>
@@ -232,7 +182,7 @@ export default function ScoreCardPipeline() {
                                     <div className="mb-2 flex items-center gap-2">
                                       <GripVertical className="h-4 w-4 shrink-0 text-slate-400" />
                                       <div className="min-w-0">
-                                        <div className="truncate font-semibold">{row.company || row.name || 'Untitled'}</div>
+                                        <button type="button" className="truncate text-left font-semibold hover:underline" onClick={(event) => { event.stopPropagation(); setEditingLead(row); setDialogOpen(true) }}>{row.company || row.name || 'Untitled'}</button>
                                         {row.name && row.company ? (
                                           <div className="truncate text-xs text-slate-500">{row.name}</div>
                                         ) : null}
@@ -275,49 +225,13 @@ export default function ScoreCardPipeline() {
         )}
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add prospect</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-3">
-            <div>
-              <Label>Name</Label>
-              <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-            </div>
-            <div>
-              <Label>Company</Label>
-              <Input value={draft.company} onChange={(e) => setDraft({ ...draft, company: e.target.value })} />
-            </div>
-            <div>
-              <Label>Source</Label>
-              <select
-                className="h-10 w-full rounded-md border px-3 text-sm"
-                value={draft.source}
-                onChange={(e) => setDraft({ ...draft, source: e.target.value })}
-              >
-                {LEAD_SOURCES.map((item) => (
-                  <option key={item} value={item}>{item}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Amount</Label>
-              <Input value={draft.value_2026} onChange={(e) => setDraft({ ...draft, value_2026: e.target.value })} />
-            </div>
-            <div>
-              <Label>Notes</Label>
-              <Input value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button className="bg-purple-500 text-white hover:bg-purple-600" disabled={saving} onClick={addProspect}>
-              {saving ? 'Saving…' : 'Add to pipeline'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <LeadContactDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        lead={editingLead}
+        defaultStage="lead"
+        onSaved={() => load()}
+      />
     </div>
   )
 }
