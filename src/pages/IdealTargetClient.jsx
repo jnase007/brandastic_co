@@ -1,53 +1,69 @@
-import { Building2, CheckCircle2, XCircle } from 'lucide-react'
-
-const FITS = [
-  'Companies at $10M+ in sales',
-  'Need a holistic presence (ads, SEO/AEO, web, creative) — not a single channel',
-  'Want an annual retainer, not a two-week project',
-  'Owner or operator who will make decisions',
-  'Care about pipeline and revenue, not vanity traffic',
+const DAILY = [
+  'Family sign-ups that depend on search',
+  'Ad spend that doesn’t turn into applications',
+  'A board asking for enrollment numbers',
+  'Agencies that don’t understand school rules',
 ]
 
-const NOT_FITS = [
-  'Job seekers, vendors selling to us, spam',
-  'One-off logo / brochure work with no growth plan',
-  'Businesses that will not retain or cannot fund a real program',
-  '“Just get me cheap leads” with no offer or ops behind it',
+const TITLES = [
+  { pct: '60%', title: 'Enrollment directors', note: 'one school, many families who need to find it' },
+  { pct: '25%', title: 'Heads of school', note: 'board pressure on enrollment numbers' },
+  { pct: '15%', title: 'Marketing directors', note: 'they own the digital spend' },
 ]
 
 export default function IdealTargetClient() {
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10">
+    <div className="mx-auto max-w-5xl px-6 py-10">
       <p className="text-xs font-semibold tracking-[0.2em] text-[#8eb4ff]">BRANDASTIC · ICP</p>
       <h1 className="mt-2 text-3xl font-bold">Ideal Target Client</h1>
-      <p className="mt-3 text-muted-foreground">
-        Who we say yes to. Aligns with the Score Card (Good Lead) and the Mission: 65 retainers by 2030.
+      <p className="mt-3 max-w-2xl text-muted-foreground">
+        Enrollment directors (and the directors around them) at private and public charter K–12 schools. Not district public schools. Not higher ed as the core bet.
       </p>
-      <div className="mt-8 grid gap-6 md:grid-cols-2">
-        <div className="rounded-xl border bg-card p-6">
-          <div className="mb-4 flex items-center gap-2 font-semibold text-emerald-700">
-            <CheckCircle2 className="h-5 w-5" />
-            Fits
-          </div>
-          <ul className="space-y-3 text-sm text-muted-foreground">
-            {FITS.map((t) => (
-              <li key={t} className="flex gap-2">
-                <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                {t}
-              </li>
+      <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-2xl border bg-white p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Who she is</p>
+          <h2 className="mt-1 text-2xl font-bold">Maya Chen, 41</h2>
+          <p className="italic text-muted-foreground">Director of Enrollment</p>
+          <p className="mt-4 text-lg font-medium">“If families can’t find us online, enrollment fails.”</p>
+          <p className="mt-6 text-sm font-semibold">What she deals with every day</p>
+          <ul className="mt-2 space-y-2 text-sm text-muted-foreground">
+            {DAILY.map((item) => (
+              <li key={item}>• {item}</li>
             ))}
           </ul>
         </div>
-        <div className="rounded-xl border bg-card p-6">
-          <div className="mb-4 flex items-center gap-2 font-semibold text-red-700">
-            <XCircle className="h-5 w-5" />
-            Not a fit
-          </div>
-          <ul className="space-y-3 text-sm text-muted-foreground">
-            {NOT_FITS.map((t) => (
-              <li key={t}>{t}</li>
+        <div className="rounded-2xl border bg-white p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">What titles we reach</p>
+          <div className="mt-4 space-y-5">
+            {TITLES.map((row) => (
+              <div key={row.title}>
+                <p className="text-xl font-bold">{row.pct} <span className="font-semibold">{row.title}</span></p>
+                <p className="text-sm text-muted-foreground">{row.note}</p>
+              </div>
             ))}
-          </ul>
+          </div>
+        </div>
+      </div>
+      <div className="mt-8 rounded-2xl bg-slate-950 p-6 text-white sm:p-8">
+        <p className="text-xs font-semibold tracking-[0.2em] text-[#8eb4ff]">THE MARKET</p>
+        <h2 className="mt-2 text-2xl font-bold">Who we serve and why now</h2>
+        <p className="mt-4 text-4xl font-bold">38,601</p>
+        <p className="text-sm text-white/70">Estimated K–12 target · private + public charter</p>
+        <ul className="mt-6 space-y-2 text-sm text-white/85">
+          <li>Private K–12, any affiliation: 30,553 (est.)</li>
+          <li>Public charter K–12: 8,048</li>
+          <li className="text-white/50">Other public schools: 91,025 — not our target</li>
+          <li className="text-white/50">Higher ed, Title IV: 5,581 — context only</li>
+        </ul>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div>
+            <p className="text-2xl font-bold text-[#8eb4ff]">30,558</p>
+            <p className="text-sm text-white/70">NCES directory records (22,510 private + 8,048 charter)</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-[#8eb4ff]">9,946</p>
+            <p className="text-sm text-white/70">working review list (Apollo + NCES)</p>
+          </div>
         </div>
       </div>
     </div>

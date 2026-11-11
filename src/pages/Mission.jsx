@@ -40,14 +40,14 @@ const itemVariants = {
 
 // Default mission data
 const DEFAULT_MISSION = {
-  long_term_vision: "Accelerate the growth of 65 businesses through active retainers by 2030",
+  long_term_vision: "40 private and charter schools on retainer by 2030 — enrollment directors first",
   vision_pillars: [
     { title: "Focus on businesses with over 10M+ in sales", icon: "target" },
     { title: "With contracts that include a holistic presence across all channels", icon: "layers" },
     { title: "With a focus on Annual Retainers", icon: "repeat" },
   ],
   rally_cry: "Focused. Growth.",
-  rally_year: "2025",
+  rally_year: "2027",
   core_values: [
     { title: "Ignite Potential", description: "Unlock growth for every team member + brand" },
     { title: "Results Focused", description: "Measure KPI's that matter" },
@@ -134,7 +134,9 @@ export default function Mission() {
         .single()
       
       if (data) {
-        setMission({ ...DEFAULT_MISSION, ...data })
+        const next = { ...DEFAULT_MISSION, ...data }
+        if (String(next.rally_year) === '2025') next.rally_year = '2027'
+        setMission(next)
       }
     } catch (error) {
       console.log('Using default mission data')
@@ -225,6 +227,34 @@ export default function Mission() {
         initial="hidden"
         animate="visible"
       >
+        <motion.div variants={itemVariants}>
+          <Card className="bg-white dark:bg-[#0d1d35] border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-slate-900 dark:text-white">40 schools by 2030</CardTitle>
+              <p className="text-sm text-[#1644ED]">Assumption: a ramp of 6, 10, 13, 18 new schools a year at about $7.5K/mo each, with 15% of schools leaving each year.</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-xl bg-[#1644ED] p-4 text-white">
+                <p className="font-semibold">Scenario: ~$3.6M annual agency fees by 2030</p>
+                <p className="text-sm text-white/80">40 clients × $90K/year; excludes media. More than all of Brandastic’s recurring revenue today ($1.44M).</p>
+              </div>
+              <div className="overflow-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-muted text-left"><tr><th className="px-3 py-2">Year</th><th className="px-3 py-2">New schools signed</th><th className="px-3 py-2">Active after 15% churn</th><th className="px-3 py-2">New annual revenue</th></tr></thead>
+                  <tbody>
+                    <tr className="border-t"><td className="px-3 py-2">Today</td><td className="px-3 py-2">—</td><td className="px-3 py-2">2 current</td><td className="px-3 py-2">$315K/yr (CalOPS + Heart Christian)</td></tr>
+                    <tr className="border-t"><td className="px-3 py-2">2027</td><td className="px-3 py-2">6</td><td className="px-3 py-2">6</td><td className="px-3 py-2">~$540K</td></tr>
+                    <tr className="border-t"><td className="px-3 py-2">2028</td><td className="px-3 py-2">10</td><td className="px-3 py-2">15</td><td className="px-3 py-2">~$1.35M</td></tr>
+                    <tr className="border-t"><td className="px-3 py-2">2029</td><td className="px-3 py-2">13</td><td className="px-3 py-2">26</td><td className="px-3 py-2">~$2.34M</td></tr>
+                    <tr className="border-t bg-orange-50"><td className="px-3 py-2 font-semibold">2030</td><td className="px-3 py-2 font-semibold">18</td><td className="px-3 py-2 font-semibold">40</td><td className="px-3 py-2 font-semibold">~$3.6M</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-sm text-muted-foreground">47 schools signed, about 40 still active by 2030 after churn. Plus $315K/yr from current schools.</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
         {/* Long Term Vision */}
         <motion.div variants={itemVariants}>
           <Card className="bg-white dark:bg-[#0d1d35] border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
