@@ -8,7 +8,6 @@ const FIELDS = [
   'customfield_10042',
   'customfield_10033',
   'customfield_10046',
-  'customfield_10035',
 ]
 
 let cache = { at: 0, data: null }
@@ -89,7 +88,6 @@ async function loadFresh(env) {
       contractedHours: hoursField(issue.fields?.customfield_10042),
       contractAmount: numberField(issue.fields?.customfield_10033),
       notes: cleanText(plainText(issue.fields?.customfield_10046)),
-      deposit: cleanText(plainText(issue.fields?.customfield_10035)),
       loggedMinutes: minutesByEpic.get(issue.key) || 0,
       people,
     }

@@ -1574,6 +1574,13 @@
   gap: 12px;
 }
 
+@media (min-width: 1024px) {
+  .ws-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
 .ws-card {
   display: grid;
   gap: 12px;
@@ -1651,26 +1658,20 @@
   border-radius: inherit;
 }
 
-.ws-fill.ws-ok,
-.ws-pct.ws-ok {
+.ws-fill.ws-ok {
   background: #16a34a;
-  color: #15803d;
 }
 
-.ws-fill.ws-warn,
-.ws-pct.ws-warn {
+.ws-fill.ws-warn {
   background: #f59e0b;
-  color: #c2410c;
 }
 
-.ws-fill.ws-over,
-.ws-pct.ws-over {
+.ws-fill.ws-over {
   background: #dc2626;
-  color: #b91c1c;
 }
 
 .ws-pct {
-  background: transparent;
+  color: #0f172a;
   font-size: 13px;
   font-weight: 800;
 }
@@ -1680,6 +1681,11 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px 16px;
   margin: 0;
+}
+
+.ws-hours {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 12px;
 }
 
 .ws-metrics div {
@@ -1705,22 +1711,27 @@
   color: #b91c1c;
 }
 
+.ws-actions {
+  justify-content: flex-start;
+  align-items: center;
+}
+
 .ws-actions button {
   border: 0;
   background: transparent;
   padding: 0;
-  color: #5b21b6;
+  color: #64748b;
   font: inherit;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }
 
-.ws-notes {
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: help;
+.ws-note {
+  margin: 0;
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .ws-people .pr-table {
@@ -1732,12 +1743,6 @@
   flex-wrap: wrap;
   gap: 12px;
   width: auto;
-}
-
-@media (max-width: 700px) {
-  .ws-metrics {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
 .tm-card-donut {

@@ -50,7 +50,6 @@ export function websiteRows(builds, rates) {
       labor: people.length ? labor : 0,
       uncostedHours,
       margin: budgetAmount == null || labor == null ? null : budgetAmount - labor,
-      effectiveRate: loggedHours > 0 && budgetAmount != null ? budgetAmount / loggedHours : null,
       ready: budgetAmount != null || budgetHours != null,
       people,
     }
@@ -62,11 +61,6 @@ export function formatHours(value) {
   const rounded = Math.round(value * 10) / 10
   const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
   return `${text}h`
-}
-
-export function formatRate(value) {
-  if (value == null || Number.isNaN(value)) return '—'
-  return formatMoney(value)
 }
 
 export { formatMoney, formatPct }

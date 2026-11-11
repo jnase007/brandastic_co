@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import '../profitability.css'
 import { useLaborRateRows } from '../lib/laborRates'
-import { fetchWebsites, formatHours, formatMoney, formatPct, formatRate, websiteRows } from '../lib/websites'
+import { fetchWebsites, formatHours, formatMoney, formatPct, websiteRows } from '../lib/websites'
 
 export default function ProfitabilityWebsites() {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [hideDone, setHideDone] = useState(false)
   const [open, setOpen] = useState(() => new Set())
+  const [notesOpen, setNotesOpen] = useState(() => new Set())
   const { rows } = useLaborRateRows()
   const rates = Array.isArray(rows) ? rows : null
 
@@ -42,6 +43,15 @@ export default function ProfitabilityWebsites() {
 
   const toggle = (key) => {
     setOpen((current) => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const toggleNotes = (key) => {
+    setNotesOpen((current) => {
       const next = new Set(current)
       if (next.has(key)) next.delete(key)
       else next.add(key)
@@ -114,10 +124,6 @@ export default function ProfitabilityWebsites() {
                       <a href={build.url} target="_blank" rel="noreferrer">
                         {build.summary}
                       </a>
-                      <p>
-                        {build.project || 'No project'}
-                        {build.assignee ? ` · ${build.assignee}` : ''}
-                      </p>
                     </div>
                     <div className="ws-pills">
                       {build.status ? <span className="ws-status">{build.status}</span> : null}
@@ -130,11 +136,29 @@ export default function ProfitabilityWebsites() {
                       <div className="ws-track" aria-hidden="true">
                         <span className={`ws-fill ws-${build.tone}`} style={{ width: `${Math.min(build.percent || 0, 100)}%` }} />
                       </div>
-                      <strong className={`ws-pct ws-${build.tone}`}>{formatPct(build.percent)}%</strong>
+                      <strong className="ws-pct">{formatPct(build.percent)}%</strong>
                     </div>
                   ) : null}
 
-                  <dl className="ws-metrics">
+                  {build.ready ? (
+                    <dl className="ws-metrics">
+                      <div>
+                        <dt>Budget</dt>
+                        <dd>{build.budgetAmount == null ? '—' : formatMoney(build.budgetAmount)}</dd>
+                      </div>
+                      <div>
+                        <dt>Labor</dt>
+                        <dd title={build.uncostedHours > 0 ? `${formatHours(build.uncostedHours)} have no cost rate` : undefined}>
+                          {build.labor == null ? '—' : formatMoney(build.labor)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Margin</dt>
+                        <dd className={build.margin != null && build.margin < 0 ? 'ws-negative' : undefined}>{build.margin == null ? '—' : formatMoney(build.margin)}</dd>
+                      </div>
+                    </dl>
+                  ) : null}
+                  <dl className="ws-metrics ws-hours">
                     <div>
                       <dt>Logged</dt>
                       <dd>
@@ -143,55 +167,26 @@ export default function ProfitabilityWebsites() {
                       </dd>
                     </div>
                     {build.ready ? (
-                      <>
-                        <div>
-                          <dt>Budget</dt>
-                          <dd>{build.budgetAmount == null ? '—' : formatMoney(build.budgetAmount)}</dd>
-                        </div>
-                        <div>
-                          <dt>Labor</dt>
-                          <dd title={build.uncostedHours > 0 ? `${formatHours(build.uncostedHours)} have no cost rate` : undefined}>
-                            {build.labor == null ? '—' : formatMoney(build.labor)}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>Margin</dt>
-                          <dd className={build.margin != null && build.margin < 0 ? 'ws-negative' : undefined}>{build.margin == null ? '—' : formatMoney(build.margin)}</dd>
-                        </div>
-                        <div>
-                          <dt>Effective rate</dt>
-                          <dd>
-                            {formatRate(build.effectiveRate)}
-                            {build.rate != null ? ` vs ${formatRate(build.rate)}` : ''}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>Hours left</dt>
-                          <dd className={build.hoursLeft != null && build.hoursLeft < 0 ? 'ws-negative' : undefined}>{formatHours(build.hoursLeft)}</dd>
-                        </div>
-                      </>
-                    ) : null}
-                    {build.deposit ? (
                       <div>
-                        <dt>Deposit</dt>
-                        <dd>{build.deposit}</dd>
+                        <dt>Hours left</dt>
+                        <dd className={build.hoursLeft != null && build.hoursLeft < 0 ? 'ws-negative' : undefined}>{formatHours(build.hoursLeft)}</dd>
                       </div>
                     ) : null}
                   </dl>
 
                   <div className="ws-actions">
+                    {build.notes ? (
+                      <button type="button" aria-expanded={notesOpen.has(build.key)} onClick={() => toggleNotes(build.key)}>
+                        Billing notes
+                      </button>
+                    ) : null}
                     <button type="button" onClick={() => toggle(build.key)}>
                       {open.has(build.key) ? 'Hide hours by person' : 'Hours by person'}
                     </button>
-                    {build.notes ? (
-                      <span className="ws-notes" title={build.notes}>
-                        Billing notes
-                      </span>
-                    ) : null}
                   </div>
+                  {notesOpen.has(build.key) && build.notes ? <p className="ws-note">{build.notes}</p> : null}
                   {open.has(build.key) ? (
                     <div className="ws-people">
-                      {build.notes ? <p>{build.notes}</p> : null}
                       {build.people.length ? (
                         <table className="pr-table">
                           <thead>
