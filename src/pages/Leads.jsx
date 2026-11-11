@@ -31,6 +31,15 @@ import {
 
 const BLUE_BUTTON = 'bg-[#1644ED] text-white shadow-md hover:bg-[#1238c4] hover:shadow-lg hover:shadow-[#1644ED]/25 focus-visible:ring-[#1644ED]/50'
 
+const PIPELINE_STAGES = [
+  { id: 'lead', label: 'Lead' },
+  { id: 'kickoff', label: 'Kick-Off Meeting' },
+  { id: 'proposal', label: 'Proposal Sent' },
+  { id: 'contract', label: 'Buy-in / Contract' },
+  { id: 'won', label: 'Closed Won' },
+  { id: 'lost', label: 'Closed Lost' },
+]
+
 const EMPTY = {
   source: 'Direct',
   first_contact_date: '',
@@ -46,6 +55,7 @@ const EMPTY = {
   referred_by: '',
   deal_type: '',
   value_2026: '',
+  pipeline_stage: '',
 }
 
 function missingTable(error) {
@@ -93,7 +103,26 @@ export default function Leads({ embedded = false }) {
       .order('first_contact_date', { ascending: false, nullsFirst: false })
     if (!error) {
       setSetupNeeded(false)
-      setRows(data || [])
+      let rows = data || []
+      if (!rows.length) {
+        try {
+          const response = await fetch(SHEET_CSV_URL)
+          if (response.ok) {
+            const leads = sheetRowsToLeads(await response.text())
+            if (leads.length) {
+              const { error: importError } = await supabase.from('sales_leads').upsert(leads, { onConflict: 'import_key', ignoreDuplicates: true })
+              if (!importError) {
+                const again = await supabase.from('sales_leads').select('*').order('first_contact_date', { ascending: false, nullsFirst: false })
+                rows = again.data || []
+                toast({ title: `Imported ${leads.length} leads from the sheet` })
+              }
+            }
+          }
+        } catch {
+          /* keep empty table */
+        }
+      }
+      setRows(rows)
       setLoading(false)
       return
     }
@@ -170,6 +199,7 @@ export default function Leads({ embedded = false }) {
       referred_by: row.referred_by || '',
       deal_type: row.deal_type || '',
       value_2026: row.value_2026 ?? '',
+      pipeline_stage: row.pipeline_stage || '',
     })
     setDialogOpen(true)
   }
@@ -204,6 +234,7 @@ export default function Leads({ embedded = false }) {
       referred_by: draft.referred_by.trim(),
       deal_type: draft.deal_type || null,
       value_2026: amount(draft.value_2026),
+      pipeline_stage: draft.pipeline_stage || null,
       updated_at: new Date().toISOString(),
     }
   }
@@ -468,75 +499,86 @@ export default function Leads({ embedded = false }) {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Contact' : 'New contact'}</DialogTitle>
+            <DialogTitle>{editingId ? (draft.company || draft.name || 'Contact') : 'New contact'}</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              {editingId ? [draft.name, draft.source].filter(Boolean).join(' · ') : 'Name or company required. Save puts them on Score Card.'}
+            </p>
           </DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Source">
-              <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.source} onChange={(event) => updateDraft('source', event.target.value)}>
-                <option value=""> </option>
-                {LEAD_SOURCES.map((item) => <option key={item} value={item}>{item}</option>)}
-              </select>
+          <div className="space-y-5">
+            <section>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Who</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Name"><Input value={draft.name} onChange={(event) => updateDraft('name', event.target.value)} /></Field>
+                <Field label="Company"><Input value={draft.company} onChange={(event) => updateDraft('company', event.target.value)} /></Field>
+                <Field label="Phone"><Input type="tel" value={draft.telephone} onChange={(event) => updateDraft('telephone', event.target.value)} /></Field>
+                <Field label="Email"><Input type="email" value={draft.email} onChange={(event) => updateDraft('email', event.target.value)} /></Field>
+              </div>
+            </section>
+            <section>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Channel</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Source">
+                  <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.source} onChange={(event) => updateDraft('source', event.target.value)}>
+                    {LEAD_SOURCES.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </Field>
+                <Field label="First contact">
+                  <Input type="date" value={draft.first_contact_date} onChange={(event) => updateDraft('first_contact_date', event.target.value)} />
+                </Field>
+                <Field label="Referred by">
+                  <Input value={draft.referred_by} onChange={(event) => updateDraft('referred_by', event.target.value)} />
+                </Field>
+                <Field label="Jira (optional)">
+                  <Input value={draft.jira_key} placeholder="CCE-1 or paste a Jira link" onChange={(event) => updateDraft('jira_key', event.target.value)} />
+                </Field>
+              </div>
+            </section>
+            <section>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Deal</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Quality">
+                  <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.quality} onChange={(event) => updateDraft('quality', event.target.value)}>
+                    <option value=""></option>
+                    {LEAD_QUALITIES.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </Field>
+                <Field label="Pipeline stage">
+                  <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.pipeline_stage} onChange={(event) => updateDraft('pipeline_stage', event.target.value)}>
+                    <option value=""></option>
+                    {PIPELINE_STAGES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                  </select>
+                </Field>
+                <Field label="Deal type">
+                  <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.deal_type} onChange={(event) => updateDraft('deal_type', event.target.value)}>
+                    <option value=""></option>
+                    {DEAL_TYPES.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </Field>
+                <Field label="Close amount">
+                  <Input type="number" value={draft.close_amount} onChange={(event) => updateDraft('close_amount', event.target.value)} />
+                </Field>
+                <Field label="2026 value">
+                  <Input type="number" value={draft.value_2026} onChange={(event) => updateDraft('value_2026', event.target.value)} />
+                </Field>
+              </div>
+            </section>
+            <Field label="Notes">
+              <Textarea rows={4} value={draft.notes} onChange={(event) => updateDraft('notes', event.target.value)} />
             </Field>
-            <Field label="Date of 1st contact">
-              <Input type="date" value={draft.first_contact_date} onChange={(event) => updateDraft('first_contact_date', event.target.value)} />
-            </Field>
-            <Field label="Jira key">
-              <Input value={draft.jira_key} placeholder="CCE-1 or paste Jira URL" onChange={(event) => updateDraft('jira_key', event.target.value)} />
-            </Field>
-            <Field label="Month">
-              <Input value={draft.month} onChange={(event) => updateDraft('month', event.target.value)} />
-            </Field>
-            <Field label="Name">
-              <Input value={draft.name} onChange={(event) => updateDraft('name', event.target.value)} />
-            </Field>
-            <Field label="Company">
-              <Input value={draft.company} onChange={(event) => updateDraft('company', event.target.value)} />
-            </Field>
-            <Field label="Telephone">
-              <Input value={draft.telephone} onChange={(event) => updateDraft('telephone', event.target.value)} />
-            </Field>
-            <Field label="Email">
-              <Input type="email" value={draft.email} onChange={(event) => updateDraft('email', event.target.value)} />
-            </Field>
-            <Field label="Quality">
-              <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.quality} onChange={(event) => updateDraft('quality', event.target.value)}>
-                <option value=""> </option>
-                {LEAD_QUALITIES.map((item) => <option key={item} value={item}>{item}</option>)}
-              </select>
-            </Field>
-            <Field label="Deal type">
-              <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.deal_type} onChange={(event) => updateDraft('deal_type', event.target.value)}>
-                <option value=""> </option>
-                {DEAL_TYPES.map((item) => <option key={item} value={item}>{item}</option>)}
-              </select>
-            </Field>
-            <Field label="Close amount">
-              <Input type="number" value={draft.close_amount} onChange={(event) => updateDraft('close_amount', event.target.value)} />
-            </Field>
-            <Field label="2026 value">
-              <Input type="number" value={draft.value_2026} onChange={(event) => updateDraft('value_2026', event.target.value)} />
-            </Field>
-            <div className="sm:col-span-2">
-              <Field label="Referred by">
-                <Input value={draft.referred_by} onChange={(event) => updateDraft('referred_by', event.target.value)} />
-              </Field>
-            </div>
-            <div className="sm:col-span-2">
-              <Field label="Reason / notes">
-                <Textarea value={draft.notes} onChange={(event) => updateDraft('notes', event.target.value)} />
-              </Field>
-            </div>
           </div>
           <DialogFooter className="gap-2 sm:justify-between">
             {editingId ? (
               <Button variant="outline" onClick={deleteLead} disabled={saving}>Delete</Button>
             ) : <span />}
-            <Button className={BLUE_BUTTON} onClick={saveLead} disabled={saving}>
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Save
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button className={BLUE_BUTTON} onClick={saveLead} disabled={saving}>
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save contact
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
