@@ -43,6 +43,7 @@ import {
   ClipboardList,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
+import { prefetchRoute } from '../lib/routePrefetch'
 import { useAuth } from '../contexts/AuthContext'
 import { readFullNav, setFullNav } from '../lib/navMode'
 import { useFeatureListNav } from '../lib/featureListNav'
@@ -356,6 +357,7 @@ export default function Sidebar({
             <div key={item.path}>
               <Link
                 to={item.path}
+                onMouseEnter={() => prefetchRoute(item.path)}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all relative group",
                   collapsed && "justify-center px-0",
@@ -387,6 +389,7 @@ export default function Sidebar({
                 <div className="mb-2 ml-3 mt-1 border-l border-border pl-2">
                   <Link
                     to="/score-card/financials"
+                    onMouseEnter={() => prefetchRoute('/score-card/financials')}
                     className={cn(
                       "flex w-full rounded-lg px-2 py-1.5 text-left text-sm",
                       location.pathname === '/score-card/financials'
@@ -402,6 +405,7 @@ export default function Sidebar({
                 <div className="mb-2 ml-3 mt-1 border-l border-border pl-2">
                   <Link
                     to="/profitability/costs"
+                    onMouseEnter={() => prefetchRoute('/profitability/costs')}
                     className={cn(
                       "flex w-full rounded-lg px-2 py-1.5 text-left text-sm",
                       location.pathname === '/profitability/costs'

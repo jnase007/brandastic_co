@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from './contexts/AuthContext'
 import { GamificationProvider } from './contexts/GamificationContext'
 import PageLoadingBar from './components/PageLoadingBar'
+import { prefetchCommonRoutes } from './lib/routePrefetch'
 
 // Pages - Lazy loaded for better performance
 const Login = lazy(() => import('./pages/Login'))
@@ -663,7 +664,10 @@ function App() {
     }
     
     // Check for updates periodically (every 2 minutes)
-    const versionCheckInterval = setInterval(checkForUpdates, 2 * 60 * 1000)
+    const idle = window.requestIdleCallback
+      ? window.requestIdleCallback(() => prefetchCommonRoutes())
+      : setTimeout(prefetchCommonRoutes, 500)
+    const versionCheckInterval = setInterval(checkForUpdates, 10 * 60 * 1000)
     
     // Handle when tab/app becomes visible again - check for version updates
     // Note: Session handling is done in AuthContext, not here
@@ -726,6 +730,8 @@ function App() {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('pageshow', handlePageShow)
       clearInterval(versionCheckInterval)
+      if (window.cancelIdleCallback && typeof idle === 'number') window.cancelIdleCallback(idle)
+      else clearTimeout(idle)
     }
   }, [])
 
@@ -827,15 +833,13 @@ function App() {
         {confetti}
         {(location.pathname === '/login' || location.pathname === '/client-login') && <InstallPrompt />}
         <Suspense fallback={<PageLoader />}>
-          <AnimatePresence mode="wait">
-            <Routes location={location} key={location.pathname}>
-              <Route path="/login" element={<Login />} />
-              <Route path="/client-login" element={<ClientLogin />} />
-              <Route path="/demo" element={<Demo />} />
-              <Route path="/client-view/:token" element={<ClientPublic />} />
-              <Route path="*" element={<Navigate to="/login" replace />} />
-            </Routes>
-          </AnimatePresence>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/client-login" element={<ClientLogin />} />
+            <Route path="/demo" element={<Demo />} />
+            <Route path="/client-view/:token" element={<ClientPublic />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
         </Suspense>
       </div>
     )
@@ -914,9 +918,7 @@ function App() {
           <MainLayout>
             <ErrorBoundary>
             <Suspense fallback={<PageLoader />}>
-{/* Profile loads in background - no blocking indicator needed */}
-            <AnimatePresence mode="wait">
-            <Routes location={location} key={location.pathname}>
+            <Routes>
               {/* Team routes */}
               <Route
                 path="/dashboard"
@@ -1273,7 +1275,6 @@ function App() {
               <Route path="/" element={<Navigate to="/profitability" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-            </AnimatePresence>
             </Suspense>
             </ErrorBoundary>
           </MainLayout>
@@ -1281,8 +1282,7 @@ function App() {
         </FocusModeProvider>
       ) : (
         <Suspense fallback={<PageLoader />}>
-        <AnimatePresence mode="wait">
-          <Routes location={location} key={location.pathname}>
+          <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/client-login" element={<ClientLogin />} />
             <Route path="/client-dashboard" element={<Navigate to="/client-login" replace />} />
@@ -1290,7 +1290,6 @@ function App() {
             <Route path="/client-view/:token" element={<ClientPublic />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
-        </AnimatePresence>
         </Suspense>
       )}
     </div>
