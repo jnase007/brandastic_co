@@ -348,7 +348,9 @@ export default function Sidebar({
               ? location.pathname.startsWith('/profitability/team')
               : item.path === '/profitability/websites'
                 ? location.pathname.startsWith('/profitability/websites')
-                : location.pathname === item.path
+                : item.path === '/score-card'
+                  ? location.pathname.startsWith('/score-card')
+                  : location.pathname === item.path
           const sections = item.path === '/feature-list' && location.pathname === '/feature-list' && !collapsed ? featureNav?.sections : null
           return (
             <div key={item.path}>
@@ -381,6 +383,21 @@ export default function Sidebar({
                   </div>
                 )}
               </Link>
+              {item.path === '/score-card' && isActive && !collapsed ? (
+                <div className="mb-2 ml-3 mt-1 border-l border-border pl-2">
+                  <Link
+                    to="/score-card/financials"
+                    className={cn(
+                      "flex w-full rounded-lg px-2 py-1.5 text-left text-sm",
+                      location.pathname === '/score-card/financials'
+                        ? "bg-[#e8eeff] font-medium text-[#1644ED]"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    Financials
+                  </Link>
+                </div>
+              ) : null}
               {item.path === '/profitability' && isActive && !collapsed ? (
                 <div className="mb-2 ml-3 mt-1 border-l border-border pl-2">
                   <Link
