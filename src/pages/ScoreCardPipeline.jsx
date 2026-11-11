@@ -36,6 +36,7 @@ export default function ScoreCardPipeline() {
   const [setupNeeded, setSetupNeeded] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingLead, setEditingLead] = useState(null)
+  const [selected, setSelected] = useState(() => new Set())
 
   const load = async () => {
     setLoading(true)
@@ -66,27 +67,41 @@ export default function ScoreCardPipeline() {
 
   const pipelineValue = rows.reduce((sum, row) => sum + amountOf(row), 0)
 
-  async function persistStage(id, stageId) {
+  function toggleSelected(id, on) {
+    setSelected((current) => {
+      const next = new Set(current)
+      if (on) next.add(String(id))
+      else next.delete(String(id))
+      return next
+    })
+  }
+
+  async function persistStages(ids, stageId) {
+    const unique = [...new Set(ids.map(String))]
+    if (!unique.length) return
     const stage = STAGES.find((s) => s.id === stageId)
     const patch = { pipeline_stage: stageId, quality: stage.quality, updated_at: new Date().toISOString() }
-    setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)))
-    let { error } = await supabase.from('sales_leads').update(patch).eq('id', id)
+    setRows((current) => current.map((row) => (unique.includes(String(row.id)) ? { ...row, ...patch } : row)))
+    let { error } = await supabase.from('sales_leads').update(patch).in('id', unique)
     if (error && String(error.message || '').includes('pipeline_stage')) {
       const { pipeline_stage, ...rest } = patch
-      error = (await supabase.from('sales_leads').update(rest).eq('id', id)).error
+      error = (await supabase.from('sales_leads').update(rest).in('id', unique)).error
     }
     if (error) {
-      toast({ title: 'Could not move deal', description: error.message, variant: 'destructive' })
+      toast({ title: 'Could not move deals', description: error.message, variant: 'destructive' })
       load()
       return
     }
-    toast({ title: `Moved to ${stage.title}` })
+    toast({ title: unique.length > 1 ? `${unique.length} moved to ${stage.title}` : `Moved to ${stage.title}` })
+    setSelected(new Set())
   }
 
   function onDragEnd(result) {
     if (!result.destination) return
     if (result.source.droppableId === result.destination.droppableId) return
-    persistStage(result.draggableId, result.destination.droppableId)
+    const dragged = String(result.draggableId)
+    const ids = selected.has(dragged) && selected.size > 1 ? [...selected] : [dragged]
+    persistStages(ids, result.destination.droppableId)
   }
 
   return (
@@ -101,7 +116,7 @@ export default function ScoreCardPipeline() {
               <h1 className="text-2xl font-bold sm:text-4xl">Deal Pipeline</h1>
             </div>
             <p className="text-sm text-slate-500 sm:text-lg">
-              Same people as Score Card. Add here or there — they show up on this board. Drag to move stages.
+              Same people as Score Card. Check several cards, then drag any one of them into the next column — all selected move together.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -130,6 +145,15 @@ export default function ScoreCardPipeline() {
             <p className="text-2xl font-bold">{byStage.won.length}</p>
           </div>
         </div>
+
+        {selected.size ? (
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-sm">
+            <span className="font-semibold">{selected.size} selected</span>
+            <span className="text-slate-500">Drag one into another column to move all</span>
+            <Button size="sm" className="rounded-full bg-green-600 text-white hover:bg-green-700" onClick={() => persistStages([...selected], 'won')}>Closed won</Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Clear</Button>
+          </div>
+        ) : null}
 
         {setupNeeded ? (
           <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">
@@ -176,10 +200,19 @@ export default function ScoreCardPipeline() {
                                     {...drag.dragHandleProps}
                                     className={cn(
                                       'mb-2 rounded-lg border bg-white p-3 shadow-sm',
+                                      selected.has(String(row.id)) && 'ring-2 ring-purple-400',
                                       snap.isDragging ? 'rotate-2 shadow-lg ring-2 ring-purple-500' : 'cursor-grab hover:shadow-md'
                                     )}
                                   >
                                     <div className="mb-2 flex items-start gap-2">
+                                      <input
+                                        type="checkbox"
+                                        className="mt-1 shrink-0"
+                                        checked={selected.has(String(row.id))}
+                                        onMouseDown={(event) => event.stopPropagation()}
+                                        onClick={(event) => event.stopPropagation()}
+                                        onChange={(event) => toggleSelected(row.id, event.target.checked)}
+                                      />
                                       <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
                                       <div className="min-w-0 flex-1 overflow-hidden">
                                         <button type="button" className="w-full break-words text-left text-sm font-semibold leading-snug hover:underline" onClick={(event) => { event.stopPropagation(); setEditingLead(row); setDialogOpen(true) }}>{row.company || row.name || 'Untitled'}</button>
