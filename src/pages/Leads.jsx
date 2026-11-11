@@ -536,7 +536,7 @@ export default function Leads({ embedded = false }) {
 function Field({ label, children }) {
   return (
     <label className="block space-y-1.5">
-      <Label>{label}</label>
+      <Label>{label}</Label>
       {children}
     </label>
   )
