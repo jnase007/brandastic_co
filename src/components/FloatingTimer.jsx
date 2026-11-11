@@ -223,20 +223,11 @@ export default function FloatingTimer({
     const loadData = async () => {
       setIsLoading(true)
       try {
-        // Load clients (fail open if channel_hours column is not live yet)
-        let clientsQuery = supabase
+        const { data: clientsData, error: clientsError } = await supabase
           .from('clients')
-          .select('id, name, color, monthly_hours, channel_hours')
+          .select('id, name, color, monthly_hours')
           .eq('is_active', true)
           .order('name')
-        let { data: clientsData, error: clientsError } = await clientsQuery
-        if (clientsError && String(clientsError.message || '').includes('column')) {
-          ;({ data: clientsData, error: clientsError } = await supabase
-            .from('clients')
-            .select('id, name, color, monthly_hours')
-            .eq('is_active', true)
-            .order('name'))
-        }
         if (clientsError) console.error('Error loading clients:', clientsError)
         else setClients(clientsData || [])
         
