@@ -22,7 +22,7 @@ export default function IdealTargetClient() {
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="rounded-2xl border bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-            <img src="/maya-chen.jpg" alt="Maya Chen, Director of Enrollment" className="h-48 w-36 shrink-0 rounded-xl object-cover object-top shadow-sm" />
+            <img src="/maya-chen.jpg?v=justin-2" alt="Maya Chen, Director of Enrollment" className="h-64 w-48 shrink-0 rounded-2xl object-cover object-[50%_18%] shadow-md ring-1 ring-black/5" />
             <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Who she is</p>
           <h2 className="mt-1 text-2xl font-bold">Maya Chen, 41</h2>

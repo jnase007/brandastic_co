@@ -137,7 +137,7 @@ export default function ScoreCard() {
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] text-[#8eb4ff]">SCORE CARD V2 2026</p>
           <h1 className="text-xl font-bold">Score Card</h1>
-          <p className="text-sm text-muted-foreground">Click any cell to edit. Jira key = real conversation → pipeline.</p>
+          <p className="text-sm text-muted-foreground">Add a lead here or on Deals — same list, drag on the pipeline.</p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => setTab('leads')} className={cn('rounded-lg px-3 py-1.5 text-sm font-medium', tab === 'leads' ? 'bg-brand-orange text-white' : 'border hover:bg-muted')}>All Leads</button>
