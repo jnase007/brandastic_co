@@ -74,7 +74,7 @@ export default function ProfitabilityWebsites() {
         </label>
       </header>
       <p className="pr-back ws-links">
-        <Link to="/profitability">← Client profitability</Link>
+        <Link to="/profitability">← Marketing retainers</Link>
         <Link to="/profitability/team">Team</Link>
         <Link to="/profitability/costs">Costs</Link>
       </p>

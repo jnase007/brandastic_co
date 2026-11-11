@@ -41,6 +41,7 @@ import {
   Compass,
   Crosshair,
   ClipboardList,
+  Megaphone,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { prefetchRoute } from '../lib/routePrefetch'
@@ -78,10 +79,11 @@ const navItems = [
 ]
 
 const simpleNavItems = [
-  { path: '/profitability', icon: BarChart3, label: 'Profitability' },
+  { path: '/profitability', icon: BarChart3, label: 'Marketing Retainers' },
   { path: '/profitability/team', icon: Users2, label: 'Team' },
   { path: '/profitability/websites', icon: Globe, label: 'Websites' },
   { path: '/hosting', icon: Server, label: 'Hosting' },
+  { path: '/announcements', icon: Megaphone, label: 'Announcements' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
   { path: '/mission', icon: Target, label: 'Mission' },
   { path: '/strategy', icon: Compass, label: 'Strategy' },

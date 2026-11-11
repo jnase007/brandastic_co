@@ -11,6 +11,7 @@ import {
   Compass,
   Crosshair,
   ClipboardList,
+  Megaphone,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
@@ -69,10 +70,11 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         { action: 'more', icon: Menu, label: 'More' },
       ]
     : [
-        { path: '/profitability', icon: BarChart3, label: 'Profitability' },
+        { path: '/profitability', icon: BarChart3, label: 'Marketing Retainers' },
         { path: '/profitability/team', icon: Users2, label: 'Team' },
         { path: '/profitability/websites', icon: Globe, label: 'Websites' },
         { path: '/hosting', icon: Server, label: 'Hosting' },
+        { path: '/announcements', icon: Megaphone, label: 'Announcements' },
         { path: '/feature-list', icon: ListChecks, label: 'Features' },
       ]
 
@@ -148,7 +150,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all duration-200",
+                  "relative flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl transition-all duration-200",
                   isActive
                     ? "text-brand-orange"
                     : "text-muted-foreground hover:text-foreground active:scale-95"
@@ -167,7 +169,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
                 >
                   <Icon className={cn("h-5 w-5", isActive && "text-brand-orange")} />
                 </motion.div>
-                <span className={cn("text-[10px] font-medium", isActive && "text-brand-orange font-semibold")}>
+                <span className={cn("max-w-[4.6rem] text-center text-[10px] font-medium leading-tight", isActive && "text-brand-orange font-semibold")}>
                   {item.label}
                 </span>
               </Link>

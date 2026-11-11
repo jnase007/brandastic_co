@@ -139,7 +139,7 @@ function Overview({ report, range }: { report: AllocationReport; range: TeamRang
   return (
     <section className="pr-dashboard" aria-label="Team performance">
       <Link to={`/profitability?range=${range === "week" ? "month" : range}`} className="pr-back">
-        ← Client profitability
+        ← Marketing retainers
       </Link>
       <div className="tm-kpis">
         <article className="pr-kpi">

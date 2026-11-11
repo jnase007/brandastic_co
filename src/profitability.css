@@ -1370,6 +1370,115 @@
   color: #94a3b8;
 }
 
+.an-holiday-list {
+  display: grid;
+  gap: 12px;
+}
+
+.an-holiday {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.an-holiday-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: end;
+}
+
+.an-holiday-fields label {
+  display: grid;
+  gap: 4px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.an-holiday-fields input,
+.an-holiday-fields select {
+  width: 180px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font: inherit;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.an-holiday-fields input:disabled,
+.an-holiday-fields select:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+.an-holiday-preview {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pr-rates-person {
+  display: grid;
+  gap: 8px;
+  min-width: 820px;
+}
+
+.pr-rates-more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: end;
+}
+
+.pr-rates-more label {
+  display: grid;
+  gap: 4px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pr-rates-more input[type="date"] {
+  width: 180px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font: inherit;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.pr-rates-more label.pr-rates-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.pr-rates-check input {
+  width: 16px;
+  height: 16px;
+}
+
 .pr-rates-actions {
   display: flex;
   align-items: center;

@@ -40,6 +40,7 @@ const ScoreCardFinancials = lazy(() => import('./pages/ScoreCardFinancials'))
 const ScoreCardPipeline = lazy(() => import('./pages/ScoreCardPipeline'))
 const Financials = lazy(() => import('./pages/Financials'))
 const FeatureList = lazy(() => import('./pages/FeatureList'))
+const Announcements = lazy(() => import('./pages/Announcements'))
 const Hosting = lazy(() => import('./pages/Hosting'))
 const Profitability = lazy(() => import('./pages/Profitability'))
 const ProfitabilityCosts = lazy(() => import('./pages/ProfitabilityCosts'))
@@ -1181,6 +1182,14 @@ function App() {
                 element={
                   <TeamRoute>
                     <FeatureList />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/announcements"
+                element={
+                  <TeamRoute>
+                    <Announcements />
                   </TeamRoute>
                 }
               />

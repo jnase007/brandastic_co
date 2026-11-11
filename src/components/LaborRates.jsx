@@ -13,6 +13,9 @@ function draftFrom(rows) {
     workerType: row.worker_type === 'contractor' ? 'contractor' : 'employee',
     weeklyCapacity: row.weekly_capacity == null || row.weekly_capacity === '' ? '40' : String(row.weekly_capacity),
     role: row.role || '',
+    birthday: dateInput(row.birthday),
+    startDate: dateInput(row.start_date),
+    showOnAnnouncements: row.show_on_announcements !== false,
   }))
 }
 
@@ -22,6 +25,21 @@ function commaNumber(value) {
   const [whole, fraction] = cleaned.split('.')
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return fraction != null && fraction !== '' ? `${grouped}.${fraction.slice(0, 2)}` : grouped
+}
+
+function dateInput(value) {
+  const text = String(value || '')
+  return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : ''
+}
+
+function todayIso() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date())
+}
+
+function addDays(iso, days) {
+  const [year, month, day] = iso.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day + days))
+  return date.toISOString().slice(0, 10)
 }
 
 function overheadText(value) {
@@ -57,6 +75,9 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
       workerType: row.workerType === 'contractor' ? 'contractor' : 'employee',
       weeklyCapacity: row.weeklyCapacity,
       role: row.role,
+      birthday: row.birthday,
+      startDate: row.startDate,
+      showOnAnnouncements: row.showOnAnnouncements,
     }))
     if (cleaned.some((row) => !row.name)) {
       setError('Every person needs a name.')
@@ -68,6 +89,11 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
     }
     if (cleaned.some((row) => row.workerType === 'employee' && !(Number(row.weeklyCapacity) > 0))) {
       setError('Weekly hours for an employee have to be greater than 0.')
+      return
+    }
+    const latestStart = addDays(todayIso(), 60)
+    if (cleaned.some((row) => row.startDate && row.startDate > latestStart)) {
+      setError('Start date can\'t be more than 60 days in the future.')
       return
     }
     const overheadAmount = Number(String(overheadDraft).replace(/[$,]/g, ''))
@@ -92,6 +118,9 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
       if (!savedRates.profileSaved) {
         setError('Hourly costs saved, but type, weekly hours, and role did not save.')
         setSaved(false)
+      } else if (savedRates.announceSaved === false) {
+        setError('Hourly costs saved, but birthday and start date did not save.')
+        setSaved(false)
       } else {
         setSaved(true)
       }
@@ -109,7 +138,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#FF6B00]">Profitability</p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">Costs</h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-500">
-            Hourly cost and monthly overhead feed every profitability view. Tempo still supplies hours. Employees default to 40 hours a week.
+            Hourly cost and monthly overhead feed every profitability view. Tempo still supplies hours. Employees default to 40 hours a week. Birthday, start date, and Announce feed Company Announcements.
           </p>
         </div>
         {alwaysOpen ? null : (
@@ -160,7 +189,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                   disabled={saving}
                   onClick={() => {
                     setSaved(false)
-                    setDraft((current) => [...current, { name: '', hourly: '', workerType: 'employee', weeklyCapacity: '40', role: '' }])
+                    setDraft((current) => [...current, { name: '', hourly: '', workerType: 'employee', weeklyCapacity: '40', role: '', birthday: '', startDate: '', showOnAnnouncements: true }])
                   }}
                 >
                   <Plus className="mr-1 h-4 w-4" />
@@ -169,7 +198,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
               ) : null}
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-[900px] w-full text-sm">
+              <table className="min-w-[1180px] w-full text-sm">
                 <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="px-5 py-3">Name</th>
@@ -177,6 +206,9 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                     <th className="px-3 py-3">Role</th>
                     <th className="px-3 py-3">Weekly hours</th>
                     <th className="px-3 py-3">Hourly cost</th>
+                    <th className="px-3 py-3">Birthday</th>
+                    <th className="px-3 py-3">Start date</th>
+                    <th className="px-3 py-3">Announce</th>
                     <th className="px-3 py-3" />
                   </tr>
                 </thead>
@@ -237,6 +269,35 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                             onChange={(event) => update(index, 'hourly', commaNumber(event.target.value))}
                           />
                         </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <Input
+                          className={fieldClass}
+                          type="date"
+                          aria-label={`Birthday for ${row.name || 'person'}`}
+                          value={row.birthday || ''}
+                          disabled={!editable || saving}
+                          onChange={(event) => update(index, 'birthday', event.target.value)}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <Input
+                          className={fieldClass}
+                          type="date"
+                          aria-label={`Start date for ${row.name || 'person'}`}
+                          value={row.startDate || ''}
+                          disabled={!editable || saving}
+                          onChange={(event) => update(index, 'startDate', event.target.value)}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="checkbox"
+                          aria-label={`Announce ${row.name || 'person'}`}
+                          checked={row.showOnAnnouncements !== false}
+                          disabled={!editable || saving}
+                          onChange={(event) => update(index, 'showOnAnnouncements', event.target.checked)}
+                        />
                       </td>
                       <td className="px-3 py-2">
                         {editable ? (

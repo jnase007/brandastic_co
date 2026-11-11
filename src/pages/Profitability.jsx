@@ -43,7 +43,7 @@ export default function Profitability() {
     return (
       <div className="pr-page">
         <div className="pr-panel">
-          <h1>Client Reports & Profitability</h1>
+          <h1>Marketing Retainers</h1>
           <p className="pr-note">Loading…</p>
         </div>
       </div>
@@ -54,7 +54,7 @@ export default function Profitability() {
     return (
       <div className="pr-page">
         <div className="pr-panel">
-          <h1>Client Reports & Profitability</h1>
+          <h1>Marketing Retainers</h1>
           <p className="pr-note">{error}</p>
         </div>
       </div>

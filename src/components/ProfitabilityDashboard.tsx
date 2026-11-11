@@ -190,7 +190,7 @@ export function ProfitabilityDashboard({
 
           <div>
             <strong>Agency Health</strong>
-            <h1>Client Reports & Profitability</h1>
+            <h1>Marketing Retainers</h1>
           </div>
         </div>
         <div className="pr-controls">
