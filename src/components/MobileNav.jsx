@@ -12,6 +12,7 @@ import {
   Crosshair,
   ClipboardList,
   Megaphone,
+  GraduationCap,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
@@ -87,11 +88,15 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         { path: '/strategy', icon: Compass, label: 'Strategy' },
         { path: '/ideal-target-client', icon: Crosshair, label: 'Target Client(s)' },
         { path: '/announcements', icon: Megaphone, label: 'Announcements' },
+        { path: '/education/courses', href: 'https://course.brandastic.com', icon: GraduationCap, label: 'Courses' },
+        { path: '/education/masterclass', href: 'https://course.brandastic.com/teach', icon: BookOpen, label: 'Masterclass' },
+        { path: '/education/tam-icp', href: 'https://audit.brandastic.com/gameplan_marketing/brandastic-tam-icp', icon: Target, label: 'TAM / ICP' },
         { path: '/new_admin', icon: Shield, label: 'Admin' },
         { path: '/profitability/team', icon: Users2, label: 'Team Hours' },
         { path: '/people', icon: Users, label: 'People' },
         { path: '/scenarios', icon: BarChart3, label: 'Scenarios' },
         { path: '/working', icon: CheckCircle, label: 'Working/Not' },
+        { path: '/org-structure', href: 'https://audit.brandastic.com/gameplan_marketing/org-structure', icon: Building2, label: 'Org structure' },
       ].filter((item) => canSeePath(item.path))
 
   const [showMore, setShowMore] = useState(false)
@@ -161,6 +166,21 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
               )
             }
             
+            if (item.href) {
+              return (
+                <a
+                  key={item.path}
+                  href={item.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="relative flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-muted-foreground hover:text-foreground"
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="text-[10px] font-medium">{item.label}</span>
+                </a>
+              )
+            }
+
             return (
               <Link
                 key={item.path}

@@ -40,6 +40,7 @@ import {
   Globe,
   Compass,
   Crosshair,
+  GraduationCap,
   ClipboardList,
   Megaphone,
 } from 'lucide-react'
@@ -89,11 +90,15 @@ const simpleNavItems = [
   { path: '/strategy', icon: Compass, label: 'Strategy', group: 'Company' },
   { path: '/ideal-target-client', icon: Crosshair, label: 'Target Client(s)', group: 'Company' },
   { path: '/announcements', icon: Megaphone, label: 'Announcements', group: 'Company' },
+  { path: '/education/courses', href: 'https://course.brandastic.com', icon: GraduationCap, label: 'Courses', group: 'Education' },
+  { path: '/education/masterclass', href: 'https://course.brandastic.com/teach', icon: BookOpen, label: 'Masterclass', group: 'Education' },
+  { path: '/education/tam-icp', href: 'https://audit.brandastic.com/gameplan_marketing/brandastic-tam-icp', icon: Target, label: 'TAM / ICP', group: 'Education' },
   { path: '/new_admin', icon: Shield, label: 'Admin', group: 'Team' },
   { path: '/profitability/team', icon: Users2, label: 'Team Hours', group: 'Team' },
   { path: '/people', icon: Users, label: 'People', group: 'Team' },
   { path: '/scenarios', icon: BarChart3, label: 'Scenarios', group: 'Team' },
   { path: '/working', icon: CheckCircle, label: 'Working/Not', group: 'Team' },
+  { path: '/org-structure', href: 'https://audit.brandastic.com/gameplan_marketing/org-structure', icon: Building2, label: 'Org structure', group: 'Team' },
 ]
 
 const adminNavItems = [
@@ -372,45 +377,47 @@ export default function Sidebar({
                   : location.pathname === item.path
           const sections = item.path === '/feature-list' && location.pathname === '/feature-list' && !collapsed ? featureNav?.sections : null
           const hiddenItem = showFullNav && !simplePaths.has(item.path)
+          const linkClass = cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all relative group",
+            collapsed && "justify-center px-0",
+            isActive && hiddenItem
+              ? "bg-pink-500 text-white"
+              : isActive
+                ? "bg-brand-orange text-white"
+                : hiddenItem
+                  ? "text-pink-500 hover:bg-pink-500/10 hover:text-pink-600"
+                  : "hover:bg-muted text-muted-foreground hover:text-foreground"
+          )
+          const inner = (
+            <>
+              <item.icon className="h-5 w-5 flex-shrink-0" />
+              {!collapsed && (
+                <span className="flex items-center gap-2">
+                  {item.label}
+                  {item.beta && (
+                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-500/20 text-amber-600 rounded-full font-medium">
+                      BETA
+                    </span>
+                  )}
+                </span>
+              )}
+              {collapsed && (
+                <div className="absolute left-full ml-2 px-2 py-1 bg-foreground text-background text-sm rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
+                  {item.label}
+                </div>
+              )}
+            </>
+          )
           return (
             <div key={item.path}>
               {showGroup ? (
                 <p className={cn('px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400', index > 0 && 'mt-3 pt-2')}>{item.group}</p>
               ) : null}
-              <Link
-                to={item.path}
-                onMouseEnter={() => prefetchRoute(item.path)}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all relative group",
-                  collapsed && "justify-center px-0",
-                  isActive && hiddenItem
-                    ? "bg-pink-500 text-white"
-                    : isActive
-                      ? "bg-brand-orange text-white"
-                      : hiddenItem
-                        ? "text-pink-500 hover:bg-pink-500/10 hover:text-pink-600"
-                        : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <item.icon className="h-5 w-5 flex-shrink-0" />
-                {!collapsed && (
-                  <span className="flex items-center gap-2">
-                    {item.label}
-                    {item.beta && (
-                      <span className="text-[9px] px-1.5 py-0.5 bg-amber-500/20 text-amber-600 rounded-full font-medium">
-                        BETA
-                      </span>
-                    )}
-                  </span>
-                )}
-
-                {/* Tooltip for collapsed */}
-                {collapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-foreground text-background text-sm rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
-                    {item.label}
-                  </div>
-                )}
-              </Link>
+              {item.href ? (
+                <a href={item.href} target="_blank" rel="noreferrer" className={linkClass}>{inner}</a>
+              ) : (
+                <Link to={item.path} onMouseEnter={() => prefetchRoute(item.path)} className={linkClass}>{inner}</Link>
+              )}
               {item.path === '/score-card' && isActive && !collapsed ? (
                 <div className="mb-2 ml-3 mt-1 border-l border-border pl-2">
                   <Link
