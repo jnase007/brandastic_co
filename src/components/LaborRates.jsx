@@ -105,7 +105,6 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
     const workerType = typeFilter === 'contractor' ? 'contractor' : 'employee'
     setTypeFilter('all')
     setDraft((current) => [
-      ...current,
       {
         clientKey: `new-${Date.now()}`,
         name: '',
@@ -116,6 +115,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
         startDate: '',
         showOnAnnouncements: true,
       },
+      ...current,
     ])
   }
 
