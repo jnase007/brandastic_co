@@ -82,10 +82,11 @@ function payloadOf(state) {
 
 
 function BreakEvenChart({ months }) {
+  const [hover, setHover] = useState(null)
   if (!months?.length) return null
   const width = 920
   const height = 300
-  const pad = { l: 8, r: 8, t: 16, b: 28 }
+  const pad = { l: 8, r: 8, t: 16, b: 8 }
   const innerW = width - pad.l - pad.r
   const innerH = height - pad.t - pad.b
   const maxY = Math.max(1, ...months.map((row) => Math.max(row.revenue, row.cost, row.staff, 0)))
@@ -96,43 +97,62 @@ function BreakEvenChart({ months }) {
   const line = (key) => months.map((row, i) => `${i ? 'L' : 'M'} ${x(i)} ${y(row[key])}`).join(' ')
   const avgCost = months.reduce((sum, row) => sum + row.cost, 0) / months.length
   const zero = y(0)
+  const active = hover || null
   return (
     <div className="mt-6 rounded-2xl border bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-slate-900">Revenue and costs</p>
-          <p className="text-xs text-slate-500">Purple is in. Yellow dotted is break-even. Blue is what’s left.</p>
+          <p className="text-xs text-slate-500">Hover a month for the numbers. Yellow dotted is break-even.</p>
         </div>
         <p className="text-xs font-medium text-slate-600">Break-even at {money(avgCost)} / mo</p>
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} className="mt-3 h-64 w-full" preserveAspectRatio="none">
-        {[0.25, 0.5, 0.75].map((tick) => (
-          <line key={tick} x1={0} x2={width} y1={pad.t + innerH * (1 - tick)} y2={pad.t + innerH * (1 - tick)} stroke="#e2e8f0" />
-        ))}
-        <line x1={0} x2={width} y1={zero} y2={zero} stroke="#fca5a5" strokeDasharray="4 4" strokeWidth="1.5" />
-        <path d={line('revenue')} fill="none" stroke="#7c3aed" strokeWidth="3" />
-        <path d={line('cost')} fill="none" stroke="#ca8a04" strokeWidth="2.5" strokeDasharray="7 6" />
-        <path d={line('staff')} fill="none" stroke="#ea580c" strokeWidth="2.5" />
-        <path d={line('profit')} fill="none" stroke="#0891b2" strokeWidth="3" />
-        {months.map((row, i) => (
-          <g key={row.key}>
-            <circle cx={x(i)} cy={y(row.revenue)} r="4.5" fill="#7c3aed" />
-            <circle cx={x(i)} cy={y(row.cost)} r="4.5" fill="#ca8a04" />
-            <circle cx={x(i)} cy={y(row.staff)} r="4" fill="#ea580c" />
-            <circle cx={x(i)} cy={y(row.profit)} r="4.5" fill="#0891b2" />
-          </g>
-        ))}
-      </svg>
+      <div className="relative mt-3">
+        <svg viewBox={`0 0 ${width} ${height}`} className="h-64 w-full" preserveAspectRatio="none">
+          {[0.25, 0.5, 0.75].map((tick) => (
+            <line key={tick} x1={0} x2={width} y1={pad.t + innerH * (1 - tick)} y2={pad.t + innerH * (1 - tick)} stroke="#e2e8f0" />
+          ))}
+          <line x1={0} x2={width} y1={zero} y2={zero} stroke="#fca5a5" strokeDasharray="4 4" strokeWidth="1.5" />
+          {active ? <line x1={x(months.indexOf(active))} x2={x(months.indexOf(active))} y1={pad.t} y2={pad.t + innerH} stroke="#cbd5e1" /> : null}
+          <path d={line('revenue')} fill="none" stroke="#7c3aed" strokeWidth="3" />
+          <path d={line('cost')} fill="none" stroke="#ca8a04" strokeWidth="2.5" strokeDasharray="7 6" />
+          <path d={line('staff')} fill="none" stroke="#ea580c" strokeWidth="2.5" />
+          <path d={line('profit')} fill="none" stroke="#0891b2" strokeWidth="3" />
+          {months.map((row, i) => (
+            <g key={row.key}>
+              <circle cx={x(i)} cy={y(row.revenue)} r="4.5" fill="#7c3aed" />
+              <circle cx={x(i)} cy={y(row.cost)} r="4.5" fill="#ca8a04" />
+              <circle cx={x(i)} cy={y(row.staff)} r="4" fill="#ea580c" />
+              <circle cx={x(i)} cy={y(row.profit)} r="4.5" fill="#0891b2" />
+            </g>
+          ))}
+        </svg>
+        <div className="absolute inset-0 flex">
+          {months.map((row) => (
+            <div key={row.key} className="h-full flex-1 cursor-crosshair" onMouseEnter={() => setHover(row)} onMouseLeave={() => setHover(null)} />
+          ))}
+        </div>
+        {active ? (
+          <div className="pointer-events-none absolute left-1/2 top-6 z-10 w-64 -translate-x-1/2 rounded-xl border bg-white p-3 text-sm shadow-lg">
+            <p className="font-semibold">{active.label}</p>
+            <p className="mt-2 tabular-nums text-cyan-700">Left {money(active.profit)}</p>
+            <p className="tabular-nums text-violet-700">In {money(active.revenue)}</p>
+            <p className="tabular-nums text-orange-700">Team {money(active.staff)}</p>
+            <p className="tabular-nums text-yellow-700">Total out {money(active.cost)}</p>
+            <p className="mt-1 font-medium tabular-nums">Margin {pct(active.margin)}</p>
+          </div>
+        ) : null}
+      </div>
       <div className="mt-1 grid" style={{ gridTemplateColumns: `repeat(${months.length}, minmax(0, 1fr))` }}>
         {months.map((row) => (
           <p key={row.key} className="text-center text-[10px] text-slate-500">{row.label}</p>
         ))}
       </div>
       <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-600">
-        <span className="text-violet-700">● Revenue</span>
-        <span className="text-yellow-700">● Total costs (break-even)</span>
+        <span className="text-violet-700">● In</span>
+        <span className="text-yellow-700">● Total out</span>
         <span className="text-orange-700">● Team</span>
-        <span className="text-cyan-700">● Left / profit</span>
+        <span className="text-cyan-700">● Left</span>
       </div>
     </div>
   )
