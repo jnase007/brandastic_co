@@ -25,8 +25,17 @@ const GOAL_SHEET_2026 = {
   noiYtd: 205087.18,
   noiAvg: 20508.72,
   recurringAug: 126585.33,
+  otherAvg: 45050.50,
   goalYear: 2500000,
 }
+
+// P&L Jan–Oct 2026, outside monthly retainers (41000 websites, SMM, PPC, hourly).
+const OTHER_PROJECTS_2026 = [
+  { name: 'Websites', ytd: 337251.91 },
+  { name: 'PPC', ytd: 70000 },
+  { name: 'SMM', ytd: 33296 },
+  { name: 'Hourly design / dev', ytd: 9867.50 },
+]
 
 function money(value) {
   if (value == null || Number.isNaN(value)) return '—'
@@ -104,7 +113,7 @@ export default function Scenarios() {
     const extra = num(extraClient)
     const retainerNow = clients.reduce((sum, client) => sum + (Number(client.monthly) || 0), 0)
     const trendMonth = (num(trendYear) || GOAL_SHEET_2026.incomeAnnualized) / 12
-    const other = otherMonthly === '' ? Math.max(0, trendMonth - retainerNow) : num(otherMonthly)
+    const other = otherMonthly === '' ? GOAL_SHEET_2026.otherAvg : num(otherMonthly)
     const hasRaises = Object.values(raises).some((value) => Number(value) > 0)
     const now = new Date()
     const months = []
@@ -256,7 +265,20 @@ export default function Scenarios() {
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Other projects / mo</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">{money(projection.other)}</p>
-          <p className="text-xs text-slate-500">Annualized {money(GOAL_SHEET_2026.incomeAnnualized)} ÷ 12 = {money(GOAL_SHEET_2026.incomeAvg)}/mo. Other = avg − retainers unless you lock it.</p>
+          <p className="text-xs text-slate-500">Books: {money(GOAL_SHEET_2026.otherAvg)}/mo outside retainers (websites, PPC, SMM, hourly).</p>
+        </div>
+        <div className="rounded-2xl border bg-white p-4 shadow-sm sm:col-span-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Other projects on the books (Jan–Oct)</p>
+          <p className="mt-1 text-sm text-slate-600">Not retainers. Same P&L lines as websites, ads, and hourly.</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-4">
+            {OTHER_PROJECTS_2026.map((row) => (
+              <div key={row.name}>
+                <p className="text-xs text-slate-400">{row.name}</p>
+                <p className="font-semibold tabular-nums">{money(row.ytd / GOAL_SHEET_2026.months)} / mo</p>
+                <p className="text-xs text-slate-400">{money(row.ytd)} YTD</p>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total in / mo</p>
