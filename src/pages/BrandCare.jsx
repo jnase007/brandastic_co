@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+import { GripVertical, Trash2 } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import { BRAND_CARE_SEED } from '../lib/brandCareSeed'
 
@@ -157,6 +159,7 @@ function PersonCell({ value, onSave }) {
 export default function BrandCare() {
   const [rows, setRows] = useState(loadRows)
   const [q, setQ] = useState('')
+  const [pendingRemove, setPendingRemove] = useState(null)
 
   useEffect(() => {
     localStorage.setItem(KEY, JSON.stringify(rows))
@@ -174,7 +177,6 @@ export default function BrandCare() {
 
   const addClient = () => {
     setRows((list) => [
-      ...list,
       {
         id: `row-${Date.now()}`,
         client: '',
@@ -189,11 +191,22 @@ export default function BrandCare() {
         monday: '',
         jira: '',
       },
+      ...list,
     ])
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const removeClient = (id) => {
     setRows((list) => list.filter((row) => row.id !== id))
+    setPendingRemove(null)
+  }
+
+  const onDragEnd = (result) => {
+    if (!result.destination || q.trim()) return
+    const next = Array.from(rows)
+    const [moved] = next.splice(result.source.index, 1)
+    next.splice(result.destination.index, 0, moved)
+    setRows(next)
   }
 
   return (
@@ -220,7 +233,8 @@ export default function BrandCare() {
         <table className="w-full min-w-[1200px] border-collapse text-sm">
           <thead className="text-white">
             <tr>
-              <th className="sticky left-0 z-10 border border-slate-300 bg-slate-700 px-4 py-3 text-left font-medium">Client</th>
+              <th className="w-10 border border-slate-300 bg-slate-600 px-2 py-3" />
+              <th className="sticky left-10 z-10 border border-slate-300 bg-slate-700 px-4 py-3 text-left font-medium">Client</th>
               <th className="border border-slate-300 bg-sky-600 px-4 py-3 text-left font-medium">What we manage</th>
               <th className="border border-slate-300 bg-orange-500 px-4 py-3 text-left font-medium">Hours by service</th>
               {ROLES.map((role) => (
@@ -230,34 +244,70 @@ export default function BrandCare() {
               <th className="w-12 border border-slate-300 bg-slate-500 px-2 py-3" />
             </tr>
           </thead>
-          <tbody>
-            {visible.map((row) => (
-              <tr key={row.id}>
-                <td className="sticky left-0 z-10 min-w-[160px] border border-slate-300 bg-slate-50 px-2 py-2 font-semibold">
-                  <Cell value={row.client} onSave={(value) => update(row.id, { client: value })} placeholder="Client name" />
-                </td>
-                <td className="min-w-[220px] border border-slate-300 bg-sky-50 px-2 py-2">
-                  <Cell multiline value={row.services} onSave={(value) => update(row.id, { services: value })} placeholder="What we manage" />
-                </td>
-                <td className="min-w-[170px] border border-slate-300 bg-orange-50 px-2 py-2">
-                  <Cell multiline value={row.hours} onSave={(value) => update(row.id, { hours: value })} placeholder="Hours by service" />
-                </td>
-                {ROLES.map((role) => (
-                  <td key={role.key} className={`min-w-[130px] border border-slate-300 px-2 py-2 ${role.cell}`}>
-                    <PersonCell value={row[role.key]} onSave={(value) => update(row.id, { [role.key]: value })} />
-                  </td>
-                ))}
-                <td className="min-w-[220px] border border-slate-300 bg-fuchsia-50 px-2 py-2">
-                  <Cell multiline value={row.monday} onSave={(value) => update(row.id, { monday: value })} placeholder="Monday notes" />
-                </td>
-                <td className="border border-slate-300 bg-white px-2 py-2">
-                  <button type="button" onClick={() => removeClient(row.id)} className="text-xs text-red-600">Remove</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="brand-care-rows" isDropDisabled={Boolean(q.trim())}>
+              {(drop) => (
+                <tbody ref={drop.innerRef} {...drop.droppableProps}>
+                  {visible.map((row, index) => (
+                    <Draggable key={row.id} draggableId={String(row.id)} index={index} isDragDisabled={Boolean(q.trim())}>
+                      {(drag) => (
+                        <tr ref={drag.innerRef} {...drag.draggableProps}>
+                          <td className="border border-slate-300 bg-white px-1 py-2 text-center">
+                            <button type="button" {...drag.dragHandleProps} className="inline-flex cursor-grab rounded p-1 text-slate-400 hover:text-slate-700" title="Drag to reorder" aria-label="Drag to reorder">
+                              <GripVertical className="h-4 w-4" />
+                            </button>
+                          </td>
+                          <td className="sticky left-10 z-10 min-w-[160px] border border-slate-300 bg-slate-50 px-2 py-2 font-semibold">
+                            <Cell value={row.client} onSave={(value) => update(row.id, { client: value })} placeholder="Client name" />
+                          </td>
+                          <td className="min-w-[220px] border border-slate-300 bg-sky-50 px-2 py-2">
+                            <Cell multiline value={row.services} onSave={(value) => update(row.id, { services: value })} placeholder="What we manage" />
+                          </td>
+                          <td className="min-w-[170px] border border-slate-300 bg-orange-50 px-2 py-2">
+                            <Cell multiline value={row.hours} onSave={(value) => update(row.id, { hours: value })} placeholder="Hours by service" />
+                          </td>
+                          {ROLES.map((role) => (
+                            <td key={role.key} className={`min-w-[130px] border border-slate-300 px-2 py-2 ${role.cell}`}>
+                              <PersonCell value={row[role.key]} onSave={(value) => update(row.id, { [role.key]: value })} />
+                            </td>
+                          ))}
+                          <td className="min-w-[220px] border border-slate-300 bg-fuchsia-50 px-2 py-2">
+                            <Cell multiline value={row.monday} onSave={(value) => update(row.id, { monday: value })} placeholder="Monday notes" />
+                          </td>
+                          <td className="border border-slate-300 bg-white px-2 py-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => setPendingRemove(row)}
+                              className="inline-flex rounded-md p-2 text-red-600 hover:bg-red-50"
+                              title="Remove client"
+                              aria-label="Remove client"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      )}
+                    </Draggable>
+                  ))}
+                  {drop.placeholder}
+                </tbody>
+              )}
+            </Droppable>
+          </DragDropContext>
         </table>
       </div>
+      {pendingRemove ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <p className="text-base font-semibold">Are you sure you want to remove this?</p>
+            <p className="mt-2 text-sm text-slate-600">{pendingRemove.client || 'This client'}</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setPendingRemove(null)} className="rounded-lg border px-3 py-2 text-sm">Cancel</button>
+              <button type="button" onClick={() => removeClient(pendingRemove.id)} className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white">Remove</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
