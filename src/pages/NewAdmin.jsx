@@ -19,8 +19,8 @@ function moneyNum(value) {
 
 function toSaveRow(row) {
   const type = workerTypeOf(row)
-  const monthly = moneyNum(row.monthly)
-  const hourly = moneyNum(row.hourly) || (type === 'employee' && monthly > 0 ? monthly / 160 : 0)
+  const annual = moneyNum(row.annual)
+  const hourly = moneyNum(row.hourly) || (type === 'employee' && annual > 0 ? annual / 1920 : 0)
   return {
     id: row.id,
     name: row.name,
@@ -41,7 +41,7 @@ function fromPeople(rows) {
       ...row,
       worker_type: type,
       hourly: hourly ? String(hourly) : '',
-      monthly: type === 'employee' && hourly ? String(Math.round(hourly * 160)) : '',
+      annual: type === 'employee' && hourly ? String(Math.round(hourly * 1920)) : '',
     }
   })
 }
@@ -59,7 +59,7 @@ export default function NewAdmin() {
   const contractors = people.filter((row) => workerTypeOf(row) === 'contractor')
   const [name, setName] = useState('')
   const [hourly, setHourly] = useState('')
-  const [monthly, setMonthly] = useState('')
+  const [annual, setAnnual] = useState('')
   const [type, setType] = useState('employee')
   const [email, setEmail] = useState('')
   const [inviteLink, setInviteLink] = useState('')
@@ -94,8 +94,8 @@ export default function NewAdmin() {
 
   async function addPerson() {
     const trimmed = name.trim()
-    const monthlyAmount = moneyNum(monthly)
-    const rate = moneyNum(hourly) || (type === 'employee' && monthlyAmount > 0 ? monthlyAmount / 160 : NaN)
+    const annualAmount = moneyNum(annual)
+    const rate = moneyNum(hourly) || (type === 'employee' && annualAmount > 0 ? annualAmount / 1920 : NaN)
     if (!trimmed) {
       setFail('Name is required.')
       return
@@ -110,7 +110,7 @@ export default function NewAdmin() {
         {
           name: trimmed,
           hourly: String(rate),
-          monthly: type === 'employee' ? String(Math.round(rate * 160)) : '',
+          annual: type === 'employee' ? String(Math.round(rate * 1920)) : '',
           worker_type: type,
           weekly_capacity: 40,
         },
@@ -119,7 +119,7 @@ export default function NewAdmin() {
     )
     setName('')
     setHourly('')
-    setMonthly('')
+    setAnnual('')
     if (email.trim()) {
       const link = `${window.location.origin}/login?invite=true&email=${encodeURIComponent(email.trim())}&role=team`
       setInviteLink(link)
@@ -154,19 +154,19 @@ export default function NewAdmin() {
 
       <div className="mt-6 rounded-2xl border bg-white p-5 shadow-sm">
         <h2 className="text-base font-semibold">Add someone</h2>
-        <p className="mt-1 text-sm text-slate-500">{type === 'employee' ? 'Employees: monthly salary ÷ 160 = hourly.' : 'Contractors: hourly only.'}</p>
+        <p className="mt-1 text-sm text-slate-500">{type === 'employee' ? 'Employees: enter annual salary. Hourly = annual ÷ 1,920 (160 hrs × 12).' : 'Contractors: hourly only.'}</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <Input placeholder="Name" value={name} onChange={(event) => setName(event.target.value)} />
           {type === 'employee' ? (
             <Input
-              placeholder="Monthly salary $"
+              placeholder="Annual salary $"
               inputMode="decimal"
-              value={monthly}
+              value={annual}
               onChange={(event) => {
                 const value = event.target.value
-                setMonthly(value)
+                setAnnual(value)
                 const amount = moneyNum(value)
-                if (amount > 0) setHourly(String(Math.round((amount / 160) * 100) / 100))
+                if (amount > 0) setHourly(String(Math.round((amount / 1920) * 100) / 100))
               }}
             />
           ) : null}
@@ -179,11 +179,11 @@ export default function NewAdmin() {
               setHourly(value)
               if (type === 'employee') {
                 const amount = moneyNum(value)
-                if (amount > 0) setMonthly(String(Math.round(amount * 160)))
+                if (amount > 0) setAnnual(String(Math.round(amount * 1920)))
               }
             }}
           />
-          <select className="h-10 rounded-lg border border-slate-200 px-3 text-sm" value={type} onChange={(event) => { setType(event.target.value); if (event.target.value === 'contractor') setMonthly('') }}>
+          <select className="h-10 rounded-lg border border-slate-200 px-3 text-sm" value={type} onChange={(event) => { setType(event.target.value); if (event.target.value === 'contractor') setAnnual('') }}>
             <option value="employee">Employee</option>
             <option value="contractor">Contractor</option>
           </select>
@@ -201,7 +201,7 @@ export default function NewAdmin() {
 
       <Roster
         title="Employees"
-        hint="Salary ÷ 160 hours"
+        hint="Annual salary. Hourly = annual ÷ 1,920."
         rows={employees}
         employee
         onChange={patch}
@@ -344,17 +344,17 @@ function Roster({ title, hint, rows, employee, onChange, onRemove }) {
           </label>
           {employee ? (
             <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Monthly $
+              Annual $
               <Input
                 className="mt-1"
                 inputMode="decimal"
-                value={row.monthly || ''}
+                value={row.annual || ''}
                 onChange={(event) => {
-                  const monthly = event.target.value
-                  const amount = moneyNum(monthly)
+                  const annual = event.target.value
+                  const amount = moneyNum(annual)
                   onChange(row.id, {
-                    monthly,
-                    hourly: amount > 0 ? String(Math.round((amount / 160) * 100) / 100) : row.hourly,
+                    annual,
+                    hourly: amount > 0 ? String(Math.round((amount / 1920) * 100) / 100) : row.hourly,
                   })
                 }}
               />
@@ -373,7 +373,7 @@ function Roster({ title, hint, rows, employee, onChange, onRemove }) {
                 const amount = moneyNum(hourly)
                 onChange(row.id, {
                   hourly,
-                  monthly: employee && amount > 0 ? String(Math.round(amount * 160)) : row.monthly,
+                  annual: employee && amount > 0 ? String(Math.round(amount * 1920)) : row.annual,
                 })
               }}
             />
