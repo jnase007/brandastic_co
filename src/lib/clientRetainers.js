@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 
 const STORE = 'brd-client-retainers-v1'
+const RATE = 175
 
 export const HQ_RETAINERS = [
   { name: 'Adopt Hwy', monthly: 5880 },
@@ -45,59 +46,55 @@ export const HQ_RETAINERS = [
   { name: 'Young Surgical V2', monthly: 4550 },
 ]
 
-function readLocal() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(STORE) || '')
-    if (Array.isArray(parsed) && parsed.length) return parsed
-  } catch {
-    /* ignore */
-  }
-  return HQ_RETAINERS.map((row, position) => ({ ...row, id: `local-${position}`, position }))
+function keyName(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '')
 }
 
-function writeLocal(rows) {
-  localStorage.setItem(STORE, JSON.stringify(rows))
-  return rows
+function hqAmount(name) {
+  const key = keyName(name)
+  const hit = HQ_RETAINERS.find((row) => key.includes(keyName(row.name)) || keyName(row.name).includes(key))
+  return hit ? hit.monthly : 0
+}
+
+function amountOf(row) {
+  const hours = Number(row.monthly_hours) || 0
+  if (hours > 0) return Math.round(hours * RATE)
+  return hqAmount(row.name)
 }
 
 export async function fetchClientRetainers() {
-  const { data, error } = await supabase.from('client_retainers').select('id, name, monthly, position').order('position').order('name')
-  if (error) {
-    if (`${error.message} ${error.code}`.includes('client_retainers') || error.code === '42P01' || error.code === 'PGRST205') {
-      return { rows: readLocal(), missing: true }
-    }
-    throw error
+  const { data, error } = await supabase
+    .from('clients')
+    .select('id, name, monthly_hours, is_active, client_status')
+    .order('name')
+  if (error) throw error
+  return {
+    rows: (data || [])
+      .filter((row) => row.is_active !== false && row.client_status !== 'inactive')
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        monthly: amountOf(row),
+      })),
+    missing: false,
   }
-  if (!(data || []).length) return { rows: readLocal(), missing: false }
-  return { rows: data, missing: false }
 }
 
 export async function saveClientRetainers(rows) {
-  const cleaned = rows.map((row, position) => ({
-    ...(String(row.id || '').startsWith('local-') ? {} : row.id ? { id: row.id } : {}),
-    name: String(row.name || '').trim(),
-    monthly: Number(row.monthly),
-    position,
-    updated_at: new Date().toISOString(),
-  }))
-  const { data: existing, error: readError } = await supabase.from('client_retainers').select('id')
-  if (readError) {
-    const local = cleaned.map((row, position) => ({ ...row, id: row.id || `local-${position}` }))
-    return writeLocal(local)
-  }
-  const kept = new Set(cleaned.filter((row) => row.id).map((row) => row.id))
-  const removed = (existing || []).map((row) => row.id).filter((id) => !kept.has(id))
-  if (removed.length) {
-    const { error } = await supabase.from('client_retainers').delete().in('id', removed)
+  for (const row of rows) {
+    const monthly = Number(row.monthly) || 0
+    const name = String(row.name || '').trim()
+    const hours = monthly / RATE
+    if (!row.id || String(row.id).startsWith('local-')) {
+      const { error } = await supabase.from('clients').insert({ name, monthly_hours: hours, is_active: true, client_status: 'active' })
+      if (error) throw error
+      continue
+    }
+    const { error } = await supabase.from('clients').update({ monthly_hours: hours, name }).eq('id', row.id)
     if (error) throw error
   }
-  const { data, error } = await supabase.from('client_retainers').upsert(cleaned).select('id, name, monthly, position')
-  if (error) {
-    const local = cleaned.map((row, position) => ({ ...row, id: row.id || `local-${position}` }))
-    return writeLocal(local)
-  }
-  writeLocal(data || [])
-  return data || []
+  const next = await fetchClientRetainers()
+  return next.rows
 }
 
 export function useClientRetainers() {
@@ -110,13 +107,13 @@ export function useClientRetainers() {
     fetchClientRetainers()
       .then((result) => {
         if (cancel) return
-        setMissing(Boolean(result.missing))
+        setMissing(false)
         setRows(result.rows)
       })
       .catch((err) => {
         if (cancel) return
-        setError(err.message || 'Could not load client retainers')
-        setRows(readLocal())
+        setError(err.message || 'Could not load clients')
+        setRows([])
       })
     return () => { cancel = true }
   }, [])

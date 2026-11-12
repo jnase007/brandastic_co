@@ -83,7 +83,7 @@ export default function ClientRetainers({ embedded = false }) {
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">Client retainers</h2>
-            <p className="text-sm text-slate-500">Monthly amounts from HQ. Edit and save. Scenarios uses this list.</p>
+            <p className="text-sm text-slate-500">Same clients as the Clients page. Monthly $ is the retainer. Scenarios uses this.</p>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={addClient}>
             <Plus className="mr-1 h-4 w-4" />
