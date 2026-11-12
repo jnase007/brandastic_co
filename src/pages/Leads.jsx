@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ExternalLink, Loader2, Plus, Search, Upload } from 'lucide-react'
+import { ChevronDown, ChevronUp, ExternalLink, Loader2, Plus, Search, Upload } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../hooks/useToast'
 import { Button } from '../components/ui/button'
@@ -58,6 +58,14 @@ export default function Leads({ embedded = false }) {
   const [importing, setImporting] = useState(false)
   const [selected, setSelected] = useState(() => new Set())
   const [quick, setQuick] = useState({ name: '', company: '', source: 'Direct', jira_key: '' })
+  const [overviewOpen, setOverviewOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem('brandastic-leads-overview')
+      if (saved === '1') return true
+      if (saved === '0') return false
+    } catch { /* ignore */ }
+    return !embedded
+  })
 
   const load = async () => {
     setLoading(true)
@@ -272,21 +280,11 @@ export default function Leads({ embedded = false }) {
         </div>
       ) : null}
 
-      <div className="mb-4 grid gap-2 sm:grid-cols-4">
-        {[
-          { label: 'Leads', value: counts.all, className: 'bg-[#cfe8f8]' },
-          { label: 'With Jira / pipeline', value: counts.jira, className: 'bg-[#b6d7a8]' },
-          { label: 'Proposals', value: counts.proposal, className: 'bg-[#fee6b8]' },
-          { label: 'Closed', value: counts.closed, className: 'bg-[#bbf7d0]' },
-        ].map((card) => (
-          <div key={card.label} className={`rounded-xl px-4 py-3 ${card.className}`}>
-            <div className="text-xs font-medium uppercase tracking-wide opacity-70">{card.label}</div>
-            <div className="text-2xl font-bold">{card.value}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mb-3 flex flex-wrap gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[220px] flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input className="pl-9" value={query} placeholder="Search name, company, email, Jira, notes" onChange={(event) => setQuery(event.target.value)} />
+        </div>
         {filters.map((item) => (
           <button
             key={item.id}
@@ -297,42 +295,70 @@ export default function Leads({ embedded = false }) {
             {item.label}
           </button>
         ))}
+        <button
+          type="button"
+          className="ml-auto inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm text-muted-foreground hover:text-foreground"
+          onClick={() => {
+            setOverviewOpen((open) => {
+              const next = !open
+              try { localStorage.setItem('brandastic-leads-overview', next ? '1' : '0') } catch { /* ignore */ }
+              return next
+            })
+          }}
+        >
+          {overviewOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          {overviewOpen ? 'Hide overview' : 'Overview'}
+        </button>
       </div>
 
-      <div className="mb-3 flex flex-col gap-2 lg:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" value={query} placeholder="Search name, company, email, Jira, notes" onChange={(event) => setQuery(event.target.value)} />
-        </div>
-        <select className="h-10 rounded-lg border bg-background px-3 text-sm" value={source} onChange={(event) => setSource(event.target.value)}>
-          <option value="all">All channels</option>
-          {LEAD_SOURCES.map((item) => <option key={item} value={item}>{item}</option>)}
-        </select>
-        <Button variant="outline" onClick={importSheet} disabled={importing || setupNeeded}>
-          {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-          Import sheet
-        </Button>
-        <Button className={BLUE_BUTTON} onClick={openNew} disabled={setupNeeded}>
-          <Plus className="mr-2 h-4 w-4" />
-          Full add
-        </Button>
-      </div>
+      {overviewOpen ? (
+        <>
+          <div className="mb-4 grid gap-2 sm:grid-cols-4">
+            {[
+              { label: 'Leads', value: counts.all, className: 'bg-[#cfe8f8]' },
+              { label: 'With Jira / pipeline', value: counts.jira, className: 'bg-[#b6d7a8]' },
+              { label: 'Proposals', value: counts.proposal, className: 'bg-[#fee6b8]' },
+              { label: 'Closed', value: counts.closed, className: 'bg-[#bbf7d0]' },
+            ].map((card) => (
+              <div key={card.label} className={`rounded-xl px-4 py-3 ${card.className}`}>
+                <div className="text-xs font-medium uppercase tracking-wide opacity-70">{card.label}</div>
+                <div className="text-2xl font-bold">{card.value}</div>
+              </div>
+            ))}
+          </div>
 
-      {!setupNeeded ? (
-        <div className="mb-3 grid gap-2 rounded-xl border bg-muted/30 p-3 md:grid-cols-5">
-          <Input placeholder="Name" value={quick.name} onChange={(event) => setQuick((c) => ({ ...c, name: event.target.value }))} />
-          <Input placeholder="Company" value={quick.company} onChange={(event) => setQuick((c) => ({ ...c, company: event.target.value }))} />
-          <select className="h-10 rounded-lg border bg-background px-3 text-sm" value={quick.source} onChange={(event) => setQuick((c) => ({ ...c, source: event.target.value }))}>
-            {LEAD_SOURCES.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
-          <Input placeholder="Jira key → pipeline" value={quick.jira_key} onChange={(event) => setQuick((c) => ({ ...c, jira_key: event.target.value }))} />
-          <Button className={BLUE_BUTTON} onClick={quickAdd}>Add lead</Button>
-        </div>
-      ) : (
-        <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-          Showing the Google Sheet copy. Add and inline edit turn on after the leads table exists — run supabase/sales-leads.sql in Supabase.
-        </div>
-      )}
+          <div className="mb-3 flex flex-col gap-2 lg:flex-row">
+            <select className="h-10 rounded-lg border bg-background px-3 text-sm" value={source} onChange={(event) => setSource(event.target.value)}>
+              <option value="all">All channels</option>
+              {LEAD_SOURCES.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+            <Button variant="outline" onClick={importSheet} disabled={importing || setupNeeded}>
+              {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+              Import sheet
+            </Button>
+            <Button className={BLUE_BUTTON} onClick={openNew} disabled={setupNeeded}>
+              <Plus className="mr-2 h-4 w-4" />
+              Full add
+            </Button>
+          </div>
+
+          {!setupNeeded ? (
+            <div className="mb-3 grid gap-2 rounded-xl border bg-muted/30 p-3 md:grid-cols-5">
+              <Input placeholder="Name" value={quick.name} onChange={(event) => setQuick((c) => ({ ...c, name: event.target.value }))} />
+              <Input placeholder="Company" value={quick.company} onChange={(event) => setQuick((c) => ({ ...c, company: event.target.value }))} />
+              <select className="h-10 rounded-lg border bg-background px-3 text-sm" value={quick.source} onChange={(event) => setQuick((c) => ({ ...c, source: event.target.value }))}>
+                {LEAD_SOURCES.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+              <Input placeholder="Jira key → pipeline" value={quick.jira_key} onChange={(event) => setQuick((c) => ({ ...c, jira_key: event.target.value }))} />
+              <Button className={BLUE_BUTTON} onClick={quickAdd}>Add lead</Button>
+            </div>
+          ) : (
+            <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+              Showing the Google Sheet copy. Add and inline edit turn on after the leads table exists — run supabase/sales-leads.sql in Supabase.
+            </div>
+          )}
+        </>
+      ) : null}
 
       <p className="mb-2 text-sm text-muted-foreground">{shown.length} showing · check rows to move many at once · click a name row to open the contact</p>
 

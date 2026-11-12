@@ -17,6 +17,8 @@ import { Badge } from '../components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog'
 import { Label } from '../components/ui/label'
 import { useToast } from '../hooks/useToast'
+import { fetchProfitability } from '../lib/profitabilityCache'
+import { fetchHosting } from '../lib/hosting'
 import AnimatedCounter from '../components/AnimatedCounter'
 import { AreaChart } from '../components/Charts'
 
@@ -40,7 +42,7 @@ const itemVariants = {
 
 // Default mission data
 const DEFAULT_MISSION = {
-  long_term_vision: "40 private and charter schools on retainer by 2030 — enrollment directors first",
+  long_term_vision: "Grow the whole book. Add education as the focus channel: 40 private and charter school retainers by 2030, enrollment directors first.",
   vision_pillars: [
     { title: "Focus on businesses with over 10M+ in sales", icon: "target" },
     { title: "With contracts that include a holistic presence across all channels", icon: "layers" },
@@ -71,8 +73,33 @@ const DEFAULT_MISSION = {
   current_revenue: 1800000,
   target_year: 2030,
   start_year: 2026,
-  current_clients: 22,
-  target_clients: 70,
+  current_clients: 24,
+  target_clients: 64,
+}
+
+const NEW_EDUCATION = 40
+
+function nameKey(name) {
+  return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, '')
+}
+
+function foldName(name) {
+  return nameKey(name).replace(/hosting|maintenance|retainer|website|inc|llc/g, '')
+}
+
+function sameClient(a, b) {
+  const x = foldName(a)
+  const y = foldName(b)
+  if (!x || !y) return false
+  if (x === y) return true
+  if (x.length >= 5 && y.includes(x)) return true
+  if (y.length >= 5 && x.includes(y)) return true
+  return false
+}
+
+function isInternal(name) {
+  const key = nameKey(name)
+  return key === 'brandastic' || key === 'internal'
 }
 
 export default function Mission() {
@@ -80,6 +107,7 @@ export default function Mission() {
   const { toast } = useToast()
   const [mission, setMission] = useState(DEFAULT_MISSION)
   const [loading, setLoading] = useState(true)
+  const [book, setBook] = useState({ retainers: 24, marketing: 24, hosting: 0, schools: 2 })
   const [saving, setSaving] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [editingSection, setEditingSection] = useState(null)
@@ -124,7 +152,31 @@ export default function Mission() {
 
   useEffect(() => {
     fetchMission()
+    loadBook()
   }, [])
+
+  const loadBook = async () => {
+    const [profit, hosting] = await Promise.all([
+      fetchProfitability().catch(() => null),
+      fetchHosting().catch(() => null),
+    ])
+    const marketing = [...new Set((profit?.clients || []).map((row) => row.name).filter((name) => name && !isInternal(name)))]
+    const host = [...new Set((hosting?.retainers || []).map((row) => row.client).filter((name) => name && !isInternal(name)))]
+    const hostOnly = host.filter((name) => !marketing.some((row) => sameClient(row, name)))
+    const retainers = marketing.length + hostOnly.length
+    setBook({
+      retainers,
+      marketing: marketing.length,
+      hosting: host.length,
+      hostOnly: hostOnly.length,
+      schools: 2,
+    })
+    setMission((current) => ({
+      ...current,
+      current_clients: retainers,
+      target_clients: retainers + NEW_EDUCATION,
+    }))
+  }
 
   const fetchMission = async () => {
     try {
@@ -134,9 +186,14 @@ export default function Mission() {
         .single()
       
       if (data) {
-        const next = { ...DEFAULT_MISSION, ...data }
+        const { current_clients, target_clients, ...rest } = data
+        const next = { ...DEFAULT_MISSION, ...rest }
         if (String(next.rally_year) === '2025') next.rally_year = '2027'
-        setMission(next)
+        setMission((current) => ({
+          ...next,
+          current_clients: current.current_clients,
+          target_clients: current.target_clients,
+        }))
       }
     } catch (error) {
       console.log('Using default mission data')
@@ -201,8 +258,8 @@ export default function Mission() {
       <div className="border-b border-slate-200 dark:border-white/10 bg-white/80 dark:bg-[#0d1d35]/50 backdrop-blur-xl sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-3 text-slate-900 dark:text-white">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-orange to-brand-coral flex items-center justify-center">
+            <h1 className="text-xl font-bold flex items-center gap-3 text-slate-900">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-orange to-brand-coral flex items-center justify-center">
                 <Target className="h-5 w-5 text-white" />
               </div>
               Mission & Vision
@@ -222,50 +279,22 @@ export default function Mission() {
       </div>
 
       <motion.div 
-        className="max-w-7xl mx-auto px-6 py-8 space-y-8"
+        className="max-w-7xl mx-auto px-6 py-5 space-y-4"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
-        <motion.div variants={itemVariants}>
-          <Card className="bg-white dark:bg-[#0d1d35] border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-slate-900 dark:text-white">40 schools by 2030</CardTitle>
-              <p className="text-sm text-[#1644ED]">Assumption: a ramp of 6, 10, 13, 18 new schools a year at about $7.5K/mo each, with 15% of schools leaving each year.</p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-xl bg-[#1644ED] p-4 text-white">
-                <p className="font-semibold">Goal: $3.5M by 2030</p>
-                <p className="text-sm text-white/80">40 education retainers × about $90K/year; excludes media. More than today’s $1.44M recurring book. Ramp math below is ~$3.6M — we hold the company target at $3.5M.</p>
-              </div>
-              <div className="overflow-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-muted text-left"><tr><th className="px-3 py-2">Year</th><th className="px-3 py-2">New schools signed</th><th className="px-3 py-2">Active after 15% churn</th><th className="px-3 py-2">New annual revenue</th></tr></thead>
-                  <tbody>
-                    <tr className="border-t"><td className="px-3 py-2">Today</td><td className="px-3 py-2">—</td><td className="px-3 py-2">2 current</td><td className="px-3 py-2">$315K/yr (CalOPS + Heart Christian)</td></tr>
-                    <tr className="border-t"><td className="px-3 py-2">2027</td><td className="px-3 py-2">6</td><td className="px-3 py-2">6</td><td className="px-3 py-2">~$540K</td></tr>
-                    <tr className="border-t"><td className="px-3 py-2">2028</td><td className="px-3 py-2">10</td><td className="px-3 py-2">15</td><td className="px-3 py-2">~$1.35M</td></tr>
-                    <tr className="border-t"><td className="px-3 py-2">2029</td><td className="px-3 py-2">13</td><td className="px-3 py-2">26</td><td className="px-3 py-2">~$2.34M</td></tr>
-                    <tr className="border-t bg-orange-50"><td className="px-3 py-2 font-semibold">2030</td><td className="px-3 py-2 font-semibold">18</td><td className="px-3 py-2 font-semibold">40</td><td className="px-3 py-2 font-semibold">~$3.6M</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-sm text-muted-foreground">47 schools signed, about 40 still active by 2030 after churn. Plus $315K/yr from current schools.</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
         {/* Long Term Vision */}
         <motion.div variants={itemVariants}>
           <Card className="bg-white dark:bg-[#0d1d35] border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
-            <CardHeader className="pb-4">
+            <CardHeader className="p-4 pb-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
                     <Eye className="h-5 w-5 text-purple-500 dark:text-purple-400" />
                   </div>
                   <div>
-                    <CardTitle className="text-slate-900 dark:text-white">Long Term Vision</CardTitle>
+                    <CardTitle className="text-base text-slate-900">Long Term Vision</CardTitle>
                     <p className="text-slate-500 dark:text-white/40 text-sm">Company Vision</p>
                   </div>
                 </div>
@@ -277,7 +306,7 @@ export default function Mission() {
                 )}
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 p-4 pt-0">
               {profile?.role === 'admin' ? (
                 <Textarea 
                   value={mission.long_term_vision}
@@ -286,14 +315,17 @@ export default function Mission() {
                   placeholder="Enter your long-term vision..."
                 />
               ) : (
-                <p className="text-lg text-slate-800 dark:text-white/90 font-medium">{mission.long_term_vision}</p>
+                <p className="text-base text-slate-800 font-medium leading-snug">{mission.long_term_vision}</p>
               )}
+              <p className="text-sm text-slate-500">
+                {book.marketing} marketing retainers on Profitability (Brandastic left out). Hosting tickets for the same company do not add extra clients — only hosting-only retainers ({book.hostOnly || 0}) do. Two schools: CalOPS and Heart. Strategy adds {NEW_EDUCATION} new education retainers. Recurring book now: {book.retainers}.
+              </p>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4">
                 {mission.vision_pillars.map((pillar, idx) => (
                   <div 
                     key={idx}
-                    className="p-4 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-purple-300 dark:hover:border-purple-500/30 transition-colors min-h-[80px]"
+                    className="p-4 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-purple-300 dark:hover:border-purple-500/30 transition-colors "
                   >
                     {profile?.role === 'admin' ? (
                       <Textarea 
@@ -332,16 +364,16 @@ export default function Mission() {
         {/* Rally Cry */}
         <motion.div variants={itemVariants}>
           <Card className="bg-white dark:bg-[#0d1d35] border-slate-200 dark:border-white/10 shadow-sm">
-            <CardHeader className="pb-2">
+            <CardHeader className="p-4 pb-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
                   <Sparkles className="h-5 w-5 text-cyan-500 dark:text-cyan-400" />
                 </div>
-                <CardTitle className="text-slate-900 dark:text-white">{mission.rally_year} Rally Cry/Theme</CardTitle>
+                <CardTitle className="text-base text-slate-900">{mission.rally_year} Rally Cry/Theme</CardTitle>
               </div>
             </CardHeader>
-            <CardContent>
-              <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-brand-orange via-red-500 to-green-500 bg-clip-text text-transparent">
+            <CardContent className="p-4 pt-0">
+              <h2 className="text-2xl font-bold text-slate-900">
                 {mission.rally_cry}
               </h2>
             </CardContent>
@@ -351,16 +383,16 @@ export default function Mission() {
         {/* Core Values */}
         <motion.div variants={itemVariants}>
           <Card className="bg-white dark:bg-[#0d1d35] border-slate-200 dark:border-white/10 shadow-sm">
-            <CardHeader>
+            <CardHeader className="p-4 pb-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-brand-orange/20 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-brand-orange/20 flex items-center justify-center">
                   <Heart className="h-5 w-5 text-brand-orange" />
                 </div>
-                <CardTitle className="text-slate-900 dark:text-white">Core Values</CardTitle>
+                <CardTitle className="text-base text-slate-900">Core Values</CardTitle>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <CardContent className="p-4 pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {mission.core_values.map((value, idx) => (
                   <div 
                     key={idx}
@@ -378,16 +410,16 @@ export default function Mission() {
         {/* Vital Factors Goals */}
         <motion.div variants={itemVariants}>
           <Card className="bg-white dark:bg-[#0d1d35] border-slate-200 dark:border-white/10 shadow-sm">
-            <CardHeader>
+            <CardHeader className="p-4 pb-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
                   <Target className="h-5 w-5 text-green-500 dark:text-green-400" />
                 </div>
-                <CardTitle className="text-slate-900 dark:text-white">Top Vital Factors Goals</CardTitle>
+                <CardTitle className="text-base text-slate-900">Top Vital Factors Goals</CardTitle>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <CardContent className="p-4 pt-0">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {mission.vital_factors.map((factor, idx) => (
                   <div 
                     key={idx}
@@ -446,23 +478,23 @@ export default function Mission() {
         {/* Vital Initiatives */}
         <motion.div variants={itemVariants}>
           <Card className="bg-white dark:bg-[#0d1d35] border-slate-200 dark:border-white/10 shadow-sm">
-            <CardHeader>
+            <CardHeader className="p-4 pb-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-yellow-500/20 flex items-center justify-center">
                   <Lightbulb className="h-5 w-5 text-yellow-500 dark:text-yellow-400" />
                 </div>
                 <div>
-                  <CardTitle className="text-slate-900 dark:text-white">Vital Initiatives to Achieve Goals</CardTitle>
+                  <CardTitle className="text-base text-slate-900">Vital Initiatives to Achieve Goals</CardTitle>
                   <p className="text-slate-500 dark:text-white/40 text-sm">Action Items</p>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <CardContent className="p-4 pt-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 {mission.initiatives.map((init, idx) => (
                   <div 
                     key={idx}
-                    className="p-4 rounded-xl bg-yellow-50 dark:bg-white/5 border border-yellow-200 dark:border-white/10 hover:border-yellow-300 dark:hover:border-yellow-500/30 transition-colors"
+                    className="flex min-h-[140px] flex-col p-4 rounded-xl bg-yellow-50 border border-yellow-200"
                   >
                     {profile?.role === 'admin' ? (
                       <>
@@ -473,7 +505,7 @@ export default function Mission() {
                             newInitiatives[idx] = { ...newInitiatives[idx], title: e.target.value }
                             setMission(m => ({ ...m, initiatives: newInitiatives }))
                           }}
-                          className="text-yellow-600 dark:text-yellow-400 font-semibold text-sm mb-2 bg-transparent border-transparent hover:border-yellow-300 dark:hover:border-yellow-500/30 focus:border-yellow-400 transition-colors h-7 px-1"
+                          className="text-yellow-800 font-semibold text-sm mb-2 bg-transparent border-transparent h-7 px-0"
                           placeholder="Title..."
                         />
                         <Textarea 
@@ -483,14 +515,14 @@ export default function Mission() {
                             newInitiatives[idx] = { ...newInitiatives[idx], description: e.target.value }
                             setMission(m => ({ ...m, initiatives: newInitiatives }))
                           }}
-                          className="text-slate-600 dark:text-white/60 text-xs leading-relaxed bg-transparent border-transparent hover:border-yellow-300 dark:hover:border-yellow-500/30 focus:border-yellow-400 transition-colors min-h-[60px] resize-none px-1"
+                          className="flex-1 text-slate-700 text-sm leading-snug bg-transparent border-transparent resize-none overflow-visible px-0 min-h-[72px]"
                           placeholder="Description..."
                         />
                       </>
                     ) : (
                       <>
-                        <h4 className="text-yellow-600 dark:text-yellow-400 font-semibold text-sm mb-2">{idx + 1}. {init.title}</h4>
-                        <p className="text-slate-600 dark:text-white/60 text-xs leading-relaxed">{init.description}</p>
+                        <h4 className="text-yellow-800 font-semibold text-sm mb-2">{idx + 1}. {init.title}</h4>
+                        <p className="text-slate-700 text-sm leading-snug">{init.description}</p>
                       </>
                     )}
                   </div>
@@ -517,14 +549,14 @@ export default function Mission() {
         {/* Road to Target Revenue */}
         <motion.div variants={itemVariants}>
           <Card className="bg-white dark:bg-[#0d1d35] border-slate-200 dark:border-white/10 shadow-lg">
-            <CardHeader>
+            <CardHeader className="p-4 pb-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-brand-orange/20 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-brand-orange/20 flex items-center justify-center">
                     <Rocket className="h-5 w-5 text-brand-orange" />
                   </div>
                   <div>
-                    <CardTitle className="text-slate-900 dark:text-white">Road to ${(mission.revenue_target / 1000000).toFixed(1)}M</CardTitle>
+                    <CardTitle className="text-base text-slate-900">Road to ${(mission.revenue_target / 1000000).toFixed(1)}M</CardTitle>
                     <p className="text-slate-500 dark:text-white/50 text-sm">
                       {years}-Year Revenue Roadmap with {cagr}% CAGR ({mission.start_year} → {mission.target_year})
                     </p>
@@ -532,7 +564,7 @@ export default function Mission() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4 p-4 pt-0">
               {/* Planning Mode Controls */}
               <div className="flex flex-wrap items-center gap-4 p-4 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
                 <span className="text-slate-500 dark:text-white/50 text-sm">Planning Mode:</span>
@@ -570,7 +602,7 @@ export default function Mission() {
                   <p className="text-slate-400 dark:text-white/40 text-xs mt-1">= ${(mission.current_revenue / 1000000).toFixed(2)}M</p>
                 </div>
                 <div>
-                  <Label className="text-slate-600 dark:text-white/70 text-sm">Target Clients</Label>
+                  <Label className="text-slate-600 text-sm">Total retainers by {mission.target_year}</Label>
                   <Input 
                     type="number" 
                     value={mission.target_clients}
@@ -580,7 +612,7 @@ export default function Mission() {
                   <p className="text-slate-400 dark:text-white/40 text-xs mt-1">by {mission.target_year}</p>
                 </div>
                 <div>
-                  <Label className="text-slate-600 dark:text-white/70 text-sm">Current Clients</Label>
+                  <Label className="text-slate-600 text-sm">Current retainers</Label>
                   <div className="flex items-center gap-2 mt-1">
                     <Input 
                       type="number" 
@@ -610,23 +642,23 @@ export default function Mission() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-xl bg-gradient-to-br from-brand-orange/20 to-brand-orange/5 border border-brand-orange/30">
                   <p className="text-brand-orange/70 text-xs mb-1">{mission.target_year} TARGET GOAL</p>
-                  <p className="text-brand-orange text-3xl font-bold">${(mission.revenue_target / 1000000).toFixed(1)}M</p>
+                  <p className="text-brand-orange text-xl font-bold">${(mission.revenue_target / 1000000).toFixed(1)}M</p>
                   <p className="text-slate-500 dark:text-white/50 text-xs">At {cagr}% YoY Growth</p>
                 </div>
                 <div className="p-4 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-500/5 border border-purple-500/30">
                   <p className="text-purple-500/70 text-xs mb-1">STARTING REVENUE</p>
-                  <p className="text-purple-500 text-3xl font-bold">${(mission.current_revenue / 1000000).toFixed(1)}M</p>
+                  <p className="text-purple-500 text-xl font-bold">${(mission.current_revenue / 1000000).toFixed(1)}M</p>
                   <p className="text-slate-500 dark:text-white/50 text-xs">{mission.start_year} Annual Revenue</p>
                 </div>
                 <div className="p-4 rounded-xl bg-gradient-to-br from-teal-500/20 to-teal-500/5 border border-teal-500/30">
                   <p className="text-teal-600/70 text-xs mb-1">REQUIRED CAGR</p>
-                  <p className="text-teal-600 text-3xl font-bold">{cagr}%</p>
+                  <p className="text-teal-600 text-xl font-bold">{cagr}%</p>
                   <p className="text-slate-500 dark:text-white/50 text-xs">Year-over-year growth</p>
                 </div>
                 <div className="p-4 rounded-xl bg-gradient-to-br from-rose-500/20 to-rose-500/5 border border-rose-500/30">
-                  <p className="text-rose-500/70 text-xs mb-1">CLIENTS BY {mission.target_year}</p>
-                  <p className="text-rose-500 text-3xl font-bold">{mission.target_clients}</p>
-                  <p className="text-slate-500 dark:text-white/50 text-xs">@ ${Math.round(avgClientMonthly).toLocaleString()}/yr avg</p>
+                  <p className="text-rose-500/70 text-xs mb-1">RETAINERS BY {mission.target_year}</p>
+                  <p className="text-rose-500 text-xl font-bold">{mission.target_clients}</p>
+                  <p className="text-slate-500 text-xs">{book.retainers} now + {NEW_EDUCATION} education</p>
                 </div>
               </div>
 
@@ -636,7 +668,7 @@ export default function Mission() {
                   <DollarSign className="h-4 w-4 text-brand-orange" />
                   Revenue Trajectory at {cagr}% CAGR
                 </h3>
-                <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-xl p-4 border border-slate-200 dark:border-white/10">
+                <div className="h-48 bg-slate-100 rounded-xl p-3 border border-slate-200">
                   <div className="relative h-full">
                     {/* Y-axis labels */}
                     <div className="absolute left-0 top-0 bottom-8 w-12 flex flex-col justify-between text-slate-500 dark:text-white/50 text-xs">
@@ -711,15 +743,15 @@ export default function Mission() {
         {/* Year-by-Year Roadmap Table */}
         <motion.div variants={itemVariants}>
           <Card className="bg-white dark:bg-[#0d1d35] border-slate-200 dark:border-white/10 shadow-sm">
-            <CardHeader>
+            <CardHeader className="p-4 pb-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
                   <Calendar className="h-5 w-5 text-blue-500 dark:text-blue-400" />
                 </div>
-                <CardTitle className="text-slate-900 dark:text-white">Year-by-Year Roadmap</CardTitle>
+                <CardTitle className="text-base text-slate-900">Year-by-Year Roadmap</CardTitle>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 pt-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -782,12 +814,12 @@ export default function Mission() {
         {/* What This Means + Growth Levers */}
         <motion.div variants={itemVariants} className="grid md:grid-cols-2 gap-6">
           <Card className="bg-white dark:bg-[#0d1d35] border-slate-200 dark:border-white/10 shadow-sm">
-            <CardHeader>
+            <CardHeader className="p-4 pb-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
                   <Zap className="h-5 w-5 text-green-500 dark:text-green-400" />
                 </div>
-                <CardTitle className="text-slate-900 dark:text-white">What This Means</CardTitle>
+                <CardTitle className="text-base text-slate-900">What This Means</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -800,7 +832,7 @@ export default function Mission() {
               <div className="flex items-start gap-3">
                 <ArrowUpRight className="h-4 w-4 text-green-500 dark:text-green-400 mt-0.5 flex-shrink-0" />
                 <p className="text-slate-600 dark:text-white/70 text-sm">
-                  Need to add <span className="text-slate-900 dark:text-white font-bold">~{Math.round(clientsNeededPerYear)} new clients per year</span> on average
+                  Add <span className="text-slate-900 font-bold">{NEW_EDUCATION} education retainers</span> on top of the current book. Two schools now: CalOPS and Heart.
                 </p>
               </div>
               <div className="flex items-start gap-3">
@@ -813,12 +845,12 @@ export default function Mission() {
           </Card>
 
           <Card className="bg-white dark:bg-[#0d1d35] border-slate-200 dark:border-white/10 shadow-sm">
-            <CardHeader>
+            <CardHeader className="p-4 pb-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
                   <TrendingUp className="h-5 w-5 text-purple-500 dark:text-purple-400" />
                 </div>
-                <CardTitle className="text-slate-900 dark:text-white">Growth Levers</CardTitle>
+                <CardTitle className="text-base text-slate-900">Growth Levers</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">

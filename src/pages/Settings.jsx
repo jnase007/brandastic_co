@@ -137,40 +137,12 @@ export default function Settings() {
     })
   }, [user?.id, getStoredTheme, getStoredNotificationPrefs])
 
-  // Apply theme when it changes
   useEffect(() => {
-    const applyTheme = (themeName) => {
-      const root = document.documentElement
-      
-      if (themeName === 'system') {
-        // Check system preference
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-        if (prefersDark) {
-          root.classList.add('dark')
-        } else {
-          root.classList.remove('dark')
-        }
-      } else if (themeName === 'dark') {
-        root.classList.add('dark')
-      } else {
-        root.classList.remove('dark')
-      }
-    }
-
-    applyTheme(theme)
-    if (user?.id) {
-      localStorage.setItem(`theme:${user.id}`, theme)
-    }
-    localStorage.setItem('theme', theme)
-
-    // Listen for system theme changes when in system mode
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-      const handleChange = () => applyTheme('system')
-      mediaQuery.addEventListener('change', handleChange)
-      return () => mediaQuery.removeEventListener('change', handleChange)
-    }
-  }, [theme])
+    document.documentElement.classList.remove('dark')
+    setTheme('light')
+    if (user?.id) localStorage.setItem(`theme:${user.id}`, 'light')
+    localStorage.setItem('theme', 'light')
+  }, [user?.id])
 
   // Handle theme change
   const handleThemeChange = (newTheme) => {
@@ -998,56 +970,7 @@ export default function Settings() {
                 <div className="space-y-6">
                   <div>
                     <Label className="mb-3 block">Theme</Label>
-                    <div className="grid grid-cols-3 gap-4">
-                      {[
-                        { id: 'light', label: 'Light', icon: Sun, bg: 'bg-white', preview: 'bg-gray-100' },
-                        { id: 'dark', label: 'Dark', icon: Moon, bg: 'bg-gray-900', preview: 'bg-gray-800' },
-                        { id: 'system', label: 'System', icon: Monitor, bg: 'bg-gradient-to-r from-white to-gray-900', preview: 'bg-gradient-to-r from-gray-100 to-gray-800' },
-                      ].map((themeOption) => (
-                        <button
-                          key={themeOption.id}
-                          onClick={() => handleThemeChange(themeOption.id)}
-                          className={cn(
-                            "p-4 rounded-xl border-2 text-center transition-all hover:border-brand-orange/50 hover:shadow-lg group",
-                            theme === themeOption.id 
-                              ? "border-brand-orange bg-brand-orange/5 shadow-md" 
-                              : "border-border"
-                          )}
-                        >
-                          <div className={cn(
-                            "w-full h-14 rounded-lg mb-3 flex items-center justify-center relative overflow-hidden",
-                            themeOption.bg
-                          )}>
-                            <themeOption.icon className={cn(
-                              "h-6 w-6 relative z-10",
-                              themeOption.id === 'light' ? 'text-yellow-500' : 
-                              themeOption.id === 'dark' ? 'text-blue-400' : 'text-purple-500'
-                            )} />
-                            {theme === themeOption.id && (
-                              <motion.div
-                                layoutId="themeCheck"
-                                className="absolute top-1 right-1 w-5 h-5 bg-brand-orange rounded-full flex items-center justify-center"
-                              >
-                                <Check className="h-3 w-3 text-white" />
-                              </motion.div>
-                            )}
-                          </div>
-                          <span className={cn(
-                            "text-sm font-medium",
-                            theme === themeOption.id && "text-brand-orange"
-                          )}>
-                            {themeOption.label}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-3">
-                      {theme === 'system' 
-                        ? '🖥️ Following your system preference' 
-                        : theme === 'dark' 
-                          ? '🌙 Dark mode is easier on the eyes' 
-                          : '☀️ Light mode for bright workspaces'}
-                    </p>
+                    <p className="text-sm text-muted-foreground">Light mode only for now.</p>
                   </div>
 
                   {/* Autosave Toggle */}

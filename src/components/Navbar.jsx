@@ -52,12 +52,7 @@ export default function Navbar() {
   const [searchResults, setSearchResults] = useState({ tickets: [], clients: [], team: [] })
   const [searching, setSearching] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [darkMode, setDarkMode] = useState(() => {
-    // Read from localStorage first, then DOM class
-    const storedTheme = localStorage.getItem('theme')
-    if (storedTheme) return storedTheme === 'dark'
-    return document.documentElement.classList.contains('dark')
-  })
+
 
   // Keyboard shortcut: Cmd+K or Ctrl+K to open search
   useEffect(() => {
@@ -96,23 +91,6 @@ export default function Navbar() {
     navigate('/login')
   }
 
-  const toggleDarkMode = () => {
-    const newMode = !darkMode
-    setDarkMode(newMode)
-    
-    if (newMode) {
-      document.documentElement.classList.add('dark')
-      localStorage.setItem('theme', 'dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-      localStorage.setItem('theme', 'light')
-    }
-    
-    // Also save user-specific preference if logged in
-    if (profile?.id) {
-      localStorage.setItem(`theme:${profile.id}`, newMode ? 'dark' : 'light')
-    }
-  }
 
   const getInitials = (name) => {
     if (!name) return '?'
@@ -187,19 +165,6 @@ export default function Navbar() {
                 </kbd>
               </Button>
 
-              {/* Dark mode toggle */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleDarkMode}
-                className="hidden sm:flex"
-              >
-                {darkMode ? (
-                  <Sun className="h-4 w-4" />
-                ) : (
-                  <Moon className="h-4 w-4" />
-                )}
-              </Button>
 
               {/* User menu */}
               <DropdownMenu>

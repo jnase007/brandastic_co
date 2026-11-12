@@ -106,6 +106,35 @@ function commaNumber(value) {
   return fraction != null && fraction !== '' ? `${grouped}.${fraction.slice(0, 2)}` : grouped
 }
 
+function dealLabel(row) {
+  const name = row.company || row.name || 'Deal'
+  const money = formatMoney(row.value_2026 || row.close_amount)
+  return money ? `${name} · ${money}` : name
+}
+
+function ClosedCell({ deals, amount }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <td
+      className="relative px-2 py-2 text-right"
+      onMouseEnter={() => deals.length && setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <div className={deals.length ? 'cursor-default underline decoration-dotted decoration-slate-400' : ''}>{deals.length}</div>
+      <div className="text-[10px] opacity-70">{formatMoney(amount) || '$0'}</div>
+      {open ? (
+        <div className="absolute right-0 top-full z-30 mt-1 w-56 rounded-lg bg-slate-900 p-2 text-left text-xs text-white shadow-lg">
+          {deals.map((row, index) => (
+            <div key={`${row.import_key || row.company || row.name}-${index}`} className="py-0.5 leading-snug">
+              {dealLabel(row)}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </td>
+  )
+}
+
 function Pie({ slices, title }) {
   const [hover, setHover] = useState(null)
   const total = slices.reduce((sum, slice) => sum + slice.value, 0)
@@ -141,9 +170,9 @@ function Pie({ slices, title }) {
     angle = next
   })
   return (
-    <div className="rounded-xl border bg-white p-4">
+    <div className="overflow-hidden rounded-xl border bg-white p-4">
       <h3 className="mb-3 text-sm font-semibold">{title}</h3>
-      <div className="flex flex-col items-center gap-3 sm:flex-row">
+      <div className="flex min-w-0 flex-col items-center gap-3">
         <div className="relative">
           <svg width={size} height={size} viewBox="0 0 180 180">
             {paths.map((path) => (
@@ -155,30 +184,31 @@ function Pie({ slices, title }) {
                 opacity={hover && hover.label !== path.label ? 0.45 : 1}
                 onMouseEnter={() => setHover(path)}
                 onMouseLeave={() => setHover(null)}
-              >
-                <title>{`${path.label}: ${path.percent}%`}</title>
-              </path>
+              />
             ))}
           </svg>
           {hover ? (
-            <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 w-40 -translate-x-1/2 -translate-y-1/2 rounded-lg bg-slate-900 px-3 py-2 text-center text-xs text-white shadow-lg">
-              <div className="font-semibold">{hover.label}</div>
-              <div className="mt-0.5 text-sm font-bold">{hover.percent}%</div>
-              <div className="text-slate-300">{formatMoney(hover.value) || hover.value}</div>
+            <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 w-44 -translate-x-1/2 -translate-y-1/2 rounded-lg bg-slate-900 px-3 py-2 text-center text-white shadow-lg">
+              <div className="text-xs font-semibold leading-tight">{hover.label}</div>
+              <div className="mt-0.5 text-lg font-bold">{hover.percent}%</div>
+              <div className="text-xs text-slate-300">{formatMoney(hover.value) || hover.value}</div>
             </div>
-          ) : null}
+          ) : (
+            <div className="pointer-events-none absolute left-1/2 top-1/2 w-28 -translate-x-1/2 -translate-y-1/2 text-center text-[11px] text-slate-400">
+              Hover a slice
+            </div>
+          )}
         </div>
-        <ul className="space-y-1 text-xs">
+        <ul className="grid w-full min-w-0 grid-cols-1 gap-1 text-xs">
           {paths.map((path) => (
             <li
               key={path.label}
-              className={cn('flex items-center gap-2', hover?.label === path.label && 'font-semibold')}
+              className={cn('flex min-w-0 items-center gap-2', hover?.label === path.label && 'font-semibold')}
               onMouseEnter={() => setHover(path)}
               onMouseLeave={() => setHover(null)}
             >
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: path.color }} />
-              <span>{path.label}</span>
-              <span className="text-muted-foreground">{path.percent}%</span>
+              <span className="min-w-0 truncate">{path.label}</span>
             </li>
           ))}
         </ul>
@@ -297,10 +327,10 @@ export default function ScoreCardFinancials() {
     <div className="p-4 sm:p-6">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold tracking-[0.2em] text-[#8eb4ff]">SCORE CARD V2 — FINANCIALS</p>
-          <h1 className="text-2xl font-bold">Financials</h1>
+          <p className="text-xs font-semibold tracking-[0.2em] text-[#8eb4ff]">SCORE CARD</p>
+          <h1 className="text-2xl font-bold">Channel spend</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Spend by channel by month. Closed deals use the lead date on Score Card. Pick a month or All.
+            Marketing spend by channel by month. Not company financials. Closed deals use the lead date on Score Card. Pick a month or All.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -363,8 +393,8 @@ export default function ScoreCardFinancials() {
       </div>
 
       <h2 className="mb-2 text-lg font-semibold">Closed deals by month</h2>
-      <p className="mb-2 text-sm text-muted-foreground">Count / close $ from Score Card (lead date). Not spend.</p>
-      <div className="mb-8 overflow-auto rounded-xl border bg-white shadow-sm">
+      <p className="mb-2 text-sm text-muted-foreground">Count / close $ from Score Card (lead date). Not spend. Hover a count to see the deals.</p>
+      <div className="mb-8 overflow-visible rounded-xl border bg-white shadow-sm">
         <table className="min-w-full border-collapse text-xs">
           <thead>
             <tr className="bg-slate-900 text-white">
@@ -388,17 +418,12 @@ export default function ScoreCardFinancials() {
                   {MONTHS.map((month) => {
                     const deals = closedInMonth(channel, month.id)
                     const amount = deals.reduce((sum, row) => sum + (Number(row.value_2026 || row.close_amount) || 0), 0)
-                    return (
-                      <td key={month.id} className="px-2 py-2 text-right">
-                        <div>{deals.length}</div>
-                        <div className="text-[10px] opacity-70">{formatMoney(amount) || '$0'}</div>
-                      </td>
-                    )
+                    return <ClosedCell key={month.id} deals={deals} amount={amount} />
                   })}
-                  <td className="px-3 py-2 text-right">
-                    <div>{yearClosed}</div>
-                    <div className="text-[10px] opacity-70">{formatMoney(yearAmount) || '$0'}</div>
-                  </td>
+                  <ClosedCell
+                    deals={MONTHS.flatMap((month) => closedInMonth(channel, month.id))}
+                    amount={yearAmount}
+                  />
                 </tr>
               )
             })}
