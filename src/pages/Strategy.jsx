@@ -29,7 +29,7 @@ export default function Strategy() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-6">
       <PageHeader
-        title="Strategy"
+        title="Strategy 2027"
         description="Rally cry: Focused. Growth. · 2027"
         actions={
           <a
