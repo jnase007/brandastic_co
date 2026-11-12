@@ -345,7 +345,7 @@ export default function Scenarios() {
         </p>
         <p className="mt-3 text-2xl font-semibold tabular-nums">That is {pct(projection.avgMargin)} of money in</p>
         <p className="mt-2 text-sm text-slate-600">
-          Money in, minus team (~{money(BOOKS.cogsAvg)}), minus overhead (the $40k you type), minus off-the-books. Not the bank. Not what you can spend. Real 2026 P&L net was {money(BOOKS.noiAvg)} / mo, {pct(BOOKS.noiAvg / BOOKS.incomeAvg)} — because overhead on the books was closer to {money(BOOKS.opexAvg)}, not $40k.
+          Money in minus team minus overhead minus SBA loan. Overhead and the loan both reduce what’s left.
         </p>
         <div className="mt-4 flex flex-wrap gap-4">
         <label className="block max-w-sm text-sm font-semibold text-slate-700">
@@ -353,11 +353,11 @@ export default function Scenarios() {
           <Input className="mt-1 h-12 text-lg tabular-nums" value={overhead} onChange={(event) => setOverhead(event.target.value)} placeholder="40000" />
         </label>
         <label className="block max-w-sm text-sm font-semibold text-slate-700">
-          Off the books / mo
+          SBA loan / mo
           <Input className="mt-1 h-12 text-lg tabular-nums" value={offBooks} onChange={(event) => setOffBooks(event.target.value)} placeholder="20000" />
         </label>
         </div>
-        <p className="mt-2 text-xs text-slate-400">SBA, extra rent, anything the P&L does not show. Only this page.</p>
+        <p className="mt-2 text-sm text-slate-500">Overhead and the SBA loan both come out. They lower what’s left.</p>
       </div>
 
       <BreakEvenChart months={projection.months} />
