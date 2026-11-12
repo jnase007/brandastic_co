@@ -107,11 +107,11 @@ export default function Scenarios() {
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Cost now</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">{money(projection.nowRow.cost)}</p>
-          <p className="text-xs text-slate-500">Includes {money(overheadAmount)} overhead</p>
+          <p className="text-xs font-medium text-teal-700">Includes {money(overheadAmount)} overhead</p>
         </div>
-        <div className="rounded-2xl border bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">After planned raises</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums">{money(projection.after.cost)}</p>
+        <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">After planned raises</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-orange-950">{money(projection.after.cost)}</p>
         </div>
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Margin after</p>
@@ -150,7 +150,8 @@ export default function Scenarios() {
           {projection.months.map((row) => (
             <div key={row.key} className="flex h-full min-w-0 flex-1 flex-col justify-end gap-0.5">
               <div className="w-full rounded-t bg-[#1644ED]/70" style={{ height: `${(row.revenue / projection.peak) * 100}%` }} />
-              <div className={cn('w-full rounded-t', row.raised ? 'bg-orange-400' : 'bg-slate-300')} style={{ height: `${(row.cost / projection.peak) * 100}%` }} />
+              <div className={cn('w-full rounded-t', row.raised ? 'bg-orange-400' : 'bg-slate-300')} style={{ height: `${((row.cost - overheadAmount) / projection.peak) * 100}%` }} />
+              <div className="w-full rounded-t bg-teal-500" style={{ height: `${(overheadAmount / projection.peak) * 100}%` }} />
             </div>
           ))}
         </div>
@@ -159,7 +160,7 @@ export default function Scenarios() {
             <p key={row.key} className={cn('min-w-0 flex-1 text-center text-[10px] text-slate-400', row.raised && 'font-semibold text-orange-600')}>{row.label}</p>
           ))}
         </div>
-        <p className="mt-3 text-xs text-slate-400">Blue = retainers (+ extra client). Gray = cost now. Orange = cost after raises.</p>
+        <p className="mt-3 text-xs text-slate-400">Blue = retainers. Gray = team. Orange = team after raises. Teal = $40k overhead.</p>
       </div>
 
       <div className="mt-6 overflow-hidden rounded-2xl border bg-white shadow-sm">
