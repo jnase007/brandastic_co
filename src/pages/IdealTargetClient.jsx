@@ -21,6 +21,7 @@ const MARKETS = [
     cases: [
       { name: 'CalOPS', href: 'https://brandastic.com/portfolio/california-online-public-schools/' },
       { name: 'Think Together', href: 'https://brandastic.com/portfolio/think-together/' },
+      { name: 'Heart Christian', note: 'Case study in progress' },
     ],
   },
   {
@@ -40,6 +41,7 @@ const MARKETS = [
     cases: [
       { name: 'Health Mate', href: 'https://brandastic.com/portfolio/health-mate/' },
       { name: 'Orangetheory Fitness', href: 'https://brandastic.com/portfolio/orangetheory-fitness/' },
+      { name: 'Nordic Sauna', href: 'https://brandastic.com/portfolio/nordic-sauna/' },
     ],
   },
 ]
@@ -59,10 +61,17 @@ export default function IdealTargetClient() {
             <p className="mt-2 text-sm text-muted-foreground">{market.note}</p>
             <ul className="mt-4 space-y-1.5">
               {market.cases.map((item) => (
-                <li key={item.href}>
-                  <a href={item.href} target="_blank" rel="noreferrer" className="text-sm font-medium text-[#FF6B00] hover:underline">
-                    {item.name}
-                  </a>
+                <li key={item.name}>
+                  {item.href ? (
+                    <a href={item.href} target="_blank" rel="noreferrer" className="text-sm font-medium text-[#FF6B00] hover:underline">
+                      {item.name}
+                    </a>
+                  ) : (
+                    <span className="text-sm font-medium">
+                      {item.name}
+                      {item.note ? <span className="ml-1 font-normal text-muted-foreground">· {item.note}</span> : null}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
