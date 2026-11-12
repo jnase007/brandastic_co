@@ -84,6 +84,7 @@ const simpleNavItems = [
   { path: '/profitability/websites', icon: Globe, label: 'Websites' },
   { path: '/hosting', icon: Server, label: 'Hosting' },
   { path: '/announcements', icon: Megaphone, label: 'Announcements' },
+  { path: '/people', icon: Users, label: 'People' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
   { path: '/mission', icon: Target, label: 'Mission' },
   { path: '/strategy', icon: Compass, label: 'Strategy' },
@@ -400,22 +401,6 @@ export default function Sidebar({
                     )}
                   >
                     Financials
-                  </Link>
-                </div>
-              ) : null}
-              {item.path === '/profitability' && isActive && !collapsed ? (
-                <div className="mb-2 ml-3 mt-1 border-l border-border pl-2">
-                  <Link
-                    to="/profitability/costs"
-                    onMouseEnter={() => prefetchRoute('/profitability/costs')}
-                    className={cn(
-                      "flex w-full rounded-lg px-2 py-1.5 text-left text-sm",
-                      location.pathname === '/profitability/costs'
-                        ? "bg-[#e8eeff] font-medium text-[#1644ED]"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    Costs
                   </Link>
                 </div>
               ) : null}

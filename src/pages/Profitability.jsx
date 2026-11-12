@@ -65,7 +65,7 @@ export default function Profitability() {
     <>
       <div className="px-7 pt-3 lg:hidden">
         <span className="flex gap-3">
-          <Link to="/profitability/costs" className="text-sm font-medium text-[#1644ED]">Costs</Link>
+          <Link to="/people" className="text-sm font-medium text-[#1644ED]">People</Link>
           <Link to="/profitability/websites" className="text-sm font-medium text-[#1644ED]">Websites</Link>
         </span>
       </div>

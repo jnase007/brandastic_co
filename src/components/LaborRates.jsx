@@ -135,10 +135,9 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
     <section className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#FF6B00]">Profitability</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">Costs</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">People</h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-500">
-            Hourly cost and monthly overhead feed every profitability view. Tempo still supplies hours. Employees default to 40 hours a week. Birthday, start date, and Announce feed Company Announcements.
+            Everyone on the team. Hourly cost and monthly overhead feed profitability; type and weekly hours feed Team; birthday, start date, and Announce feed Company Announcements.
           </p>
         </div>
         {alwaysOpen ? null : (
@@ -156,8 +155,9 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
             </div>
           ) : null}
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Monthly overhead</p>
+          <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-semibold">Company settings</h2>
+            <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Monthly overhead</p>
             <p className="mt-1 text-sm text-slate-500">Rent, tools, and everything that isn’t a person on this list.</p>
             <div className={cn(moneyWrap, 'mt-4 max-w-xs')}>
               <span className="pl-3 text-slate-400">$</span>
@@ -179,7 +179,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
             <div className="flex items-center justify-between border-b px-5 py-4">
               <div>
                 <h2 className="text-base font-semibold">People</h2>
-                <p className="text-sm text-slate-500">{draft.length} on the cost list</p>
+                <p className="text-sm text-slate-500">{draft.length} people</p>
               </div>
               {editable ? (
                 <Button
@@ -197,129 +197,123 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                 </Button>
               ) : null}
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-[1180px] w-full text-sm">
-                <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <th className="px-5 py-3">Name</th>
-                    <th className="px-3 py-3">Type</th>
-                    <th className="px-3 py-3">Role</th>
-                    <th className="px-3 py-3">Weekly hours</th>
-                    <th className="px-3 py-3">Hourly cost</th>
-                    <th className="px-3 py-3">Birthday</th>
-                    <th className="px-3 py-3">Start date</th>
-                    <th className="px-3 py-3">Announce</th>
-                    <th className="px-3 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {draft.map((row, index) => (
-                    <tr key={row.id || `new-${index}`} className="border-t">
-                      <td className="px-5 py-2">
-                        <Input
-                          className={fieldClass}
-                          aria-label="Name"
-                          value={row.name}
-                          disabled={!editable || saving}
-                          onChange={(event) => update(index, 'name', event.target.value)}
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <select
-                          aria-label={`Type for ${row.name || 'person'}`}
-                          className={fieldClass}
-                          value={row.workerType}
-                          disabled={!editable || saving}
-                          onChange={(event) => update(index, 'workerType', event.target.value)}
-                        >
-                          <option value="employee">Employee</option>
-                          <option value="contractor">Contractor</option>
-                        </select>
-                      </td>
-                      <td className="px-3 py-2">
-                        <Input
-                          className={fieldClass}
-                          aria-label={`Role for ${row.name || 'person'}`}
-                          value={row.role}
-                          placeholder="Optional"
-                          disabled={!editable || saving}
-                          onChange={(event) => update(index, 'role', event.target.value)}
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <Input
-                          className={fieldClass}
-                          aria-label={`Weekly hours for ${row.name || 'person'}`}
-                          inputMode="decimal"
-                          value={row.workerType === 'contractor' ? '' : row.weeklyCapacity}
-                          placeholder={row.workerType === 'contractor' ? '—' : '40'}
-                          disabled={!editable || saving || row.workerType === 'contractor'}
-                          onChange={(event) => update(index, 'weeklyCapacity', event.target.value)}
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className={cn(moneyWrap, 'w-[140px]')}>
-                          <span className="pl-3 text-slate-400">$</span>
-                          <input
-                            aria-label={`Hourly cost for ${row.name || 'person'}`}
-                            inputMode="decimal"
-                            className="h-10 w-full border-0 bg-transparent px-2 font-medium tabular-nums outline-none"
-                            value={row.hourly}
-                            disabled={!editable || saving}
-                            onChange={(event) => update(index, 'hourly', commaNumber(event.target.value))}
-                          />
-                        </div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <Input
-                          className={fieldClass}
-                          type="date"
-                          aria-label={`Birthday for ${row.name || 'person'}`}
-                          value={row.birthday || ''}
-                          disabled={!editable || saving}
-                          onChange={(event) => update(index, 'birthday', event.target.value)}
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <Input
-                          className={fieldClass}
-                          type="date"
-                          aria-label={`Start date for ${row.name || 'person'}`}
-                          value={row.startDate || ''}
-                          disabled={!editable || saving}
-                          onChange={(event) => update(index, 'startDate', event.target.value)}
-                        />
-                      </td>
-                      <td className="px-3 py-2">
+            <div>
+              {draft.map((row, index) => (
+                <div key={row.id || `new-${index}`} className="space-y-3 border-t px-5 py-4">
+                  <div className="grid items-end gap-3 md:grid-cols-[minmax(0,1.4fr)_150px_140px_160px_auto]">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Name
+                      <Input
+                        className={cn(fieldClass, 'mt-1')}
+                        aria-label="Name"
+                        value={row.name}
+                        disabled={!editable || saving}
+                        onChange={(event) => update(index, 'name', event.target.value)}
+                      />
+                    </label>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Type
+                      <select
+                        aria-label={`Type for ${row.name || 'person'}`}
+                        className={cn(fieldClass, 'mt-1 w-full')}
+                        value={row.workerType}
+                        disabled={!editable || saving}
+                        onChange={(event) => update(index, 'workerType', event.target.value)}
+                      >
+                        <option value="employee">Employee</option>
+                        <option value="contractor">Contractor</option>
+                      </select>
+                    </label>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Weekly hours
+                      <Input
+                        className={cn(fieldClass, 'mt-1')}
+                        aria-label={`Weekly hours for ${row.name || 'person'}`}
+                        inputMode="decimal"
+                        value={row.workerType === 'contractor' ? '' : row.weeklyCapacity}
+                        placeholder={row.workerType === 'contractor' ? '—' : '40'}
+                        disabled={!editable || saving || row.workerType === 'contractor'}
+                        onChange={(event) => update(index, 'weeklyCapacity', event.target.value)}
+                      />
+                    </label>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Hourly cost
+                      <div className={cn(moneyWrap, 'mt-1')}>
+                        <span className="pl-3 text-slate-400">$</span>
                         <input
-                          type="checkbox"
-                          aria-label={`Announce ${row.name || 'person'}`}
-                          checked={row.showOnAnnouncements !== false}
+                          aria-label={`Hourly cost for ${row.name || 'person'}`}
+                          inputMode="decimal"
+                          className="h-10 w-full border-0 bg-transparent px-2 font-medium tabular-nums outline-none"
+                          value={row.hourly}
                           disabled={!editable || saving}
-                          onChange={(event) => update(index, 'showOnAnnouncements', event.target.checked)}
+                          onChange={(event) => update(index, 'hourly', commaNumber(event.target.value))}
                         />
-                      </td>
-                      <td className="px-3 py-2">
-                        {editable ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-slate-400 hover:text-red-600"
-                            disabled={saving}
-                            onClick={() => {
-                              setSaved(false)
-                              setDraft((current) => current.filter((_, rowIndex) => rowIndex !== index))
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </label>
+                    {editable ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-slate-400 hover:text-red-600"
+                        disabled={saving}
+                        aria-label={`Remove ${row.name || 'person'}`}
+                        onClick={() => {
+                          setSaved(false)
+                          setDraft((current) => current.filter((_, rowIndex) => rowIndex !== index))
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    ) : <span />}
+                  </div>
+                  <div className="grid items-end gap-3 md:grid-cols-[180px_180px_minmax(0,1fr)_auto]">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Birthday
+                      <Input
+                        className={cn(fieldClass, 'mt-1')}
+                        type="date"
+                        aria-label={`Birthday for ${row.name || 'person'}`}
+                        value={row.birthday || ''}
+                        disabled={!editable || saving}
+                        onChange={(event) => update(index, 'birthday', event.target.value)}
+                      />
+                    </label>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Start date
+                      <Input
+                        className={cn(fieldClass, 'mt-1')}
+                        type="date"
+                        aria-label={`Start date for ${row.name || 'person'}`}
+                        value={row.startDate || ''}
+                        disabled={!editable || saving}
+                        onChange={(event) => update(index, 'startDate', event.target.value)}
+                      />
+                    </label>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Role
+                      <Input
+                        className={cn(fieldClass, 'mt-1')}
+                        aria-label={`Role for ${row.name || 'person'}`}
+                        value={row.role}
+                        placeholder="Optional"
+                        disabled={!editable || saving}
+                        onChange={(event) => update(index, 'role', event.target.value)}
+                      />
+                    </label>
+                    <label className="flex h-10 items-center gap-2 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        aria-label={`Announce ${row.name || 'person'}`}
+                        checked={row.showOnAnnouncements !== false}
+                        disabled={!editable || saving}
+                        onChange={(event) => update(index, 'showOnAnnouncements', event.target.checked)}
+                      />
+                      Announce
+                    </label>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -332,7 +326,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                 onClick={save}
               >
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {saving ? 'Saving…' : 'Save costs'}
+                {saving ? 'Saving…' : 'Save'}
               </Button>
               {saved ? <span className="text-sm font-medium text-green-600">Saved</span> : null}
               {error ? <p className="text-sm text-red-600">{error}</p> : null}

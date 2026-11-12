@@ -1,6 +1,6 @@
 const loaders = {
   '/profitability': () => import('../pages/Profitability'),
-  '/profitability/costs': () => import('../pages/ProfitabilityCosts'),
+  '/people': () => import('../pages/ProfitabilityCosts'),
   '/profitability/team': () => import('../pages/ProfitabilityTeam'),
   '/profitability/websites': () => import('../pages/ProfitabilityWebsites'),
   '/hosting': () => import('../pages/Hosting'),

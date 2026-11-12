@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Menu, X, LayoutDashboard, Kanban, Building2, Clock, BarChart3,
-  Users2, Trophy, User, Shield, LogOut, Timer, Activity,
+  Users, Users2, Trophy, User, Shield, LogOut, Timer, Activity,
   Search, ChevronRight, Zap, Bell, BookOpen, ActivitySquare, Settings,
   ListTodo, Lightbulb, Target, ListChecks,
   Server,
@@ -75,6 +75,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         { path: '/profitability/websites', icon: Globe, label: 'Websites' },
         { path: '/hosting', icon: Server, label: 'Hosting' },
         { path: '/announcements', icon: Megaphone, label: 'Announcements' },
+        { path: '/people', icon: Users, label: 'People' },
         { path: '/feature-list', icon: ListChecks, label: 'Features' },
       ]
 

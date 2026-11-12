@@ -303,7 +303,7 @@ export function useLaborRateRows() {
       })
       .catch((err) => {
         if (cancel) return
-        setError(err.message || 'Could not load costs')
+        setError(err.message || 'Could not load people')
         setRows(null)
         setOverhead(null)
       })

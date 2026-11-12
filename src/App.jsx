@@ -1210,13 +1210,15 @@ function App() {
                 }
               />
               <Route
-                path="/profitability/costs"
+                path="/people"
                 element={
                   <TeamRoute>
                     <ProfitabilityCosts />
                   </TeamRoute>
                 }
               />
+              <Route path="/profitability/costs" element={<Navigate to="/people" replace />} />
+              <Route path="/costs" element={<Navigate to="/people" replace />} />
               <Route
                 path="/profitability/websites"
                 element={

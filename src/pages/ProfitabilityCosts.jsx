@@ -7,7 +7,7 @@ export default function ProfitabilityCosts() {
   if (!ready) {
     return (
       <div className="min-h-screen bg-slate-50 p-6 sm:p-8">
-        <p className="text-sm text-slate-500">Loading costs…</p>
+        <p className="text-sm text-slate-500">Loading people…</p>
       </div>
     )
   }

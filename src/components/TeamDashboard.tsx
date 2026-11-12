@@ -209,7 +209,7 @@ function Overview({ report, range }: { report: AllocationReport; range: TeamRang
             </table>
           </div>
         ) : (
-          <p className="pr-note">No contractors yet. On Costs, set Type to Contractor for anyone who is not an employee.</p>
+          <p className="pr-note">No contractors yet. On People, set Type to Contractor for anyone who is not an employee.</p>
         )}
       </section>
     </section>
