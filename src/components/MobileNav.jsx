@@ -77,6 +77,8 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         { action: 'more', icon: Menu, label: 'More' },
       ]
     : [
+        { path: '/deals', icon: Target, label: 'Sales Pipeline' },
+        { path: '/score-card', icon: ClipboardList, label: 'Score Card' },
         { path: '/profitability', icon: BarChart3, label: 'Marketing Retainers' },
         { path: '/profitability/team', icon: Users2, label: 'Team' },
         { path: '/profitability/websites', icon: Globe, label: 'Websites' },

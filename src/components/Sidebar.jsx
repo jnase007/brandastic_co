@@ -79,6 +79,8 @@ const navItems = [
 ]
 
 const simpleNavItems = [
+  { path: '/deals', icon: Target, label: 'Sales Pipeline' },
+  { path: '/score-card', icon: ClipboardList, label: 'Score Card' },
   { path: '/profitability', icon: BarChart3, label: 'Marketing Retainers' },
   { path: '/profitability/team', icon: Users2, label: 'Team' },
   { path: '/profitability/websites', icon: Globe, label: 'Websites' },
@@ -92,8 +94,6 @@ const simpleNavItems = [
   { path: '/mission', icon: Target, label: 'Mission' },
   { path: '/strategy', icon: Compass, label: 'Strategy' },
   { path: '/ideal-target-client', icon: Crosshair, label: 'Ideal Target Client' },
-  { path: '/score-card', icon: ClipboardList, label: 'Score Card' },
-  { path: '/deals', icon: Target, label: 'Sales Pipeline' },
 ]
 
 const adminNavItems = [
