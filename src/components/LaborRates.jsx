@@ -24,6 +24,10 @@ function plannedMonthly(row) {
   return hourly * weekly * WEEKS_PER_MONTH
 }
 
+function plannedAnnual(row) {
+  return plannedMonthly(row) * 12
+}
+
 function draftFrom(rows) {
   return (rows || []).map((row) => ({
     id: row.id,
@@ -251,7 +255,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
             <div>
               {draft.map((row, index) => (
                 <div key={row.id || `new-${index}`} className="space-y-3 border-t px-5 py-4">
-                  <div className="grid items-end gap-3 md:grid-cols-[minmax(0,1.4fr)_150px_140px_160px_120px_auto]">
+                  <div className="grid items-end gap-3 md:grid-cols-[minmax(0,1.5fr)_140px_130px_150px_110px_110px_auto]">
                     <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Name
                       <Input
@@ -261,6 +265,9 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                         disabled={!editable || saving}
                         onChange={(event) => update(index, 'name', event.target.value)}
                       />
+                      <p className="mt-1 text-sm font-semibold tabular-nums text-slate-700">
+                        {money(plannedMonthly(row))} / mo · {money(plannedAnnual(row))} / yr
+                      </p>
                     </label>
                     <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Type
@@ -305,6 +312,12 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                       Monthly
                       <p className="mt-2 text-sm font-semibold tabular-nums text-slate-900">
                         {money(plannedMonthly(row))}
+                      </p>
+                    </div>
+                    <div className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Annual
+                      <p className="mt-2 text-sm font-semibold tabular-nums text-slate-900">
+                        {money(plannedAnnual(row))}
                       </p>
                     </div>
                     {editable ? (
