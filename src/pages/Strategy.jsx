@@ -60,7 +60,7 @@ export default function Strategy() {
         <h2 className="font-semibold">40 schools by 2030</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           Strategic direction: education retainers. Same people as{' '}
-          <Link to="/ideal-target-client" className="font-medium text-brand-orange hover:underline">Ideal Target Client</Link>
+          <Link to="/ideal-target-client" className="font-medium text-brand-orange hover:underline">Target Client(s)</Link>
           — enrollment directors at private and public charter K–12.
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
