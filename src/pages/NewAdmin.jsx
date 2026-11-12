@@ -48,7 +48,7 @@ export default function NewAdmin() {
   async function addPerson() {
     const trimmed = name.trim()
     const monthlyAmount = Number(String(monthly).replace(/[$,]/g, ''))
-    const rate = Number(String(hourly).replace(/[$,]/g, '')) || (monthlyAmount > 0 ? monthlyAmount / 160 : NaN)
+    const rate = Number(String(hourly).replace(/[$,]/g, '')) || (type === 'employee' && monthlyAmount > 0 ? monthlyAmount / 160 : NaN)
     if (!trimmed) {
       setFail('Name is required.')
       return
@@ -120,9 +120,10 @@ export default function NewAdmin() {
 
       <div className="mt-6 rounded-2xl border bg-white p-5 shadow-sm">
         <h2 className="text-base font-semibold">Add someone</h2>
-        <p className="mt-1 text-sm text-slate-500">Monthly salary ÷ 160 hours = hourly. Type either one.</p>
+        <p className="mt-1 text-sm text-slate-500">{type === 'employee' ? 'Employees: monthly salary ÷ 160 hours = hourly. Contractors stay hourly.' : 'Contractors: hourly only.'}</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <Input placeholder="Name" value={name} onChange={(event) => setName(event.target.value)} />
+          {type === 'employee' ? (
           <Input
             placeholder="Monthly salary $"
             inputMode="decimal"
@@ -134,6 +135,7 @@ export default function NewAdmin() {
               if (amount > 0) setHourly(String(Math.round((amount / 160) * 100) / 100))
             }}
           />
+          ) : null}
           <Input
             placeholder="Hourly $"
             inputMode="decimal"
@@ -141,11 +143,13 @@ export default function NewAdmin() {
             onChange={(event) => {
               const value = event.target.value
               setHourly(value)
-              const amount = Number(String(value).replace(/[$,]/g, ''))
-              if (amount > 0) setMonthly(String(Math.round(amount * 160)))
+              if (type === 'employee') {
+                const amount = Number(String(value).replace(/[$,]/g, ''))
+                if (amount > 0) setMonthly(String(Math.round(amount * 160)))
+              }
             }}
           />
-          <select className="h-10 rounded-lg border border-slate-200 px-3 text-sm" value={type} onChange={(event) => setType(event.target.value)}>
+          <select className="h-10 rounded-lg border border-slate-200 px-3 text-sm" value={type} onChange={(event) => { setType(event.target.value); if (event.target.value === 'contractor') setMonthly('') }}>
             <option value="employee">Employee</option>
             <option value="contractor">Contractor</option>
           </select>
