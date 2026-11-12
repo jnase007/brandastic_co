@@ -45,6 +45,18 @@ export default function Strategy() {
       <p className="mt-3 max-w-2xl text-muted-foreground">
         Built around education clients. Overall we want to be at <span className="font-semibold text-foreground">$3.5 million by 2030</span>.
       </p>
+      <a
+        href="https://www.canva.com/design/DAHZ5LVC-QE/xPHtKLBkD24OUfGIlI_3UA/edit"
+        target="_blank"
+        rel="noreferrer"
+        className="mt-6 block overflow-hidden rounded-xl border bg-card shadow-sm hover:opacity-95"
+      >
+        <img
+          src="/education-gtm-2027.jpg"
+          alt="Education Go-To-Market Strategy 2027"
+          className="w-full object-cover"
+        />
+      </a>
       <div className="mt-8 grid gap-4 md:grid-cols-3">
         {PILLARS.map((p) => (
           <div key={p.title} className="rounded-xl border bg-card p-5">
