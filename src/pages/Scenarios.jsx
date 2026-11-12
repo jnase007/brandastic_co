@@ -1,10 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Loader2 } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
+import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { cn } from '../lib/utils'
 import { useLaborRateRows } from '../lib/laborRates'
 import { useClientRetainers } from '../lib/clientRetainers'
+import { loadScenario, saveScenario } from '../lib/scenarioStore'
 
 const WEEKS = 52 / 12
 const TAX = 0.062 + 0.0145 + 0.006 + 0.034 + 0.001
@@ -34,6 +37,21 @@ export default function Scenarios() {
   const [raises, setRaises] = useState({})
   const [extraClient, setExtraClient] = useState('')
   const [clientEnds, setClientEnds] = useState({})
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState('')
+  const [saveError, setSaveError] = useState('')
+
+  useEffect(() => {
+    let cancel = false
+    loadScenario().then((loaded) => {
+      if (cancel || !loaded) return
+      if (loaded.raiseFrom) setRaiseFrom(loaded.raiseFrom)
+      if (loaded.raises) setRaises(loaded.raises)
+      if (loaded.extraClient != null) setExtraClient(loaded.extraClient)
+      if (loaded.clientEnds) setClientEnds(loaded.clientEnds)
+    })
+    return () => { cancel = true }
+  }, [])
 
   const people = rows || []
   const clients = (retainers.rows || []).filter((row) => !row.internal)
@@ -96,6 +114,30 @@ export default function Scenarios() {
       <PageHeader
         title="Scenarios"
         description="Team from People. Revenue from Client retainers. Set an end month on a client to see the dip. No Tempo."
+        actions={
+          <Button
+            type="button"
+            className="bg-[#FF6B00] text-white hover:bg-[#e05f00]"
+            disabled={saving}
+            onClick={async () => {
+              setSaving(true)
+              setSaveError('')
+              setSaved('')
+              try {
+                const result = await saveScenario({ raiseFrom, raises, extraClient, clientEnds })
+                if (result.error) setSaved('Saved on this browser. Run supabase/scenario-plans.sql to share it.')
+                else setSaved('Scenario saved.')
+              } catch (err) {
+                setSaveError(err.message || 'Could not save.')
+              } finally {
+                setSaving(false)
+              }
+            }}
+          >
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Save scenario
+          </Button>
+        }
       />
       <p className="mt-2 text-sm text-slate-500">
         <Link className="font-medium text-[#1644ED]" to="/people">People</Link>
@@ -103,6 +145,8 @@ export default function Scenarios() {
         <Link className="font-medium text-[#1644ED]" to="/retainers">Client retainers</Link>
       </p>
       {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
+      {saveError ? <p className="mt-4 text-sm text-red-600">{saveError}</p> : null}
+      {saved ? <p className="mt-4 text-sm text-emerald-700">{saved}</p> : null}
 
       <div className="mt-6 grid gap-3 sm:grid-cols-4">
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
