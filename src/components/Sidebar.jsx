@@ -88,6 +88,7 @@ const simpleNavItems = [
   { path: '/announcements', icon: Megaphone, label: 'Announcements' },
   { path: '/people', icon: Users, label: 'People' },
   { path: '/scenarios', icon: BarChart3, label: 'Scenarios' },
+  { path: '/new_admin', icon: Shield, label: 'Admin' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
   { path: '/working', icon: CheckCircle, label: 'Working/Not' },
   { path: '/mission', icon: Target, label: 'Mission' },
@@ -140,7 +141,7 @@ export default function Sidebar({
     if (item.path === '/people') return canSeePeople
     if (item.path === '/score-card') return canSeeScoreCard
     if (item.path === '/profitability') return canSeeProfitability
-    if (item.path === '/admin') return canManageUsers
+    if (item.path === '/admin' || item.path === '/new_admin') return canManageUsers
     return true
   })
   const featureNav = useFeatureListNav()?.nav

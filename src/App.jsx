@@ -49,6 +49,7 @@ const ProfitabilityTeam = lazy(() => import('./pages/ProfitabilityTeam'))
 const ProfitabilityWebsites = lazy(() => import('./pages/ProfitabilityWebsites'))
 const WorkingNotWorking = lazy(() => import('./pages/WorkingNotWorking'))
 const AdminHub = lazy(() => import('./pages/AdminHub'))
+const NewAdmin = lazy(() => import('./pages/NewAdmin'))
 const Ideas = lazy(() => import('./pages/Ideas'))
 // Note: AuthCallback removed - using implicit flow with detectSessionInUrl
 const EmailTemplates = lazy(() => import('./pages/EmailTemplates'))
@@ -1172,6 +1173,14 @@ function App() {
                 element={
                   <UsersRoute>
                     <Admin />
+                  </UsersRoute>
+                }
+              />
+              <Route
+                path="/new_admin"
+                element={
+                  <UsersRoute>
+                    <NewAdmin />
                   </UsersRoute>
                 }
               />

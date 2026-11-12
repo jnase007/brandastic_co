@@ -62,7 +62,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
     if (path === '/people') return canSeePeople
     if (path === '/score-card') return canSeeScoreCard
     if (path === '/profitability') return canSeeProfitability
-    if (path === '/admin') return canManageUsers
+    if (path === '/admin' || path === '/new_admin') return canManageUsers
     return true
   }
   const canRevealNav = String(user?.email || '').toLowerCase() === 'justin@brandastic.com'
@@ -86,6 +86,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         { path: '/announcements', icon: Megaphone, label: 'Announcements' },
         { path: '/people', icon: Users, label: 'People' },
         { path: '/scenarios', icon: BarChart3, label: 'Scenarios' },
+        { path: '/new_admin', icon: Shield, label: 'Admin' },
         { path: '/feature-list', icon: ListChecks, label: 'Features' },
         { path: '/working', icon: CheckCircle, label: 'Working/Not' },
       ].filter((item) => canSeePath(item.path))
