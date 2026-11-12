@@ -338,14 +338,14 @@ export default function Scenarios() {
       {saved ? <p className="mt-3 text-sm text-emerald-700">{saved}</p> : null}
 
       <div className="mt-6 rounded-2xl border-2 border-[#1644ED] bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[#1644ED]">Left after in and out</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-[#1644ED]">Money left this month (average)</p>
         <p className={cn('mt-2 text-5xl font-bold tabular-nums', projection.avgProfit < 0 ? 'text-red-600' : 'text-slate-900')}>
           {money(projection.avgProfit)}
           <span className="ml-2 text-2xl font-semibold text-slate-500">/ mo</span>
         </p>
-        <p className="mt-3 text-2xl font-semibold tabular-nums">Net margin {pct(projection.avgMargin)}</p>
+        <p className="mt-3 text-2xl font-semibold tabular-nums">That is {pct(projection.avgMargin)} of money in</p>
         <p className="mt-2 text-sm text-slate-600">
-          Books net this year is {money(BOOKS.noiAvg)} / mo ({pct(BOOKS.noiAvg / BOOKS.incomeAvg)}). That is not cash to spend.
+          Money in, minus team (~{money(BOOKS.cogsAvg)}), minus overhead (the $40k you type), minus off-the-books. Not the bank. Not what you can spend. Real 2026 P&L net was {money(BOOKS.noiAvg)} / mo, {pct(BOOKS.noiAvg / BOOKS.incomeAvg)} — because overhead on the books was closer to {money(BOOKS.opexAvg)}, not $40k.
         </p>
         <div className="mt-4 flex flex-wrap gap-4">
         <label className="block max-w-sm text-sm font-semibold text-slate-700">
