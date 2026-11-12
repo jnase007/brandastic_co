@@ -36,6 +36,18 @@ function num(value) {
   return Number(String(value || '').replace(/[$,]/g, '')) || 0
 }
 
+function withCommas(value) {
+  const text = String(value ?? '')
+  const negative = text.trim().startsWith('-')
+  const raw = text.replace(/[^0-9.]/g, '')
+  if (!raw) return ''
+  const parts = raw.split('.')
+  const whole = parts[0]
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const body = parts.length > 1 ? grouped + '.' + parts.slice(1).join('').slice(0, 2) : grouped
+  return negative ? '-' + body : body
+}
+
 function wages(row) {
   const hourly = Number(row.hourly) || 0
   if (String(row.worker_type || '').toLowerCase() !== 'contractor') return hourly * 160
@@ -173,8 +185,8 @@ export default function Scenarios() {
   const [hireAmount, setHireAmount] = useState('')
   const [hireFrom, setHireFrom] = useState('2027-01')
   const [otherMonthly, setOtherMonthly] = useState('')
-  const [offBooks, setOffBooks] = useState('20000')
-  const [overhead, setOverhead] = useState('40000')
+  const [offBooks, setOffBooks] = useState('20,000')
+  const [overhead, setOverhead] = useState('40,000')
   const [clientEnds, setClientEnds] = useState({})
   const [clientPlans, setClientPlans] = useState({})
   const [futureClients, setFutureClients] = useState([])
@@ -389,11 +401,11 @@ export default function Scenarios() {
         <div className="mt-4 flex flex-wrap gap-4">
         <label className="block max-w-sm text-sm font-semibold text-slate-700">
           Overhead / mo
-          <Input className="mt-1 h-12 text-lg tabular-nums" value={overhead} onChange={(event) => setOverhead(event.target.value)} placeholder="40000" />
+          <Input className="mt-1 h-12 text-lg tabular-nums" value={overhead} onChange={(event) => setOverhead(withCommas(event.target.value))} placeholder="40000" />
         </label>
         <label className="block max-w-sm text-sm font-semibold text-slate-700">
           SBA loan / mo
-          <Input className="mt-1 h-12 text-lg tabular-nums" value={offBooks} onChange={(event) => setOffBooks(event.target.value)} placeholder="20000" />
+          <Input className="mt-1 h-12 text-lg tabular-nums" value={offBooks} onChange={(event) => setOffBooks(withCommas(event.target.value))} placeholder="20000" />
         </label>
         </div>
         <p className="mt-2 text-sm text-slate-500">Overhead and the SBA loan both come out. They lower what’s left.</p>
@@ -486,12 +498,12 @@ export default function Scenarios() {
         <p className="mt-1 text-sm text-slate-500">Retainers {money(BOOKS.recurringAug)} + other projects {money(BOOKS.otherAvg)} = {money(BOOKS.incomeAvg)} / mo.</p>
         <label className="mt-3 block max-w-xs text-xs font-semibold uppercase tracking-wide text-slate-500">
           Other projects / mo
-          <Input className="mt-1 h-10" value={otherMonthly} placeholder={String(Math.round(BOOKS.otherAvg))} onChange={(event) => setOtherMonthly(event.target.value)} />
+          <Input className="mt-1 h-10" value={otherMonthly} placeholder={withCommas(Math.round(BOOKS.otherAvg))} onChange={(event) => setOtherMonthly(withCommas(event.target.value))} />
         </label>
         <div className="mt-3 flex flex-wrap gap-3">
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             New person / mo
-            <Input className="mt-1 h-10 w-36" value={hireAmount} onChange={(event) => setHireAmount(event.target.value)} placeholder="4200" />
+            <Input className="mt-1 h-10 w-36" value={hireAmount} onChange={(event) => setHireAmount(withCommas(event.target.value))} placeholder="4200" />
           </label>
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Starts
