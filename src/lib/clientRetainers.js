@@ -58,7 +58,11 @@ function hqAmount(name) {
 
 export function isInternalClient(row) {
   const name = String(row?.name || '').trim().toLowerCase()
-  return name === 'brandastic' || name.startsWith('brandastic ')
+  return (
+    name === 'brandastic' ||
+    name.startsWith('brandastic ') ||
+    name.includes('focus formula')
+  )
 }
 
 function amountOf(row) {
