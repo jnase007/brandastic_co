@@ -354,7 +354,7 @@ export default function ScoreCardFinancials() {
         <table className="min-w-full border-collapse text-xs">
           <thead>
             <tr className="bg-slate-50 text-slate-600">
-              <th className="sticky left-0 bg-slate-50 px-3 py-2 text-left">Channel</th>
+              <th className="sticky left-0 z-20 bg-slate-50 px-3 py-2 text-left shadow-[4px_0_8px_-4px_rgba(15,23,42,0.25)]">Channel</th>
               {MONTHS.map((month) => (
                 <th key={month.id} className="px-2 py-2 text-right">{month.label}</th>
               ))}
@@ -364,7 +364,7 @@ export default function ScoreCardFinancials() {
           <tbody>
             {LEAD_SOURCES.map((channel) => (
               <tr key={channel} className={cn('border-b', chipClass(CHANNEL_COLORS, channel))}>
-                <td className="sticky left-0 px-3 py-1 font-semibold">{channel}</td>
+                <td className={cn('sticky left-0 z-10 px-3 py-1 font-semibold shadow-[4px_0_8px_-4px_rgba(15,23,42,0.18)]', chipClass(CHANNEL_COLORS, channel))}>{channel}</td>
                 {MONTHS.map((month) => (
                   <td key={month.id} className="px-1 py-1">
                     <Input
@@ -378,7 +378,7 @@ export default function ScoreCardFinancials() {
               </tr>
             ))}
             <tr className="bg-slate-800 font-semibold text-white">
-              <td className="sticky left-0 bg-slate-800 px-3 py-2">Total spend</td>
+              <td className="sticky left-0 z-10 bg-slate-800 px-3 py-2 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.25)]">Total spend</td>
               {MONTHS.map((month) => (
                 <td key={month.id} className="px-2 py-2 text-right">
                   {formatMoney(LEAD_SOURCES.reduce((sum, channel) => sum + spendFor(channel, month.id), 0)) || '$0'}
@@ -392,11 +392,11 @@ export default function ScoreCardFinancials() {
 
       <h2 className="mb-2 text-lg font-semibold">Closed deals by month</h2>
       <p className="mb-2 text-sm text-muted-foreground">Count / close $ from Score Card (lead date). Not spend. Hover a count to see the deals.</p>
-      <div className="mb-8 overflow-visible rounded-xl border bg-white shadow-sm">
+      <div className="mb-8 overflow-auto rounded-xl border bg-white shadow-sm">
         <table className="min-w-full border-collapse text-xs">
           <thead>
             <tr className="bg-slate-50 text-slate-600">
-              <th className="sticky left-0 bg-slate-50 px-3 py-2 text-left">Channel</th>
+              <th className="sticky left-0 z-20 bg-slate-50 px-3 py-2 text-left shadow-[4px_0_8px_-4px_rgba(15,23,42,0.25)]">Channel</th>
               {MONTHS.map((month) => (
                 <th key={month.id} className="px-2 py-2 text-right">{month.label}</th>
               ))}
@@ -412,7 +412,7 @@ export default function ScoreCardFinancials() {
               )
               return (
                 <tr key={channel} className={cn('border-b', chipClass(CHANNEL_COLORS, channel))}>
-                  <td className="sticky left-0 px-3 py-2 font-semibold">{channel}</td>
+                  <td className={cn('sticky left-0 z-10 px-3 py-2 font-semibold shadow-[4px_0_8px_-4px_rgba(15,23,42,0.18)]', chipClass(CHANNEL_COLORS, channel))}>{channel}</td>
                   {MONTHS.map((month) => {
                     const deals = closedInMonth(channel, month.id)
                     const amount = deals.reduce((sum, row) => sum + (Number(row.value_2026 || row.close_amount) || 0), 0)
