@@ -15,7 +15,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!assets/|api/|education-content/|sitemap\\.xml$|robots\\.txt$|sw\\.js$|version\\.json$|favicon\\.svg$|favicon\\.ico$|manifest\\.json$).*)",
+      "source": "/((?!assets/|api/|education-content/|org-content/|sitemap\\.xml$|robots\\.txt$|sw\\.js$|version\\.json$|favicon\\.svg$|favicon\\.ico$|manifest\\.json$).*)",
       "destination": "/index.html"
     }
   ],
