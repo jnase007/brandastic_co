@@ -702,25 +702,30 @@ export default function Mission() {
                           strokeWidth="3"
                         />
                         
-                        {/* Data points */}
-                        {trajectoryData.map((d, i) => (
-                          <circle
-                            key={i}
-                            cx={(i / (trajectoryData.length - 1)) * 400}
-                            cy={200 - (d.value / mission.revenue_target) * 180}
-                            r="5"
-                            fill="#F7931E"
-                            stroke="#f8fafc"
-                            strokeWidth="2"
-                          />
-                        ))}
                       </svg>
+                      {trajectoryData.map((d, i) => (
+                        <div
+                          key={d.label}
+                          className="absolute h-3 w-3 rounded-full border-2 border-slate-50 bg-[#F7931E]"
+                          style={{
+                            left: `${(i / (trajectoryData.length - 1)) * 100}%`,
+                            top: `${100 - (d.value / mission.revenue_target) * 90}%`,
+                            transform: 'translate(-50%, -50%)',
+                          }}
+                        />
+                      ))}
                     </div>
                     
                     {/* X-axis labels */}
-                    <div className="absolute left-14 right-0 bottom-0 flex justify-between text-slate-500 dark:text-white/50 text-xs">
+                    <div className="absolute left-14 right-0 bottom-0 h-6 text-slate-500 dark:text-white/50 text-xs">
                       {trajectoryData.map((d, i) => (
-                        <span key={i}>{d.label}</span>
+                        <span
+                          key={d.label}
+                          className="absolute"
+                          style={{ left: `${(i / (trajectoryData.length - 1)) * 100}%`, transform: 'translateX(-50%)' }}
+                        >
+                          {d.label}
+                        </span>
                       ))}
                     </div>
                   </div>
