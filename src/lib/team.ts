@@ -283,7 +283,6 @@ export type CapacityStatus = "over" | "risk" | "healthy" | "spare";
 export type AllocationPerson = {
   name: string;
   slug: string;
-  role: string;
   kind: "employee" | "contractor";
   minutes: number;
   previousMinutes: number | null;
@@ -382,7 +381,6 @@ export function buildAllocation(
     built.push({
       name: person.name,
       slug: memberSlug(person.name),
-      role: (person.rate?.role || "").trim(),
       kind,
       minutes,
       previousMinutes: previous ? minutesIn(previousByPerson.get(key)) : null,

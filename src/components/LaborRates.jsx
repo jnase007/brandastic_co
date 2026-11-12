@@ -12,7 +12,6 @@ function draftFrom(rows) {
     hourly: row.hourly == null ? '' : commaNumber(row.hourly),
     workerType: row.worker_type === 'contractor' ? 'contractor' : 'employee',
     weeklyCapacity: row.weekly_capacity == null || row.weekly_capacity === '' ? '40' : String(row.weekly_capacity),
-    role: row.role || '',
     birthday: dateInput(row.birthday),
     startDate: dateInput(row.start_date),
     showOnAnnouncements: row.show_on_announcements !== false,
@@ -74,7 +73,6 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
       hourly: String(row.hourly).replace(/[$,]/g, ''),
       workerType: row.workerType === 'contractor' ? 'contractor' : 'employee',
       weeklyCapacity: row.weeklyCapacity,
-      role: row.role,
       birthday: row.birthday,
       startDate: row.startDate,
       showOnAnnouncements: row.showOnAnnouncements,
@@ -116,7 +114,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
       setDraft(draftFrom(savedRows))
       setOverheadDraft(overheadText(savedOverhead != null ? savedOverhead : startingOverhead))
       if (!savedRates.profileSaved) {
-        setError('Hourly costs saved, but type, weekly hours, and role did not save.')
+        setError('Hourly costs saved, but type and weekly hours did not save.')
         setSaved(false)
       } else if (savedRates.announceSaved === false) {
         setError('Hourly costs saved, but birthday and start date did not save.')
@@ -189,7 +187,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                   disabled={saving}
                   onClick={() => {
                     setSaved(false)
-                    setDraft((current) => [...current, { name: '', hourly: '', workerType: 'employee', weeklyCapacity: '40', role: '', birthday: '', startDate: '', showOnAnnouncements: true }])
+                    setDraft((current) => [...current, { name: '', hourly: '', workerType: 'employee', weeklyCapacity: '40', birthday: '', startDate: '', showOnAnnouncements: true }])
                   }}
                 >
                   <Plus className="mr-1 h-4 w-4" />
@@ -267,7 +265,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                       </Button>
                     ) : <span />}
                   </div>
-                  <div className="grid items-end gap-3 md:grid-cols-[180px_180px_minmax(0,1fr)_auto]">
+                  <div className="grid items-end gap-3 md:grid-cols-[180px_180px_auto]">
                     <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Birthday
                       <Input
@@ -288,17 +286,6 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                         value={row.startDate || ''}
                         disabled={!editable || saving}
                         onChange={(event) => update(index, 'startDate', event.target.value)}
-                      />
-                    </label>
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Role
-                      <Input
-                        className={cn(fieldClass, 'mt-1')}
-                        aria-label={`Role for ${row.name || 'person'}`}
-                        value={row.role}
-                        placeholder="Optional"
-                        disabled={!editable || saving}
-                        onChange={(event) => update(index, 'role', event.target.value)}
                       />
                     </label>
                     <label className="flex h-10 items-center gap-2 text-sm font-medium text-slate-700">

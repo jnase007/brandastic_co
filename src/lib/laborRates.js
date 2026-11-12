@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 
-const RATE_COLUMNS = 'id, name, hourly, position, worker_type, weekly_capacity, role, birthday, start_date, show_on_announcements'
-const WORKER_COLUMNS = 'id, name, hourly, position, worker_type, weekly_capacity, role'
+const RATE_COLUMNS = 'id, name, hourly, position, worker_type, weekly_capacity, birthday, start_date, show_on_announcements'
+const WORKER_COLUMNS = 'id, name, hourly, position, worker_type, weekly_capacity'
 const BASIC_COLUMNS = 'id, name, hourly, position'
 const PROFILE_PREFIX = '__tp__:'
 
@@ -17,7 +17,7 @@ function errorText(error) {
 
 function isMissingWorkerColumn(error) {
   const text = errorText(error)
-  return text.includes('worker_type') || text.includes('weekly_capacity') || text.includes('role')
+  return text.includes('worker_type') || text.includes('weekly_capacity')
 }
 
 function isMissingAnnounceColumn(error) {
@@ -45,7 +45,6 @@ function profileRecord(row) {
     name: row.name.trim(),
     workerType,
     weeklyCapacity: workerType === 'contractor' ? null : Number(row.weeklyCapacity) || 40,
-    role: String(row.role || '').trim(),
     birthday: dateOrBlank(row.birthday),
     startDate: dateOrBlank(row.startDate),
     showOnAnnouncements: row.showOnAnnouncements !== false,
@@ -79,7 +78,6 @@ function applyProfileRows(people, profileRows) {
       ...row,
       worker_type: extra.workerType === 'contractor' ? 'contractor' : 'employee',
       weekly_capacity: extra.weeklyCapacity,
-      role: extra.role || '',
       birthday: extra.birthday || null,
       start_date: extra.startDate || null,
       show_on_announcements: extra.showOnAnnouncements === false ? false : true,
@@ -167,7 +165,6 @@ export function applyProfitInputs(data, rows, overhead) {
         hourly: Number(row.hourly),
         workerType: row.worker_type === 'contractor' ? 'contractor' : 'employee',
         weeklyCapacity: row.weekly_capacity == null || row.weekly_capacity === '' ? null : Number(row.weekly_capacity),
-        role: row.role ? String(row.role) : '',
       })),
     } : {}),
     ...(overhead == null ? {} : { monthlyOverhead: Number(overhead) }),
@@ -194,7 +191,6 @@ export async function saveLaborRates(rows) {
       position,
       worker_type: row.workerType === 'contractor' ? 'contractor' : 'employee',
       weekly_capacity: row.workerType === 'contractor' ? null : Number(row.weeklyCapacity) || 40,
-      role: String(row.role || '').trim() || null,
       birthday: dateOrBlank(row.birthday) || null,
       start_date: dateOrBlank(row.startDate) || null,
       show_on_announcements: row.showOnAnnouncements !== false,
@@ -218,7 +214,7 @@ export async function saveLaborRates(rows) {
     return { rows: applyAnnounceProfiles(worker.data || [], stored), profileSaved: true, announceSaved: true }
   }
   if (!isMissingProfileColumn(full.error)) throw full.error
-  const basicPayload = payload.map(({ worker_type, weekly_capacity, role, birthday, start_date, show_on_announcements, ...row }) => row)
+  const basicPayload = payload.map(({ worker_type, weekly_capacity, birthday, start_date, show_on_announcements, ...row }) => row)
   const basic = await writeLaborRates(basicPayload, BASIC_COLUMNS)
   if (basic.error) throw basic.error
   const stored = await replaceProfileRows(storedProfiles, rows)

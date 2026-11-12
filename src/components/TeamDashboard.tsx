@@ -222,7 +222,6 @@ function ContractorRow({ person, range }: { person: AllocationPerson; range: Tea
     <tr className="tm-row" onClick={(event) => openRow(event, () => navigate(teamHref(range, person.slug)))}>
       <td>
         <Link to={teamHref(range, person.slug)}>{person.name}</Link>
-        {person.role ? <small className="tm-role">{person.role}</small> : null}
       </td>
       <td>{hoursLabel(person.minutes)}</td>
       <td className="tm-bar-cell">
@@ -244,7 +243,6 @@ function EmployeeCard({ person, range }: { person: AllocationPerson; range: Team
       <header>
         <div className="tm-person">
           <Link to={teamHref(range, person.slug)}>{person.name}</Link>
-          {person.role ? <small className="tm-role">{person.role}</small> : null}
         </div>
         {person.status ? <span className={`tm-status tm-status-${person.status}`}>{statusLabel(person.status)}</span> : null}
       </header>
@@ -437,7 +435,6 @@ function PersonView({
         <div className="pr-section-label">
           <h2>
             {person.name}
-            {person.role ? <span> · {person.role}</span> : null}
           </h2>
         </div>
         {person.status ? <span className={`tm-status tm-status-${person.status}`}>{statusLabel(person.status)}</span> : null}

@@ -60,7 +60,6 @@ export type CostRate = {
   workerType?: "employee" | "contractor";
   /** Weekly capacity for employees. Null uses 40. Contractors ignore this. */
   weeklyCapacity?: number | null;
-  role?: string | null;
 };
 
 export type ProfitabilityData = {
