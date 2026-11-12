@@ -85,6 +85,7 @@ const simpleNavItems = [
   { path: '/hosting', icon: Server, label: 'Hosting' },
   { path: '/announcements', icon: Megaphone, label: 'Announcements' },
   { path: '/people', icon: Users, label: 'People' },
+  { path: '/scenarios', icon: BarChart3, label: 'Scenarios' },
   { path: '/admin', icon: Shield, label: 'Users' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
   { path: '/working', icon: CheckCircle, label: 'Working/Not' },

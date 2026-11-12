@@ -44,6 +44,7 @@ const Announcements = lazy(() => import('./pages/Announcements'))
 const Hosting = lazy(() => import('./pages/Hosting'))
 const Profitability = lazy(() => import('./pages/Profitability'))
 const ProfitabilityCosts = lazy(() => import('./pages/ProfitabilityCosts'))
+const Scenarios = lazy(() => import('./pages/Scenarios'))
 const ProfitabilityTeam = lazy(() => import('./pages/ProfitabilityTeam'))
 const ProfitabilityWebsites = lazy(() => import('./pages/ProfitabilityWebsites'))
 const WorkingNotWorking = lazy(() => import('./pages/WorkingNotWorking'))
@@ -1253,6 +1254,14 @@ function App() {
                 element={
                   <PeopleRoute>
                     <ProfitabilityCosts />
+                  </PeopleRoute>
+                }
+              />
+              <Route
+                path="/scenarios"
+                element={
+                  <PeopleRoute>
+                    <Scenarios />
                   </PeopleRoute>
                 }
               />
