@@ -66,11 +66,11 @@ const navItems = [
   { path: '/clients', icon: Building2, label: 'Clients', shortcut: 'G C' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
   { path: '/hosting', icon: Server, label: 'Hosting' },
+  { path: '/score-card', icon: ClipboardList, label: 'All Leads' },
   { path: '/pipeline', icon: Target, label: 'Deal Pipeline' },
   { path: '/mission', icon: Target, label: 'Mission', shortcut: 'G M' },
   { path: '/strategy', icon: Compass, label: 'Strategy 2027' },
   { path: '/ideal-target-client', icon: Crosshair, label: 'Target Client(s)' },
-  { path: '/score-card', icon: ClipboardList, label: 'Score Card' },
   { path: '/docs', icon: BookOpen, label: 'Internal Docs', shortcut: 'G N' },
   { path: '/taskboard', icon: Kanban, label: 'Task Board', shortcut: 'G K' },
   { path: '/reports', icon: BarChart3, label: 'Reports', shortcut: 'G R' },
@@ -81,8 +81,8 @@ const navItems = [
 ]
 
 const simpleNavItems = [
+  { path: '/score-card', icon: ClipboardList, label: 'All Leads', group: 'Sales' },
   { path: '/deals', icon: Target, label: 'Deal Pipeline', group: 'Sales' },
-  { path: '/score-card', icon: ClipboardList, label: 'Score Card', group: 'Sales' },
   { path: '/profitability', icon: BarChart3, label: 'Marketing Retainers', group: 'Delivery' },
   { path: '/profitability/websites', icon: Globe, label: 'Websites', group: 'Delivery' },
   { path: '/hosting', icon: Server, label: 'Hosting', group: 'Delivery' },

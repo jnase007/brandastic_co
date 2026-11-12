@@ -133,7 +133,7 @@ export default function ScoreCard() {
   return (
     <div className="min-h-screen">
       <div className="px-4 pt-5">
-        <PageHeader title="Score Card" description="Contacts. Pipeline and Financials are in the left nav." />
+        <PageHeader title="All Leads" description="Every contact. Deal Pipeline is next in the nav." />
       </div>
       <Leads embedded />
     </div>

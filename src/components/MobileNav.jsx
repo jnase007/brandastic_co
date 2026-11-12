@@ -36,12 +36,12 @@ const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/time', icon: Clock, label: 'Time Tracking' },
   { path: '/clients', icon: Building2, label: 'Clients' },
+  { path: '/score-card', icon: ClipboardList, label: 'All Leads' },
   { path: '/pipeline', icon: Target, label: 'Deal Pipeline' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
   { path: '/mission', icon: Target, label: 'Mission' },
   { path: '/strategy', icon: Compass, label: 'Strategy 2027' },
   { path: '/ideal-target-client', icon: Crosshair, label: 'Target Client(s)' },
-  { path: '/score-card', icon: ClipboardList, label: 'Score Card' },
   { path: '/hosting', icon: Server, label: 'Hosting' },
   { path: '/docs', icon: BookOpen, label: 'Internal Docs' },
   { path: '/taskboard', icon: ListTodo, label: 'Task Board' },
@@ -79,8 +79,8 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         { action: 'more', icon: Menu, label: 'More' },
       ]
     : [
+        { path: '/score-card', icon: ClipboardList, label: 'All Leads' },
         { path: '/deals', icon: Target, label: 'Deal Pipeline' },
-        { path: '/score-card', icon: ClipboardList, label: 'Score Card' },
         { path: '/profitability', icon: BarChart3, label: 'Marketing Retainers' },
         { path: '/profitability/websites', icon: Globe, label: 'Websites' },
         { path: '/hosting', icon: Server, label: 'Hosting' },
