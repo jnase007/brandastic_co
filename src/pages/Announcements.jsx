@@ -31,6 +31,20 @@ const TYPES = {
 const BLANK_NOTE = { id: '', title: '', details: '', startDate: '', endDate: '' }
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const MONTH_TINT = [
+  { wrap: 'border-sky-200', head: 'bg-sky-100 text-sky-900' },
+  { wrap: 'border-violet-200', head: 'bg-violet-100 text-violet-900' },
+  { wrap: 'border-emerald-200', head: 'bg-emerald-100 text-emerald-900' },
+  { wrap: 'border-amber-200', head: 'bg-amber-100 text-amber-900' },
+  { wrap: 'border-rose-200', head: 'bg-rose-100 text-rose-900' },
+  { wrap: 'border-teal-200', head: 'bg-teal-100 text-teal-900' },
+  { wrap: 'border-orange-200', head: 'bg-orange-100 text-orange-900' },
+  { wrap: 'border-indigo-200', head: 'bg-indigo-100 text-indigo-900' },
+  { wrap: 'border-lime-200', head: 'bg-lime-100 text-lime-900' },
+  { wrap: 'border-fuchsia-200', head: 'bg-fuchsia-100 text-fuchsia-900' },
+  { wrap: 'border-cyan-200', head: 'bg-cyan-100 text-cyan-900' },
+  { wrap: 'border-red-200', head: 'bg-red-100 text-red-900' },
+]
 
 function isCelebration(item) {
   return item.type === 'birthday' || item.type === 'anniversary'
@@ -129,13 +143,15 @@ function UpcomingCalendar({
               <p className="mt-2 text-sm text-[#5c6b7a]">Nothing on this day.</p>
             )}
           </div>
-          {monthsThrough(today, windowEnd).map((month) => (
-            <div key={month}>
-              <p className="text-sm font-semibold">{monthName(month)}</p>
-              <div className="mt-2 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-[#8b98a5]">
-                {WEEKDAYS.map((day) => <span key={day}>{day}</span>)}
+          {monthsThrough(today, windowEnd).map((month) => {
+            const tint = MONTH_TINT[Number(month.slice(5)) - 1] || MONTH_TINT[0]
+            return (
+            <div key={month} className={`overflow-hidden rounded-2xl border ${tint.wrap}`}>
+              <p className={`px-3 py-2 text-sm font-semibold ${tint.head}`}>{monthName(month)}</p>
+              <div className="grid grid-cols-7 border-t border-[#d5dde6] text-center text-[11px] font-semibold text-[#64748b]">
+                {WEEKDAYS.map((day) => <span key={day} className="border-r border-[#d5dde6] py-1.5 last:border-r-0">{day}</span>)}
               </div>
-              <div className="mt-1 grid grid-cols-7 overflow-hidden rounded-xl border border-[#d5dde6]" onMouseLeave={() => setHoveredDay(null)}>
+              <div className="grid grid-cols-7 border-t border-[#d5dde6]" onMouseLeave={() => setHoveredDay(null)}>
                 {monthCells(month).map((day, index) => {
                   const dayItems = day ? byDay.get(day) || [] : []
                   const inRange = day && day.slice(0, 7) >= today.slice(0, 7) && day <= windowEnd
@@ -174,7 +190,8 @@ function UpcomingCalendar({
                 })}
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <div className="mt-6 space-y-5">
