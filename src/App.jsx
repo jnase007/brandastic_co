@@ -320,6 +320,14 @@ function AdminRoute({ children }) {
   )
 }
 
+function PeopleRoute({ children }) {
+  const { canSeePeople, loading, user } = useAuth()
+  if (loading) return <LoadingScreen />
+  if (!user) return <Navigate to="/login" replace />
+  if (!canSeePeople) return <Navigate to="/profitability" replace />
+  return children
+}
+
 // Client Preview Banner Component
 function ClientPreviewBanner({ onExit }) {
   return (
@@ -1212,13 +1220,13 @@ function App() {
               <Route
                 path="/people"
                 element={
-                  <TeamRoute>
+                  <PeopleRoute>
                     <ProfitabilityCosts />
-                  </TeamRoute>
+                  </PeopleRoute>
                 }
               />
-              <Route path="/profitability/costs" element={<Navigate to="/people" replace />} />
-              <Route path="/costs" element={<Navigate to="/people" replace />} />
+              <Route path="/profitability/costs" element={<PeopleRoute><Navigate to="/people" replace /></PeopleRoute>} />
+              <Route path="/costs" element={<PeopleRoute><Navigate to="/people" replace /></PeopleRoute>} />
               <Route
                 path="/profitability/websites"
                 element={

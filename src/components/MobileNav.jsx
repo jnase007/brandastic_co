@@ -57,7 +57,7 @@ const adminNavItems = [
 // Bottom tab bar for quick access
 export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
   const location = useLocation()
-  const { user, isAdmin, profile } = useAuth()
+  const { user, isAdmin, profile, canSeePeople } = useAuth()
   const canRevealNav = String(user?.email || '').toLowerCase() === 'justin@brandastic.com'
   const showFullNav = canRevealNav && readFullNav()
 
@@ -77,7 +77,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         { path: '/announcements', icon: Megaphone, label: 'Announcements' },
         { path: '/people', icon: Users, label: 'People' },
         { path: '/feature-list', icon: ListChecks, label: 'Features' },
-      ]
+      ].filter((item) => item.path !== '/people' || canSeePeople)
 
   const [showMore, setShowMore] = useState(false)
   

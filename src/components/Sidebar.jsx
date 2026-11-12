@@ -112,7 +112,7 @@ export default function Sidebar({
 }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const { user, signOut, isAdmin, isActualAdmin, viewMode, toggleViewMode, toggleClientPreview, clientPreviewMode } = useAuth()
+  const { user, signOut, isAdmin, isActualAdmin, canSeePeople, viewMode, toggleViewMode, toggleClientPreview, clientPreviewMode } = useAuth()
   const canRevealNav = String(user?.email || '').toLowerCase() === 'justin@brandastic.com'
   const [fullNav, setFullNavState] = useState(false)
 
@@ -130,7 +130,9 @@ export default function Sidebar({
   }, [canRevealNav])
 
   const showFullNav = Boolean(canRevealNav && fullNav)
-  const visibleNavItems = showFullNav ? navItems : simpleNavItems
+  const visibleNavItems = (showFullNav ? navItems : simpleNavItems).filter(
+    (item) => item.path !== '/people' || canSeePeople
+  )
   const featureNav = useFeatureListNav()?.nav
 
   const unhideNav = () => {

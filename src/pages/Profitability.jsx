@@ -5,6 +5,7 @@ import { ProfitabilityDashboard } from '../components/ProfitabilityDashboard'
 import { profitRange } from '../lib/profitability'
 import { cachedProfitability, fetchProfitability } from '../lib/profitabilityCache'
 import { applyProfitInputs, useLaborRateRows } from '../lib/laborRates'
+import { useAuth } from '../contexts/AuthContext'
 
 function clientSlugFromPath(pathname) {
   const parts = String(pathname || '').split('/').filter(Boolean)
@@ -14,6 +15,7 @@ function clientSlugFromPath(pathname) {
 }
 
 export default function Profitability() {
+  const { canSeePeople } = useAuth()
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const slug = clientSlugFromPath(location.pathname)
@@ -65,7 +67,7 @@ export default function Profitability() {
     <>
       <div className="px-7 pt-3 lg:hidden">
         <span className="flex gap-3">
-          <Link to="/people" className="text-sm font-medium text-[#1644ED]">People</Link>
+          {canSeePeople ? <Link to="/people" className="text-sm font-medium text-[#1644ED]">People</Link> : null}
           <Link to="/profitability/websites" className="text-sm font-medium text-[#1644ED]">Websites</Link>
         </span>
       </div>

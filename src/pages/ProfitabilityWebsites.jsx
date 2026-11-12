@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 import '../profitability.css'
 import { useLaborRateRows } from '../lib/laborRates'
 import { fetchWebsites, formatHours, formatMoney, formatPct, websiteRows } from '../lib/websites'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function ProfitabilityWebsites() {
+  const { canSeePeople } = useAuth()
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [hideDone, setHideDone] = useState(false)
@@ -76,7 +78,7 @@ export default function ProfitabilityWebsites() {
       <p className="pr-back ws-links">
         <Link to="/profitability">← Marketing retainers</Link>
         <Link to="/profitability/team">Team</Link>
-        <Link to="/people">People</Link>
+        {canSeePeople ? <Link to="/people">People</Link> : null}
       </p>
 
       {!data && !error ? (

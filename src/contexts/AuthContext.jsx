@@ -419,11 +419,16 @@ export function AuthProvider({ children }) {
     'justin@brandastic.com',
     'admin@brandastic.com',
   ]
+  const PEOPLE_EMAILS = [
+    'justin@brandastic.com',
+    'sandy@brandastic.com',
+  ]
 
   // Role calculations
   const actualRole = profile?.role
   const userEmail = user?.email?.toLowerCase() || profile?.email?.toLowerCase()
   const isEmailAdmin = ADMIN_EMAILS.includes(userEmail)
+  const canSeePeople = PEOPLE_EMAILS.includes(userEmail)
   const isActualAdmin = actualRole === 'admin' || isEmailAdmin
 
   // Auto-set admin role if email is in whitelist
@@ -457,6 +462,7 @@ export function AuthProvider({ children }) {
     isTeam: actualRole === 'team' || actualRole === 'admin',
     isAdmin: effectiveIsAdmin,
     isActualAdmin,
+    canSeePeople,
     isClient: actualRole === 'client',
     // View mode
     viewMode,
