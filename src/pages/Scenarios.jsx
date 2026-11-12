@@ -120,7 +120,7 @@ function BreakEvenChart({ months }) {
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-slate-900">Revenue and costs</p>
-          <p className="text-xs text-slate-500">Hover a month for the numbers. Yellow dotted is break-even.</p>
+          <p className="text-xs text-slate-500">Purple on yellow means you’re even. That’s real when leftover is near $0. Hover for the dollars.</p>
         </div>
         <p className="text-xs font-medium text-slate-600">Break-even at {money(avgCost)} / mo</p>
       </div>
@@ -170,6 +170,64 @@ function BreakEvenChart({ months }) {
         <span className="text-yellow-700">● Total out</span>
         <span className="text-orange-700">● Team</span>
         <span className="text-cyan-700">● Left</span>
+      </div>
+    </div>
+  )
+}
+
+
+function LeftChart({ months }) {
+  const [hover, setHover] = useState(null)
+  if (!months?.length) return null
+  const width = 920
+  const height = 220
+  const pad = { l: 8, r: 8, t: 16, b: 8 }
+  const innerW = width - pad.l - pad.r
+  const innerH = height - pad.t - pad.b
+  const profits = months.map((row) => row.profit)
+  const rawMax = Math.max(0, ...profits)
+  const rawMin = Math.min(0, ...profits)
+  const padY = Math.max(5000, (rawMax - rawMin) * 0.2)
+  const maxY = rawMax + padY
+  const minY = rawMin - padY
+  const span = maxY - minY || 1
+  const x = (i) => pad.l + (months.length === 1 ? innerW / 2 : (i / (months.length - 1)) * innerW)
+  const y = (value) => pad.t + innerH - ((value - minY) / span) * innerH
+  const line = months.map((row, i) => `${i ? 'L' : 'M'} ${x(i)} ${y(row.profit)}`).join(' ')
+  const zero = y(0)
+  const active = hover || null
+  return (
+    <div className="mt-4 rounded-2xl border bg-white p-5 shadow-sm">
+      <p className="text-sm font-semibold text-slate-900">What’s left (zoomed in)</p>
+      <p className="text-xs text-slate-500">Same months. This scale is dollars left, not the $160k in/out lines. $0 is the red dotted line.</p>
+      <div className="relative mt-3">
+        <svg viewBox={`0 0 ${width} ${height}`} className="h-48 w-full" preserveAspectRatio="none">
+          <line x1={0} x2={width} y1={zero} y2={zero} stroke="#ef4444" strokeDasharray="4 4" strokeWidth="1.5" />
+          {active ? <line x1={x(months.indexOf(active))} x2={x(months.indexOf(active))} y1={pad.t} y2={pad.t + innerH} stroke="#cbd5e1" /> : null}
+          <path d={line} fill="none" stroke="#0891b2" strokeWidth="3" />
+          {months.map((row, i) => (
+            <circle key={row.key} cx={x(i)} cy={y(row.profit)} r="5" fill={row.profit < 0 ? '#dc2626' : '#0891b2'} />
+          ))}
+        </svg>
+        <div className="absolute inset-0 flex">
+          {months.map((row) => (
+            <div key={row.key} className="h-full flex-1 cursor-crosshair" onMouseEnter={() => setHover(row)} onMouseLeave={() => setHover(null)} />
+          ))}
+        </div>
+        {active ? (
+          <div className="pointer-events-none absolute left-1/2 top-4 z-10 w-56 -translate-x-1/2 rounded-xl border bg-white p-3 text-sm shadow-lg">
+            <p className="font-semibold">{active.label}</p>
+            <p className={active.profit < 0 ? 'mt-1 font-medium text-red-600' : 'mt-1 font-medium text-cyan-800'}>{money(active.profit)} left</p>
+            <p className="tabular-nums text-slate-600">In {money(active.revenue)}</p>
+            <p className="tabular-nums text-slate-600">Out {money(active.cost)}</p>
+            <p className="tabular-nums">Gap {money(active.revenue - active.cost)}</p>
+          </div>
+        ) : null}
+      </div>
+      <div className="mt-1 grid" style={{ gridTemplateColumns: `repeat(${months.length}, minmax(0, 1fr))` }}>
+        {months.map((row) => (
+          <p key={row.key} className="text-center text-[10px] text-slate-500">{row.label}</p>
+        ))}
       </div>
     </div>
   )
@@ -412,6 +470,7 @@ export default function Scenarios() {
       </div>
 
       <BreakEvenChart months={projection.months} />
+      <LeftChart months={projection.months} />
 
       <div className="mt-6 rounded-2xl border bg-white p-5 shadow-sm">
         <p className="text-sm font-semibold">Plans</p>
