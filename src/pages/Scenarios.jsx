@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import { Input } from '../components/ui/input'
 import { cn } from '../lib/utils'
 import { useLaborRateRows } from '../lib/laborRates'
-import { cachedProfitability, fetchProfitability } from '../lib/profitabilityCache'
+import { useClientRetainers } from '../lib/clientRetainers'
 
 const WEEKS = 52 / 12
 const TAX = 0.062 + 0.0145 + 0.006 + 0.034 + 0.001
@@ -22,27 +22,21 @@ function wages(row) {
 
 function trueMonthly(row, raisePct = 0) {
   const pay = wages(row) * (1 + raisePct / 100)
-  if (row.worker_type === 'contractor') return pay
+  if (String(row.worker_type || '').toLowerCase() === 'contractor') return pay
   return pay * (1 + TAX)
 }
 
 export default function Scenarios() {
   const { rows, overhead, ready, error } = useLaborRateRows()
-  const [clients, setClients] = useState(() => cachedProfitability()?.clients || [])
-  const [clientError, setClientError] = useState('')
+  const retainers = useClientRetainers()
   const [raiseFrom, setRaiseFrom] = useState('2027-02')
   const [raises, setRaises] = useState({})
   const [extraClient, setExtraClient] = useState('')
-
-  useEffect(() => {
-    fetchProfitability()
-      .then((data) => setClients(data.clients || []))
-      .catch((err) => setClientError(err.message || 'Could not load clients'))
-  }, [])
+  const [clientEnds, setClientEnds] = useState({})
 
   const people = rows || []
+  const clients = retainers.rows || []
   const overheadAmount = Number(overhead) || 0
-  const clientRevenue = clients.reduce((sum, client) => sum + (Number(client.budgetAmount) || 0), 0)
 
   const projection = useMemo(() => {
     const extra = Number(String(extraClient).replace(/[$,]/g, '')) || 0
@@ -53,11 +47,15 @@ export default function Scenarios() {
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
       const raised = key >= raiseFrom
       const staff = people.reduce((sum, row) => {
-        const pct = raised && row.worker_type !== 'contractor' ? Number(raises[row.id || row.name] || 0) : 0
+        const pct = raised && String(row.worker_type || '').toLowerCase() !== 'contractor' ? Number(raises[row.id || row.name] || 0) : 0
         return sum + trueMonthly(row, pct)
       }, 0)
       const cost = staff + overheadAmount
-      const revenue = clientRevenue + extra
+      const revenue = extra + clients.reduce((sum, client) => {
+        const end = clientEnds[client.id]
+        if (end && key > end) return sum
+        return sum + (Number(client.monthly) || 0)
+      }, 0)
       const profit = revenue - cost
       months.push({
         key,
@@ -73,7 +71,7 @@ export default function Scenarios() {
     const after = months.find((row) => row.raised) || months[months.length - 1]
     const nowRow = months[0]
     return { months, peak, after, nowRow }
-  }, [people, overheadAmount, clientRevenue, extraClient, raiseFrom, raises])
+  }, [people, overheadAmount, clients, clientEnds, extraClient, raiseFrom, raises])
 
   function setAllRaises(pct) {
     const next = {}
@@ -91,20 +89,19 @@ export default function Scenarios() {
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <PageHeader
         title="Scenarios"
-        description="Pulls live People costs (with CA employer tax) and retainer clients. Raises start Feb 2027 unless you change the month."
+        description="Team from People. Revenue from Client retainers. Set an end month on a client to see the dip. No Tempo."
       />
       <p className="mt-2 text-sm text-slate-500">
         <Link className="font-medium text-[#1644ED]" to="/people">People</Link>
         {' · '}
-        <Link className="font-medium text-[#1644ED]" to="/profitability">Retainers</Link>
+        <Link className="font-medium text-[#1644ED]" to="/retainers">Client retainers</Link>
       </p>
       {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
-      {clientError ? <p className="mt-2 text-sm text-amber-700">{clientError}. Using cached clients if any.</p> : null}
 
       <div className="mt-6 grid gap-3 sm:grid-cols-4">
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Client retainers / mo</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums">{money(clientRevenue)}</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums">{money(projection.nowRow.revenue)}</p>
           <p className="text-xs text-slate-500">{clients.length} clients</p>
         </div>
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
@@ -203,15 +200,16 @@ export default function Scenarios() {
       <div className="mt-6 overflow-hidden rounded-2xl border bg-white shadow-sm">
         <div className="border-b px-5 py-4">
           <h2 className="text-base font-semibold">Clients in the model</h2>
-          <p className="text-sm text-slate-500">Monthly retainer from Marketing Retainers.</p>
+          <p className="text-sm text-slate-500">Amounts from Client retainers. Set an end month to drop them off.</p>
         </div>
         {clients.map((client) => (
-          <div key={client.slug} className="flex items-center justify-between border-t px-5 py-3">
+          <div key={client.id} className="grid items-center gap-3 border-t px-5 py-3 sm:grid-cols-[1fr_120px_160px]">
             <p className="font-medium">{client.name}</p>
-            <p className="tabular-nums text-slate-700">{money(Number(client.budgetAmount) || 0)} / mo</p>
+            <p className="tabular-nums text-slate-700">{money(Number(client.monthly) || 0)} / mo</p>
+            <Input type="month" value={clientEnds[client.id] || ''} onChange={(event) => setClientEnds((current) => ({ ...current, [client.id]: event.target.value }))} />
           </div>
         ))}
-        {!clients.length ? <p className="px-5 py-4 text-sm text-slate-500">No retainer clients loaded yet.</p> : null}
+        {!clients.length ? <p className="px-5 py-4 text-sm text-slate-500">Add retainers on Client retainers, then come back.</p> : null}
       </div>
     </div>
   )
