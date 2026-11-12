@@ -13,11 +13,13 @@ import {
   QUALITY_COLORS,
   SHEET_CSV_URL,
   chipClass,
+  commaMoney,
   displayDate,
   formatMoney,
   jiraUrl,
   monthLabel,
   parseJiraKey,
+  parseMoney,
   sheetRowsToLeads,
 } from '../lib/leads'
 
@@ -422,10 +424,10 @@ export default function Leads({ embedded = false }) {
               <th className="whitespace-nowrap border border-slate-300 bg-violet-600 px-3 py-3 font-medium">Notes</th>
               <th className="whitespace-nowrap border border-slate-300 bg-amber-500 px-3 py-3 font-medium">Month</th>
               <th className="whitespace-nowrap border border-slate-300 bg-orange-500 px-3 py-3 font-medium">Quality</th>
-              <th className="whitespace-nowrap border border-slate-300 bg-lime-600 px-3 py-3 font-medium">Close $</th>
+              <th className="whitespace-nowrap border border-slate-300 bg-lime-600 px-3 py-3 font-medium">Closed $</th>
               <th className="whitespace-nowrap border border-slate-300 bg-fuchsia-600 px-3 py-3 font-medium">Referred by</th>
               <th className="whitespace-nowrap border border-slate-300 bg-rose-500 px-3 py-3 font-medium">Deal type</th>
-              <th className="whitespace-nowrap border border-slate-300 bg-green-700 px-3 py-3 font-medium">2026 value</th>
+              <th className="whitespace-nowrap border border-slate-300 bg-green-700 px-3 py-3 font-medium">Estimate</th>
               <th className="w-12 border border-slate-300 bg-slate-500 px-2 py-3" />
             </tr>
           </thead>
@@ -477,14 +479,14 @@ export default function Leads({ embedded = false }) {
                     />
                   </td>
                   <td className={`${cell} whitespace-nowrap bg-lime-50`}>
-                    <input className="h-8 w-24 rounded border-0 bg-transparent px-1" defaultValue={row.close_amount ?? ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { close_amount: event.target.value === '' ? null : Number(event.target.value) })} />
+                    <input className="h-8 w-24 rounded border-0 bg-transparent px-1" defaultValue={commaMoney(row.close_amount)} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { close_amount: parseMoney(event.target.value) })} />
                   </td>
                   <td className={`${cell} bg-fuchsia-50`}><input className="h-8 w-full min-w-[110px] rounded border-0 bg-transparent px-1" defaultValue={row.referred_by || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { referred_by: event.target.value.trim() })} /></td>
                   <td className={`${cell} bg-rose-50`}>
                     <CellSelect className="h-8 rounded bg-transparent text-sm" value={row.deal_type} options={DEAL_TYPES} allowBlank onSave={(value) => patchRow(row.id, { deal_type: value || null })} />
                   </td>
                   <td className={`${cell} whitespace-nowrap bg-green-50`}>
-                    <input className="h-8 w-24 rounded border-0 bg-transparent px-1" defaultValue={row.value_2026 ?? ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { value_2026: event.target.value === '' ? null : Number(event.target.value) })} />
+                    <input className="h-8 w-24 rounded border-0 bg-transparent px-1" defaultValue={commaMoney(row.value_2026)} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { value_2026: parseMoney(event.target.value) })} />
                   </td>
                   <td className={`${cell} bg-white text-center`} onClick={(event) => event.stopPropagation()}>
                     <button

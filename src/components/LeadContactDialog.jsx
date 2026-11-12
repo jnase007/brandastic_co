@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog'
-import { DEAL_TYPES, LEAD_QUALITIES, LEAD_SOURCES, monthLabel, parseJiraKey } from '../lib/leads'
+import { DEAL_TYPES, LEAD_QUALITIES, LEAD_SOURCES, commaMoney, monthLabel, parseJiraKey, parseMoney } from '../lib/leads'
 
 export const PIPELINE_STAGES = [
   { id: 'lead', label: 'Lead' },
@@ -64,10 +64,10 @@ function draftFromLead(lead, defaultStage) {
     notes: lead.notes || '',
     month: lead.month || '',
     quality: lead.quality || '',
-    close_amount: lead.close_amount ?? '',
+    close_amount: commaMoney(lead.close_amount),
     referred_by: lead.referred_by || '',
     deal_type: lead.deal_type || '',
-    value_2026: lead.value_2026 ?? '',
+    value_2026: commaMoney(lead.value_2026),
     pipeline_stage: lead.pipeline_stage || defaultStage || '',
   }
 }
@@ -90,11 +90,7 @@ export default function LeadContactDialog({ open, onOpenChange, lead, defaultSta
   }
 
   function payloadFromDraft() {
-    const amount = (value) => {
-      if (value === '' || value == null) return null
-      const number = Number(value)
-      return Number.isFinite(number) ? number : null
-    }
+    const amount = (value) => parseMoney(value)
     const jira = parseJiraKey(draft.jira_key)
     return {
       source: (draft.source || '').trim(),
@@ -229,11 +225,11 @@ export default function LeadContactDialog({ open, onOpenChange, lead, defaultSta
                   {DEAL_TYPES.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
               </Field>
-              <Field label="Close amount">
-                <Input type="number" value={draft.close_amount} onChange={(event) => updateDraft('close_amount', event.target.value)} />
+              <Field label="Estimate">
+                <Input inputMode="decimal" value={draft.value_2026} onChange={(event) => updateDraft('value_2026', commaMoney(event.target.value))} />
               </Field>
-              <Field label="2026 value">
-                <Input type="number" value={draft.value_2026} onChange={(event) => updateDraft('value_2026', event.target.value)} />
+              <Field label="Closed amount">
+                <Input inputMode="decimal" value={draft.close_amount} onChange={(event) => updateDraft('close_amount', commaMoney(event.target.value))} />
               </Field>
             </div>
           </section>

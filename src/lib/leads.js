@@ -98,6 +98,14 @@ export function parseMoney(value) {
   return Number.isFinite(amount) ? amount : null
 }
 
+export function commaMoney(value) {
+  const parsed = parseMoney(value)
+  if (parsed == null) return ''
+  const [whole, dec] = String(parsed).split('.')
+  const withCommas = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return dec != null ? `${withCommas}.${dec}` : withCommas
+}
+
 export function normalizeDealType(value) {
   const text = String(value || '').trim().toLowerCase()
   if (text === 'one-time' || text === 'onetime' || text === 'one time') return 'One-time'

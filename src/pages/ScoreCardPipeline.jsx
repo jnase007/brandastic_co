@@ -26,7 +26,9 @@ function stageFromLead(row) {
 }
 
 function amountOf(row) {
-  return Number(row.value_2026 || row.close_amount) || 0
+  const stage = stageFromLead(row)
+  if (stage === 'won') return Number(row.close_amount || row.value_2026) || 0
+  return Number(row.value_2026) || 0
 }
 
 export default function ScoreCardPipeline() {
