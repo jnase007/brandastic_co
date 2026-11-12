@@ -50,25 +50,25 @@ export default function IdealTargetClient() {
           </div>
         </div>
       </div>
-      <div className="mt-8 rounded-2xl bg-slate-950 p-6 text-white sm:p-8">
-        <p className="text-xs font-semibold tracking-[0.2em] text-[#8eb4ff]">THE MARKET</p>
+      <div className="mt-8 rounded-2xl border bg-white p-6 shadow-sm sm:p-8">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">The market</p>
         <h2 className="mt-2 text-2xl font-bold">Who we serve and why now</h2>
         <p className="mt-4 text-4xl font-bold">38,601</p>
-        <p className="text-sm text-white/70">Estimated K–12 target · private + public charter</p>
-        <ul className="mt-6 space-y-2 text-sm text-white/85">
+        <p className="text-sm text-muted-foreground">Estimated K–12 target · private + public charter</p>
+        <ul className="mt-6 space-y-2 text-sm text-slate-700">
           <li>Private K–12, any affiliation: 30,553 (est.)</li>
           <li>Public charter K–12: 8,048</li>
-          <li className="text-white/50">Other public schools: 91,025 — not our target</li>
-          <li className="text-white/50">Higher ed, Title IV: 5,581 — context only</li>
+          <li className="text-muted-foreground">Other public schools: 91,025 — not our target</li>
+          <li className="text-muted-foreground">Higher ed, Title IV: 5,581 — context only</li>
         </ul>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div>
-            <p className="text-2xl font-bold text-[#8eb4ff]">30,558</p>
-            <p className="text-sm text-white/70">NCES directory records (22,510 private + 8,048 charter)</p>
+            <p className="text-2xl font-bold text-[#1644ED]">30,558</p>
+            <p className="text-sm text-muted-foreground">NCES directory records (22,510 private + 8,048 charter)</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-[#8eb4ff]">9,946</p>
-            <p className="text-sm text-white/70">working review list (Apollo + NCES)</p>
+            <p className="text-2xl font-bold text-[#1644ED]">9,946</p>
+            <p className="text-sm text-muted-foreground">working review list (Apollo + NCES)</p>
           </div>
         </div>
       </div>
