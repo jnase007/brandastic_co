@@ -70,6 +70,8 @@ function payloadOf(state) {
     raiseUntil: state.raiseUntil,
     raises: state.raises,
     extraClient: state.extraClient,
+    hireAmount: state.hireAmount,
+    hireFrom: state.hireFrom,
     otherMonthly: state.otherMonthly,
     offBooks: state.offBooks,
     clientEnds: state.clientEnds,
@@ -341,11 +343,11 @@ export default function Scenarios() {
         <p className="mt-2 text-sm text-slate-600">
           Books net this year is {money(BOOKS.noiAvg)} / mo ({pct(BOOKS.noiAvg / BOOKS.incomeAvg)}). That is not cash to spend.
         </p>
-        <label className="mt-4 block max-w-xs text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Extra out / mo (private)
-          <Input className="mt-1 h-10" value={offBooks} onChange={(event) => setOffBooks(event.target.value)} placeholder="Loans and other, not on the P&L" />
+        <label className="mt-4 block max-w-sm text-sm font-semibold text-slate-700">
+          Off the books / mo
+          <Input className="mt-1 h-12 text-lg tabular-nums" value={offBooks} onChange={(event) => setOffBooks(event.target.value)} placeholder="20000" />
         </label>
-        <p className="mt-2 text-xs text-slate-400">Only on this page. Subtracts from leftover. Team does not see this field anywhere else.</p>
+        <p className="mt-2 text-xs text-slate-400">SBA, extra rent, anything the P&L does not show. Only this page.</p>
       </div>
 
       <BreakEvenChart months={projection.months} />
