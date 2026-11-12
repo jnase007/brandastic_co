@@ -84,7 +84,7 @@ const simpleNavItems = [
   { path: '/profitability', icon: BarChart3, label: 'Marketing Retainers', group: 'Delivery' },
   { path: '/profitability/team', icon: Users2, label: 'Team', group: 'Delivery' },
   { path: '/profitability/websites', icon: Globe, label: 'Websites', group: 'Delivery' },
-  { path: '/hosting', icon: Server, label: 'Hosting', group: 'Ops' },
+  { path: '/hosting', icon: Server, label: 'Hosting', group: 'Delivery' },
   { path: '/announcements', icon: Megaphone, label: 'Announcements', group: 'Ops' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List', group: 'Ops' },
   { path: '/mission', icon: Target, label: 'Mission', group: 'Company' },
