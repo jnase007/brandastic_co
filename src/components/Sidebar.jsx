@@ -90,15 +90,15 @@ const simpleNavItems = [
   { path: '/strategy', icon: Compass, label: 'Strategy', group: 'Company' },
   { path: '/ideal-target-client', icon: Crosshair, label: 'Target Client(s)', group: 'Company' },
   { path: '/announcements', icon: Megaphone, label: 'Announcements', group: 'Company' },
-  { path: '/education/courses', href: 'https://course.brandastic.com', icon: GraduationCap, label: 'Courses', group: 'Education' },
-  { path: '/education/masterclass', href: 'https://course.brandastic.com/teach', icon: BookOpen, label: 'Masterclass', group: 'Education' },
-  { path: '/education/tam-icp', href: 'https://audit.brandastic.com/gameplan_marketing/brandastic-tam-icp', icon: Target, label: 'TAM / ICP', group: 'Education' },
+  { path: '/education/v1-overview', icon: GraduationCap, label: 'Masterclass', group: 'Education' },
+  { path: '/education/agency-academy-course', icon: BookOpen, label: 'Courses', group: 'Education' },
+  { path: '/education/course-downloads', icon: BookOpen, label: 'Course downloads', group: 'Education' },
   { path: '/new_admin', icon: Shield, label: 'Admin', group: 'Team' },
   { path: '/profitability/team', icon: Users2, label: 'Team Hours', group: 'Team' },
   { path: '/people', icon: Users, label: 'People', group: 'Team' },
   { path: '/scenarios', icon: BarChart3, label: 'Scenarios', group: 'Team' },
   { path: '/working', icon: CheckCircle, label: 'Working/Not', group: 'Team' },
-  { path: '/org-structure', href: 'https://audit.brandastic.com/gameplan_marketing/org-structure', icon: Building2, label: 'Org structure', group: 'Team' },
+  { path: '/org-structure', icon: Building2, label: 'Org structure', group: 'Team' },
 ]
 
 const adminNavItems = [

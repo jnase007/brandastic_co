@@ -41,6 +41,8 @@ const ScoreCardPipeline = lazy(() => import('./pages/ScoreCardPipeline'))
 const Financials = lazy(() => import('./pages/Financials'))
 const FeatureList = lazy(() => import('./pages/FeatureList'))
 const Announcements = lazy(() => import('./pages/Announcements'))
+const Education = lazy(() => import('./pages/Education'))
+const OrgStructure = lazy(() => import('./pages/OrgStructure'))
 const Hosting = lazy(() => import('./pages/Hosting'))
 const Profitability = lazy(() => import('./pages/Profitability'))
 const ProfitabilityCosts = lazy(() => import('./pages/ProfitabilityCosts'))
@@ -1239,6 +1241,22 @@ function App() {
                 element={
                   <TeamRoute>
                     <Announcements />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/education/:slug?"
+                element={
+                  <TeamRoute>
+                    <Education />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/org-structure"
+                element={
+                  <TeamRoute>
+                    <OrgStructure />
                   </TeamRoute>
                 }
               />

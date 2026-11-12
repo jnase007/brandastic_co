@@ -1,0 +1,132 @@
+
+<div class="print-bar no-print"><button class="btn" onclick="window.print()">Print</button>
+<a class='btn g' href='/gameplan_marketing/agency-academy-course'>Course map</a>
+<a class='btn g' href='/gameplan_marketing/course-downloads'>All downloads</a></div>
+<div class="crumb">Course · People</div>
+<span class="badge rev">Real course notes</span>
+<h1>Annual Bonus Program</h1>
+
+<p class="lead">Plain-English read of Directive’s Christmas bonus calculator. This is a <strong>tenure-based holiday check</strong>, not a performance-review score formula.</p>
+
+<div class="callout"><strong>Source:</strong> <a class="btn" href="/education-content/files/Christmas_Bonus_Calculator_Course_Asset_.xlsx" target="_blank" rel="noopener">Christmas Bonus Calculator</a></div>
+
+<div class="card rev">
+<h3>What it’s based on (and what it’s not)</h3>
+<ul>
+<li><strong>Based on:</strong> how long you’ve been employed (start / anniversary date) + a monthly bonus rate that rises with tenure years.</li>
+<li><strong>Not based on:</strong> individual performance reviews, accounts managed, or billable hours in this spreadsheet.</li>
+<li><strong>When paid:</strong> labeled as a <strong>December 15 check</strong>.</li>
+</ul>
+<p>So: Christmas / year-end tenure bonus calculator — separate from the AE commission plan and separate from performance management docs.</p>
+</div>
+
+<div class="card rev">
+<h3>Eligibility rules (exact from the sheet)</h3>
+<ul>
+<li>Paid on the <strong>last payroll before Christmas break</strong> (sheet also notes Dec 15 check in the math area)</li>
+<li><strong>Must be here at least a year</strong> to be eligible</li>
+<li>Anniversary = <strong>full-time employment start date</strong></li>
+<li><strong>Interns, part-time, and contractors are not eligible</strong></li>
+</ul>
+</div>
+
+<div class="card">
+<h3>How the payout is calculated</h3>
+<p>The sheet has two tabs: <strong>Payout Template</strong> (the math for one person) and <strong>Data</strong> (lookup table of rates by tenure year).</p>
+
+<h4>1) Inputs</h4>
+<ul>
+<li><strong>Start / anniversary date</strong> (drives how many full months and leftover days this year count)</li>
+<li><strong>Two monthly rate amounts</strong> (for the two tenure bands the person sits in during the year — “year multiplier 1” and “year multiplier 2”)</li>
+</ul>
+
+
+<p><strong>Month-by-month view (Payout Template):</strong> Jan–Dec each get a monthly amount. If that month is <em>before</em> the anniversary month → lower tenure rate; if <em>after</em> → higher tenure rate; anniversary month uses the crossover/day pro-rate. Year total = sum of the 12 months.</p>
+
+<h4>2) Full months</h4>
+<ul>
+<li>Counts months before the anniversary month in the year</li>
+<li>Counts months after</li>
+<li>Multiplies each block by the matching monthly rate</li>
+<li>Adds those month blocks together</li>
+</ul>
+<p>Example structure from the template formulas:</p>
+<ul>
+<li>Months band 1 × monthly rate 1</li>
+<li>Months band 2 × monthly rate 2</li>
+<li>Sum = months portion of bonus</li>
+</ul>
+
+<h4>3) Crossover / partial month (days)</h4>
+<ul>
+<li>If the anniversary falls mid-month, leftover <strong>days</strong> in that month are pro-rated</li>
+<li>Days before anniversary use rate 1; days after use rate 2</li>
+<li>Day payout = (monthly rate ÷ total days in window) × days in that slice</li>
+</ul>
+
+<h4>4) Total payout</h4>
+<ul>
+<li><strong>Total = months portion + days portion</strong></li>
+<li>Note on sheet: payout on the <strong>December 15</strong> check</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>The rate table (Data tab)</h3>
+<p>Right side of the template is a tenure ladder (years of service → monthly bonus rate → annualized-ish total). Example ladder values from the file:</p>
+<table>
+<thead><tr><th>Tenure years (approx)</th><th>Example monthly rate</th><th>Example year total column</th></tr></thead>
+<tbody>
+<tr><td>7</td><td>805</td><td>9,660</td></tr>
+<tr><td>8</td><td>940</td><td>11,280</td></tr>
+<tr><td>9</td><td>1,080</td><td>12,960</td></tr>
+<tr><td>10</td><td>1,225</td><td>14,700</td></tr>
+<tr><td>11</td><td>1,375</td><td>16,500</td></tr>
+<tr><td>12</td><td>1,530</td><td>18,360</td></tr>
+<tr><td>13</td><td>1,690</td><td>20,280</td></tr>
+<tr><td>14</td><td>1,855</td><td>22,260</td></tr>
+<tr><td>15</td><td>2,025</td><td>24,300</td></tr>
+</tbody>
+</table>
+<p>Rates step up with years. The payout template pulls the right rate(s) for the person’s tenure during the year (including the step-up at anniversary).</p>
+</div>
+
+<div class="card rev">
+<h3>Worked idea (from template numbers)</h3>
+<ul>
+<li>Months band totals example: 500 + 1,230 = <strong>1,730</strong></li>
+<li>Days band totals example: ~93.33 + ~13.67 = <strong>~107</strong></li>
+<li>Total payout example: 1,730 + 107 = <strong>1,837</strong> on the Dec 15 check</li>
+</ul>
+<p>Exact dollars depend on the person’s start date and which tenure rates apply.</p>
+</div>
+
+<div class="card">
+<h3>How this fits next to other pay docs</h3>
+<table>
+<thead><tr><th>Doc</th><th>What it pays for</th></tr></thead>
+<tbody>
+<tr><td>AE / SME comp plans</td><td>New-business commission / sales incentives</td></tr>
+<tr><td>Performance management PDF</td><td>Conduct/performance issues process — not this calculator</td></tr>
+<tr><td>Christmas bonus calculator</td><td>Year-end tenure holiday payout</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card rev">
+<h3>Brandastic takeaway</h3>
+<ul>
+<li>If we copy the idea: publish a simple tenure table + Dec payout date before the year starts.</li>
+<li>Don’t mix this with review ratings unless we deliberately design a second bonus.</li>
+<li>Keep sales commission separate (already on the AE/SME pages).</li>
+</ul>
+<p><strong>Tickets</strong></p>
+<ol>
+<li>Decide: tenure holiday bonus yes/no for BA</li>
+<li>If yes: draft 5–10 year rate table + eligibility (FT only? hire-by date?)</li>
+<li>Pay date locked (e.g. Dec 15) and noted in offer letters</li>
+</ol>
+</div>
+
+<div class="foot">From Christmas Bonus Calculator file · tenure holiday payout, not review score</div>
+<div class="card rev course-downloads-block" id="section-downloads"><h3>People downloads</h3><p style="margin:.25rem 0 .75rem;color:var(--muted,#64748b);font-size:.92rem">Files for this module. Same files as the downloads hub.</p><ul class="dl-list"><li class="dl-row"><div class="dl-meta"><strong>Christmas Bonus Calculator Course Asset.xlsx</strong><span class="dl-size">51 KB</span></div><a class="btn" href="/education-content/files/Christmas_Bonus_Calculator_Course_Asset_.xlsx" download>Download</a></li><li class="dl-row"><div class="dl-meta"><strong>Company Wide 1 1 Template Bi-Annual Review Questions.pptx</strong><span class="dl-size">2.2 MB</span></div><a class="btn" href="/education-content/files/Company_Wide_1_1_Template_Bi-Annual_Review_Questions.pptx" download>Download</a></li><li class="dl-row"><div class="dl-meta"><strong>Connecting Directive s Head With It s Heart.pdf</strong><span class="dl-size">7.5 MB</span></div><a class="btn" href="/education-content/files/Connecting_Directive_s_Head_With_It_s_Heart.pdf" download>Download</a></li><li class="dl-row"><div class="dl-meta"><strong>Directive s Hiring Process.xlsx</strong><span class="dl-size">29 KB</span></div><a class="btn" href="/education-content/files/Directive_s_Hiring_Process.xlsx" download>Download</a></li><li class="dl-row"><div class="dl-meta"><strong>Performance Management at Directive v2.0.pdf</strong><span class="dl-size">101 KB</span></div><a class="btn" href="/education-content/files/Performance_Management_at_Directive_v2.0.pdf" download>Download</a></li><li class="dl-row"><div class="dl-meta"><strong>US Directive Benefits Information.pdf</strong><span class="dl-size">3.0 MB</span></div><a class="btn" href="/education-content/files/US_Directive_Benefits_Information_.pdf" download>Download</a></li><li class="dl-row"><div class="dl-meta"><strong>US Job Description Template.docx</strong><span class="dl-size">296 KB</span></div><a class="btn" href="/education-content/files/US_Job_Description_Template.docx" download>Download</a></li></ul><p class="foot" style="margin-top:.8rem"><a href='/gameplan_marketing/course-downloads'>All course downloads</a></p></div>

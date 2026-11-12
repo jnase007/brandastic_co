@@ -88,15 +88,15 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         { path: '/strategy', icon: Compass, label: 'Strategy' },
         { path: '/ideal-target-client', icon: Crosshair, label: 'Target Client(s)' },
         { path: '/announcements', icon: Megaphone, label: 'Announcements' },
-        { path: '/education/courses', href: 'https://course.brandastic.com', icon: GraduationCap, label: 'Courses' },
-        { path: '/education/masterclass', href: 'https://course.brandastic.com/teach', icon: BookOpen, label: 'Masterclass' },
-        { path: '/education/tam-icp', href: 'https://audit.brandastic.com/gameplan_marketing/brandastic-tam-icp', icon: Target, label: 'TAM / ICP' },
+        { path: '/education/v1-overview', icon: GraduationCap, label: 'Masterclass' },
+        { path: '/education/agency-academy-course', icon: BookOpen, label: 'Courses' },
+        { path: '/education/course-downloads', icon: BookOpen, label: 'Course downloads' },
         { path: '/new_admin', icon: Shield, label: 'Admin' },
         { path: '/profitability/team', icon: Users2, label: 'Team Hours' },
         { path: '/people', icon: Users, label: 'People' },
         { path: '/scenarios', icon: BarChart3, label: 'Scenarios' },
         { path: '/working', icon: CheckCircle, label: 'Working/Not' },
-        { path: '/org-structure', href: 'https://audit.brandastic.com/gameplan_marketing/org-structure', icon: Building2, label: 'Org structure' },
+        { path: '/org-structure', icon: Building2, label: 'Org structure' },
       ].filter((item) => canSeePath(item.path))
 
   const [showMore, setShowMore] = useState(false)
