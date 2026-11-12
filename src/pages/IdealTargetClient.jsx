@@ -15,9 +15,10 @@ const TITLES = [
 
 const MARKETS = [
   {
-    rank: 'Primary',
+    rank: 'Primary · 2027 focus',
     title: 'Schools',
-    tone: 'border-sky-200 bg-sky-50',
+    star: true,
+    tone: 'border-sky-300 bg-sky-50 ring-2 ring-sky-200',
     rankClass: 'text-sky-700',
     note: 'Enrollment-led K–12. Private and public charter.',
     cases: [
@@ -62,8 +63,8 @@ export default function IdealTargetClient() {
       <div className="mt-8 grid gap-4 md:grid-cols-3">
         {MARKETS.map((market) => (
           <div key={market.title} className={`rounded-2xl border p-6 shadow-sm ${market.tone}`}>
-            <p className={`text-xs font-semibold uppercase tracking-wide ${market.rankClass}`}>{market.rank}</p>
-            <h2 className="mt-1 text-2xl font-bold">{market.title}</h2>
+            <p className={`text-xs font-semibold uppercase tracking-wide ${market.rankClass}`}>{market.star ? '★ ' : ''}{market.rank}</p>
+            <h2 className="mt-1 text-2xl font-bold">{market.star ? '★ ' : ''}{market.title}</h2>
             <p className="mt-2 text-sm text-muted-foreground">{market.note}</p>
             <ul className="mt-4 space-y-1.5">
               {market.cases.map((item) => (
