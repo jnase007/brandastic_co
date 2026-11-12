@@ -56,7 +56,13 @@ function hqAmount(name) {
   return hit ? hit.monthly : 0
 }
 
+export function isInternalClient(row) {
+  const name = String(row?.name || '').trim().toLowerCase()
+  return name === 'brandastic' || name.startsWith('brandastic ')
+}
+
 function amountOf(row) {
+  if (isInternalClient(row)) return 0
   const hours = Number(row.monthly_hours) || 0
   if (hours > 0) return Math.round(hours * RATE)
   return hqAmount(row.name)
@@ -75,6 +81,8 @@ export async function fetchClientRetainers() {
         id: row.id,
         name: row.name,
         monthly: amountOf(row),
+        internal: isInternalClient(row),
+        hours: Number(row.monthly_hours) || 0,
       })),
     missing: false,
   }
