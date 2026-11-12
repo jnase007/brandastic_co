@@ -271,17 +271,20 @@ export default function Leads({ embedded = false }) {
       pipeline_stage: jira ? 'lead' : null,
       updated_at: new Date().toISOString(),
     }
-    let result = await supabase.from('sales_leads').insert(payload)
+    let result = await supabase.from('sales_leads').insert(payload).select('*').single()
     if (result.error && String(result.error.message || '').includes('pipeline_stage')) {
       const { pipeline_stage, ...rest } = payload
-      result = await supabase.from('sales_leads').insert(rest)
+      result = await supabase.from('sales_leads').insert(rest).select('*').single()
     }
     if (result.error) {
       toast({ title: 'Could not add lead', description: result.error.message, variant: 'destructive' })
       return
     }
+    const created = result.data
+    if (created) setRows((current) => [created, ...current.filter((row) => row.id !== created.id)])
+    else await load()
     setQuick({ name: '', company: '', source: 'Direct', jira_key: '' })
-    await load()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const filters = [
@@ -298,6 +301,21 @@ export default function Leads({ embedded = false }) {
         <div className="mb-4">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Leads</p>
           <h1 className="mt-1 text-2xl font-semibold">All leads</h1>
+        </div>
+      ) : null}
+
+      {!setupNeeded ? (
+        <div className="mb-4 rounded-xl border border-[#1644ED]/20 bg-[#1644ED]/5 p-3">
+          <p className="mb-2 text-sm font-semibold">Add a lead</p>
+          <div className="grid gap-2 md:grid-cols-5">
+            <Input placeholder="Name" value={quick.name} onChange={(event) => setQuick((c) => ({ ...c, name: event.target.value }))} />
+            <Input placeholder="Company" value={quick.company} onChange={(event) => setQuick((c) => ({ ...c, company: event.target.value }))} />
+            <select className="h-10 rounded-lg border bg-background px-3 text-sm" value={quick.source} onChange={(event) => setQuick((c) => ({ ...c, source: event.target.value }))}>
+              {LEAD_SOURCES.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+            <Input placeholder="Jira key (optional)" value={quick.jira_key} onChange={(event) => setQuick((c) => ({ ...c, jira_key: event.target.value }))} />
+            <Button className={BLUE_BUTTON} onClick={quickAdd}>Add lead</Button>
+          </div>
         </div>
       ) : null}
 
@@ -363,21 +381,11 @@ export default function Leads({ embedded = false }) {
             </Button>
           </div>
 
-          {!setupNeeded ? (
-            <div className="mb-3 grid gap-2 rounded-xl border bg-muted/30 p-3 md:grid-cols-5">
-              <Input placeholder="Name" value={quick.name} onChange={(event) => setQuick((c) => ({ ...c, name: event.target.value }))} />
-              <Input placeholder="Company" value={quick.company} onChange={(event) => setQuick((c) => ({ ...c, company: event.target.value }))} />
-              <select className="h-10 rounded-lg border bg-background px-3 text-sm" value={quick.source} onChange={(event) => setQuick((c) => ({ ...c, source: event.target.value }))}>
-                {LEAD_SOURCES.map((item) => <option key={item} value={item}>{item}</option>)}
-              </select>
-              <Input placeholder="Jira key → pipeline" value={quick.jira_key} onChange={(event) => setQuick((c) => ({ ...c, jira_key: event.target.value }))} />
-              <Button className={BLUE_BUTTON} onClick={quickAdd}>Add lead</Button>
-            </div>
-          ) : (
+          {setupNeeded ? (
             <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
               Showing the Google Sheet copy. Add and inline edit turn on after the leads table exists — run supabase/sales-leads.sql in Supabase.
             </div>
-          )}
+          ) : null}
         </>
       ) : null}
 

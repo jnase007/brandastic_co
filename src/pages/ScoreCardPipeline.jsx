@@ -68,7 +68,19 @@ export default function ScoreCardPipeline() {
     return grouped
   }, [rows])
 
-  const pipelineValue = rows.reduce((sum, row) => sum + amountOf(row), 0)
+  const OPEN_STAGES = ['lead', 'kickoff', 'proposal', 'contract']
+  const stageStats = useMemo(
+    () =>
+      STAGES.map((stage) => {
+        const cards = byStage[stage.id] || []
+        const amount = cards.reduce((sum, row) => sum + amountOf(row), 0)
+        return { ...stage, count: cards.length, amount }
+      }),
+    [byStage]
+  )
+  const openPipeline = stageStats
+    .filter((stage) => OPEN_STAGES.includes(stage.id))
+    .reduce((acc, stage) => ({ count: acc.count + stage.count, amount: acc.amount + stage.amount }), { count: 0, amount: 0 })
 
   function toggleSelected(id, on) {
     setSelected((current) => {
@@ -175,8 +187,9 @@ export default function ScoreCardPipeline() {
             <p className="text-2xl font-bold text-purple-500">{rows.length}</p>
           </div>
           <div className="rounded-xl border bg-white p-4">
-            <p className="text-sm text-slate-500">Pipeline value</p>
-            <p className="text-2xl font-bold text-green-600">{formatMoney(pipelineValue) || '$0'}</p>
+            <p className="text-sm text-slate-500">Open pipeline</p>
+            <p className="text-2xl font-bold text-green-600">{formatMoney(openPipeline.amount) || '$0'}</p>
+            <p className="mt-1 text-xs text-slate-500">Lead + kickoff + proposal + contract · {openPipeline.count} deals</p>
           </div>
           <div className="rounded-xl border bg-white p-4 col-span-2 md:col-span-1">
             <p className="text-sm text-slate-500">Closed won</p>
@@ -312,6 +325,27 @@ export default function ScoreCardPipeline() {
             </div>
           </DragDropContext>
         )}
+      </div>
+
+      <div className="sticky bottom-0 z-20 -mx-4 mt-4 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Where the money sits</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
+          {stageStats.map((stage) => (
+            <div key={stage.id} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+              <div className="flex items-center gap-1.5">
+                <span className={cn('h-2 w-2 rounded-full', stage.color)} />
+                <p className="truncate text-xs font-medium text-slate-600">{stage.title}</p>
+              </div>
+              <p className="mt-1 text-sm font-bold">{formatMoney(stage.amount) || '$0'}</p>
+              <p className="text-xs text-slate-500">{stage.count} {stage.count === 1 ? 'deal' : 'deals'}</p>
+            </div>
+          ))}
+          <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+            <p className="text-xs font-medium text-green-800">Open pipeline</p>
+            <p className="mt-1 text-sm font-bold text-green-800">{formatMoney(openPipeline.amount) || '$0'}</p>
+            <p className="text-xs text-green-700">{openPipeline.count} still in play</p>
+          </div>
+        </div>
       </div>
 
       <LeadContactDialog
