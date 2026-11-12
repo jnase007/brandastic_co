@@ -131,7 +131,10 @@ export default function Sidebar({
   }, [canRevealNav])
 
   const showFullNav = Boolean(canRevealNav && fullNav)
-  const visibleNavItems = (showFullNav ? navItems : simpleNavItems).filter((item) => {
+  const visibleNavItems = [
+    ...simpleNavItems,
+    ...(showFullNav ? navItems.filter((item) => !simpleNavItems.some((shown) => shown.path === item.path)) : []),
+  ].filter((item) => {
     if (item.path === '/people') return canSeePeople
     if (item.path === '/score-card') return canSeeScoreCard
     if (item.path === '/profitability') return canSeeProfitability
