@@ -86,6 +86,10 @@ export default function ScoreCardPipeline() {
       }),
     [byStage]
   )
+  const pipelineTally = ['lead', 'kickoff', 'proposal'].reduce(
+    (sum, id) => sum + (stageStats.find((stage) => stage.id === id)?.amount || 0),
+    0
+  )
 
   function toggleSelected(id, on) {
     setSelected((current) => {
@@ -190,6 +194,11 @@ export default function ScoreCardPipeline() {
           <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4">
             <p className="text-sm text-slate-500">Prospects</p>
             <p className="text-2xl font-bold text-purple-500">{rows.length}</p>
+          </div>
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+            <p className="text-sm text-slate-500">Pipeline</p>
+            <p className="text-2xl font-bold text-green-700">{formatMoney(pipelineTally) || '$0'}</p>
+            <p className="mt-1 text-xs text-slate-500">Lead + kickoff + proposal</p>
           </div>
           <div className="rounded-xl border bg-white p-4">
             <p className="text-sm text-slate-500">Closed won</p>
