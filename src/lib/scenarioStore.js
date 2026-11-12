@@ -1,48 +1,87 @@
-import { supabase } from './supabase'
+const STORE = 'brd-scenario-list-v1'
+const LEGACY = 'brd-scenarios-v1'
 
-const STORE = 'brd-scenarios-v1'
-
-function readLocal() {
+function readJson(key) {
   try {
-    return JSON.parse(localStorage.getItem(STORE) || 'null')
+    return JSON.parse(localStorage.getItem(key) || 'null')
   } catch {
     return null
   }
 }
 
-function writeLocal(payload) {
-  localStorage.setItem(STORE, JSON.stringify(payload))
+function writeList(list) {
+  localStorage.setItem(STORE, JSON.stringify(list))
 }
 
-export async function loadScenario() {
-  const local = readLocal()
-  const { data, error } = await supabase.from('scenario_plans').select('raise_from, raises, extra_client, client_ends').eq('id', 1).maybeSingle()
-  if (error || !data) return local
+function snapshot(payload) {
   return {
-    ...local,
-    raiseFrom: data.raise_from || local?.raiseFrom || '',
-    raises: data.raises || local?.raises || {},
-    extraClient: data.extra_client == null ? (local?.extraClient || '') : String(data.extra_client),
-    clientEnds: data.client_ends || local?.clientEnds || {},
+    raiseFrom: payload.raiseFrom || '',
+    raiseUntil: payload.raiseUntil || '',
+    raises: payload.raises || {},
+    extraClient: payload.extraClient || '',
+    trendYear: payload.trendYear || '',
+    otherMonthly: payload.otherMonthly || '',
+    clientEnds: payload.clientEnds || {},
+    clientPlans: payload.clientPlans || {},
+    futureClients: payload.futureClients || [],
   }
 }
 
-export async function saveScenario(payload) {
-  writeLocal(payload)
-  const row = {
-    id: 1,
-    raise_from: payload.raiseFrom || null,
-    raises: payload.raises || {},
-    extra_client: Number(String(payload.extraClient || '').replace(/[$,]/g, '')) || 0,
-    client_ends: payload.clientEnds || {},
-    client_plans: payload.clientPlans || {},
-    future_clients: payload.futureClients || [],
-    updated_at: new Date().toISOString(),
+export function listScenarios() {
+  const list = readJson(STORE)
+  if (Array.isArray(list) && list.length) return list
+  const legacy = readJson(LEGACY)
+  if (!legacy) return []
+  return [{
+    id: 'legacy',
+    name: 'Saved scenario',
+    savedAt: new Date().toISOString(),
+    data: snapshot(legacy),
+  }]
+}
+
+export function loadScenario() {
+  const list = listScenarios()
+  const currentId = localStorage.getItem(`${STORE}-current`)
+  const match = list.find((row) => row.id === currentId) || list[0]
+  if (!match) return Promise.resolve(null)
+  return Promise.resolve({ ...match.data, currentId: match.id, currentName: match.name, list })
+}
+
+export function saveScenario(payload, { name, id } = {}) {
+  const list = listScenarios()
+  const label = String(name || payload.currentName || 'Scenario').trim() || 'Scenario'
+  const now = new Date().toISOString()
+  const data = snapshot(payload)
+  let nextId = id || payload.currentId
+  if (nextId) {
+    const index = list.findIndex((row) => row.id === nextId)
+    if (index >= 0) {
+      list[index] = { ...list[index], name: label, savedAt: now, data }
+    } else {
+      list.unshift({ id: nextId, name: label, savedAt: now, data })
+    }
+  } else {
+    nextId = `s-${Date.now()}`
+    list.unshift({ id: nextId, name: label, savedAt: now, data })
   }
-  const { error } = await supabase.from('scenario_plans').upsert(row)
-  if (error) {
-    const insert = await supabase.from('scenario_plans').insert(row)
-    if (insert.error) return { savedLocal: true, error: insert.error }
-  }
-  return { savedLocal: true, error: null }
+  writeList(list)
+  localStorage.setItem(`${STORE}-current`, nextId)
+  return Promise.resolve({ savedLocal: true, error: null, id: nextId, list })
+}
+
+export function saveScenarioAs(payload, name) {
+  return saveScenario(payload, { name, id: null })
+}
+
+export function deleteScenario(id) {
+  const list = listScenarios().filter((row) => row.id !== id)
+  writeList(list)
+  const current = localStorage.getItem(`${STORE}-current`)
+  if (current === id) localStorage.removeItem(`${STORE}-current`)
+  return list
+}
+
+export function setCurrentScenario(id) {
+  if (id) localStorage.setItem(`${STORE}-current`, id)
 }
