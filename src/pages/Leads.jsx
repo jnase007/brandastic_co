@@ -30,18 +30,21 @@ function missingTable(error) {
 
 function CellSelect({ className, value, options, allowBlank, onSave }) {
   return (
-    <select
-      className={className}
-      value={value || ''}
-      onChange={(event) => onSave(event.target.value)}
-      onClick={(event) => event.stopPropagation()}
-      onMouseDown={(event) => event.stopPropagation()}
-    >
-      {allowBlank ? <option value=""></option> : null}
-      {options.map((item) => (
-        <option key={item} value={item}>{item}</option>
-      ))}
-    </select>
+    <span className="relative inline-flex max-w-full items-center">
+      <select
+        className={`${className} appearance-none pr-6`}
+        value={value || ''}
+        onChange={(event) => onSave(event.target.value)}
+        onClick={(event) => event.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        {allowBlank ? <option value=""></option> : null}
+        {options.map((item) => (
+          <option key={item} value={item}>{item}</option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-1.5 h-3.5 w-3.5 opacity-60" />
+    </span>
   )
 }
 
