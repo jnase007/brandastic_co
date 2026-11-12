@@ -49,6 +49,7 @@ import {
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu'
 import { supabase, seedSampleClients, deleteSampleClients } from '../lib/supabase'
+import { PAGE_AREAS, hasAreaAccess, savePageAccess } from '../lib/pageAccess'
 import { useAuth } from '../contexts/AuthContext'
 import { cn, formatDate, getInitials } from '../lib/utils'
 import ClientDialog from '../components/ClientDialog'
@@ -481,6 +482,22 @@ export default function Admin() {
     } finally {
       setImporting(false)
     }
+  }
+
+  const handlePageAccess = async (person, key, on) => {
+    const next = { ...(person.page_access || {}), [key]: on }
+    const { error } = await savePageAccess(supabase, person.id, next)
+    if (error) {
+      toast({
+        title: 'Could not save access',
+        description: error.message?.includes('page_access')
+          ? 'Add a page_access JSON column on profiles in Supabase, then try again.'
+          : error.message,
+        variant: 'destructive',
+      })
+      return
+    }
+    setUsers((prev) => prev.map((row) => (row.id === person.id ? { ...row, page_access: next } : row)))
   }
 
   // Handle changing user role
@@ -1086,6 +1103,7 @@ export default function Admin() {
                         <th className="text-left py-3 px-4 text-sm font-medium">User</th>
                         <th className="text-left py-3 px-4 text-sm font-medium">Title</th>
                         <th className="text-left py-3 px-4 text-sm font-medium">Role</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium">Access</th>
                         <th className="text-left py-3 px-4 text-sm font-medium">Hourly Rate</th>
                         <th className="text-left py-3 px-4 text-sm font-medium">Status</th>
                         <th className="text-left py-3 px-4 text-sm font-medium">Joined</th>
@@ -1095,7 +1113,7 @@ export default function Admin() {
                     <tbody>
                       {filteredUsers.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                          <td colSpan={8} className="text-center py-8 text-muted-foreground">
                             No users found
                           </td>
                         </tr>
@@ -1230,6 +1248,27 @@ export default function Admin() {
                                  user.role === 'admin' ? 'Admin (W-2)' :
                                  user.role}
                               </Badge>
+                            </td>
+                            <td className="py-3 px-4">
+                              {user.role === 'client' ? (
+                                <span className="text-sm text-muted-foreground">—</span>
+                              ) : (
+                                <div className="flex flex-col gap-1.5">
+                                  {PAGE_AREAS.map((area) => {
+                                    const on = hasAreaAccess({ email: user.email }, user, area.key)
+                                    return (
+                                      <label key={area.key} className="flex items-center gap-2 text-xs text-slate-700">
+                                        <input
+                                          type="checkbox"
+                                          checked={on}
+                                          onChange={(event) => handlePageAccess(user, area.key, event.target.checked)}
+                                        />
+                                        {area.label}
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                              )}
                             </td>
                             <td className="py-3 px-4">
                               {user.role === 'client' ? (

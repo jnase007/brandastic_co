@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { hasAreaAccess, isAccessManager } from '../lib/pageAccess'
 
 const AuthContext = createContext({})
 
@@ -419,16 +420,14 @@ export function AuthProvider({ children }) {
     'justin@brandastic.com',
     'admin@brandastic.com',
   ]
-  const PEOPLE_EMAILS = [
-    'justin@brandastic.com',
-    'sandy@brandastic.com',
-  ]
-
   // Role calculations
   const actualRole = profile?.role
   const userEmail = user?.email?.toLowerCase() || profile?.email?.toLowerCase()
   const isEmailAdmin = ADMIN_EMAILS.includes(userEmail)
-  const canSeePeople = PEOPLE_EMAILS.includes(userEmail)
+  const canManageUsers = isAccessManager(user, profile)
+  const canSeePeople = hasAreaAccess(user, profile, 'people')
+  const canSeeScoreCard = hasAreaAccess(user, profile, 'score_card')
+  const canSeeProfitability = hasAreaAccess(user, profile, 'profitability')
   const isActualAdmin = actualRole === 'admin' || isEmailAdmin
 
   // Auto-set admin role if email is in whitelist
@@ -462,7 +461,10 @@ export function AuthProvider({ children }) {
     isTeam: actualRole === 'team' || actualRole === 'admin',
     isAdmin: effectiveIsAdmin,
     isActualAdmin,
+    canManageUsers,
     canSeePeople,
+    canSeeScoreCard,
+    canSeeProfitability,
     isClient: actualRole === 'client',
     // View mode
     viewMode,

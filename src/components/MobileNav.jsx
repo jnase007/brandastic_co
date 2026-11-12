@@ -57,7 +57,14 @@ const adminNavItems = [
 // Bottom tab bar for quick access
 export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
   const location = useLocation()
-  const { user, isAdmin, profile, canSeePeople } = useAuth()
+  const { user, isAdmin, profile, canSeePeople, canSeeScoreCard, canSeeProfitability, canManageUsers } = useAuth()
+  const canSeePath = (path) => {
+    if (path === '/people') return canSeePeople
+    if (path === '/score-card') return canSeeScoreCard
+    if (path === '/profitability') return canSeeProfitability
+    if (path === '/admin') return canManageUsers
+    return true
+  }
   const canRevealNav = String(user?.email || '').toLowerCase() === 'justin@brandastic.com'
   const showFullNav = canRevealNav && readFullNav()
 
@@ -76,8 +83,9 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         { path: '/hosting', icon: Server, label: 'Hosting' },
         { path: '/announcements', icon: Megaphone, label: 'Announcements' },
         { path: '/people', icon: Users, label: 'People' },
+        { path: '/admin', icon: Shield, label: 'Users' },
         { path: '/feature-list', icon: ListChecks, label: 'Features' },
-      ].filter((item) => item.path !== '/people' || canSeePeople)
+      ].filter((item) => canSeePath(item.path))
 
   const [showMore, setShowMore] = useState(false)
   
@@ -267,7 +275,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
 
                 {/* Nav Items */}
                 <div className="space-y-1 mb-4">
-                  {navItems.slice(3).map((item) => {
+                  {navItems.slice(3).filter((item) => canSeePath(item.path)).map((item) => {
                     const Icon = item.icon
                     const isActive = location.pathname === item.path
                     

@@ -85,6 +85,7 @@ const simpleNavItems = [
   { path: '/hosting', icon: Server, label: 'Hosting' },
   { path: '/announcements', icon: Megaphone, label: 'Announcements' },
   { path: '/people', icon: Users, label: 'People' },
+  { path: '/admin', icon: Shield, label: 'Users' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
   { path: '/mission', icon: Target, label: 'Mission' },
   { path: '/strategy', icon: Compass, label: 'Strategy' },
@@ -112,7 +113,7 @@ export default function Sidebar({
 }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const { user, signOut, isAdmin, isActualAdmin, canSeePeople, viewMode, toggleViewMode, toggleClientPreview, clientPreviewMode } = useAuth()
+  const { user, signOut, isAdmin, isActualAdmin, canSeePeople, canSeeScoreCard, canSeeProfitability, canManageUsers, viewMode, toggleViewMode, toggleClientPreview, clientPreviewMode } = useAuth()
   const canRevealNav = String(user?.email || '').toLowerCase() === 'justin@brandastic.com'
   const [fullNav, setFullNavState] = useState(false)
 
@@ -130,9 +131,13 @@ export default function Sidebar({
   }, [canRevealNav])
 
   const showFullNav = Boolean(canRevealNav && fullNav)
-  const visibleNavItems = (showFullNav ? navItems : simpleNavItems).filter(
-    (item) => item.path !== '/people' || canSeePeople
-  )
+  const visibleNavItems = (showFullNav ? navItems : simpleNavItems).filter((item) => {
+    if (item.path === '/people') return canSeePeople
+    if (item.path === '/score-card') return canSeeScoreCard
+    if (item.path === '/profitability') return canSeeProfitability
+    if (item.path === '/admin') return canManageUsers
+    return true
+  })
   const featureNav = useFeatureListNav()?.nav
 
   const unhideNav = () => {

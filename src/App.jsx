@@ -320,12 +320,43 @@ function AdminRoute({ children }) {
   )
 }
 
-function PeopleRoute({ children }) {
-  const { canSeePeople, loading, user } = useAuth()
+function fallbackHome(canSeeProfitability) {
+  return canSeeProfitability ? '/profitability' : '/profitability/team'
+}
+
+function AreaRoute({ allowed, children }) {
+  const { loading, user, canSeeProfitability } = useAuth()
   if (loading) return <LoadingScreen />
   if (!user) return <Navigate to="/login" replace />
-  if (!canSeePeople) return <Navigate to="/profitability" replace />
+  if (!allowed) return <Navigate to={fallbackHome(canSeeProfitability)} replace />
   return children
+}
+
+function PeopleRoute({ children }) {
+  const { canSeePeople } = useAuth()
+  return <AreaRoute allowed={canSeePeople}>{children}</AreaRoute>
+}
+
+function ScoreCardRoute({ children }) {
+  const { canSeeScoreCard } = useAuth()
+  return <AreaRoute allowed={canSeeScoreCard}>{children}</AreaRoute>
+}
+
+function RetainersRoute({ children }) {
+  const { canSeeProfitability } = useAuth()
+  return <AreaRoute allowed={canSeeProfitability}>{children}</AreaRoute>
+}
+
+function UsersRoute({ children }) {
+  const { canManageUsers } = useAuth()
+  return <AreaRoute allowed={canManageUsers}>{children}</AreaRoute>
+}
+
+function DefaultHome() {
+  const { loading, user, canSeeProfitability } = useAuth()
+  if (loading) return <LoadingScreen />
+  if (!user) return <Navigate to="/login" replace />
+  return <Navigate to={fallbackHome(canSeeProfitability)} replace />
 }
 
 // Client Preview Banner Component
@@ -1138,9 +1169,9 @@ function App() {
               <Route
                 path="/admin"
                 element={
-                  <AdminRoute>
+                  <UsersRoute>
                     <Admin />
-                  </AdminRoute>
+                  </UsersRoute>
                 }
               />
 
@@ -1171,17 +1202,17 @@ function App() {
               <Route
                 path="/score-card/financials"
                 element={
-                  <TeamRoute>
+                  <ScoreCardRoute>
                     <ScoreCardFinancials />
-                  </TeamRoute>
+                  </ScoreCardRoute>
                 }
               />
               <Route
                 path="/score-card"
                 element={
-                  <TeamRoute>
+                  <ScoreCardRoute>
                     <ScoreCard />
-                  </TeamRoute>
+                  </ScoreCardRoute>
                 }
               />
 
@@ -1246,9 +1277,9 @@ function App() {
               <Route
                 path="/profitability/*"
                 element={
-                  <TeamRoute>
+                  <RetainersRoute>
                     <Profitability />
-                  </TeamRoute>
+                  </RetainersRoute>
                 }
               />
               <Route
@@ -1291,7 +1322,7 @@ function App() {
               />
 
               {/* Default redirect */}
-              <Route path="/" element={<Navigate to="/profitability" replace />} />
+              <Route path="/" element={<DefaultHome />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             </Suspense>
