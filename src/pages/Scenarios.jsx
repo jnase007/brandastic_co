@@ -74,6 +74,7 @@ function payloadOf(state) {
     hireFrom: state.hireFrom,
     otherMonthly: state.otherMonthly,
     offBooks: state.offBooks,
+    overhead: state.overhead,
     clientEnds: state.clientEnds,
     clientPlans: state.clientPlans,
     futureClients: state.futureClients,
@@ -169,6 +170,7 @@ export default function Scenarios() {
   const [extraClient, setExtraClient] = useState('')
   const [otherMonthly, setOtherMonthly] = useState('')
   const [offBooks, setOffBooks] = useState('')
+  const [overhead, setOverhead] = useState('40000')
   const [clientEnds, setClientEnds] = useState({})
   const [clientPlans, setClientPlans] = useState({})
   const [futureClients, setFutureClients] = useState([])
@@ -191,6 +193,7 @@ export default function Scenarios() {
       if (loaded.extraClient != null) setExtraClient(loaded.extraClient)
       if (loaded.otherMonthly != null) setOtherMonthly(loaded.otherMonthly)
       if (loaded.offBooks != null) setOffBooks(loaded.offBooks)
+      if (loaded.overhead != null) setOverhead(loaded.overhead)
       if (loaded.clientEnds) setClientEnds(loaded.clientEnds)
       if (loaded.clientPlans) setClientPlans(loaded.clientPlans)
       if (loaded.futureClients) setFutureClients(loaded.futureClients)
@@ -220,7 +223,7 @@ export default function Scenarios() {
         return sum + trueMonthly(row, raisePct)
       }, 0)
       const staff = BOOKS.cogsAvg + Math.max(0, peopleRaised - peopleNow)
-      const overhead = BOOKS.opexAvg
+      const opex = num(overhead) || 40000
       const retainersMo = clients.reduce((sum, client) => {
         const plan = {
           end: clientPlans[client.id]?.end || clientEnds[client.id] || '',
@@ -232,13 +235,13 @@ export default function Scenarios() {
       const later = futureClients.reduce((sum, row) => sum + futureInMonth(row, key), 0)
       const revenue = retainersMo + later + extra + other
       const off = num(offBooks)
-      const cost = staff + overhead + off
+      const cost = staff + opex + off
       const profit = revenue - cost
       months.push({
         key,
         label: date.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
         staff,
-        overhead,
+        overhead: opex,
         retainers: retainersMo,
         other,
         cost,
@@ -253,7 +256,7 @@ export default function Scenarios() {
     const avgMargin = avgRevenue > 0 ? avgProfit / avgRevenue : null
     const minProfit = Math.min(...months.map((row) => row.profit))
     return { months, avgProfit, avgMargin, minProfit, other }
-  }, [people, clients, clientEnds, clientPlans, futureClients, extraClient, otherMonthly, offBooks, raiseFrom, raiseUntil, raises])
+  }, [people, clients, clientEnds, clientPlans, futureClients, extraClient, otherMonthly, offBooks, overhead, raiseFrom, raiseUntil, raises])
 
   function applyLoaded(row) {
     const data = row.data || {}
@@ -266,6 +269,7 @@ export default function Scenarios() {
     setExtraClient(data.extraClient || '')
     if (data.otherMonthly != null) setOtherMonthly(data.otherMonthly)
     if (data.offBooks != null) setOffBooks(data.offBooks)
+    if (data.overhead != null) setOverhead(data.overhead)
     setClientEnds(data.clientEnds || {})
     setClientPlans(data.clientPlans || {})
     setFutureClients(data.futureClients || [])
@@ -294,7 +298,7 @@ export default function Scenarios() {
     return vals.every((value) => value === vals[0]) ? vals[0] : null
   })()
 
-  const state = { raiseFrom, raiseUntil, raises, extraClient, otherMonthly, offBooks, clientEnds, clientPlans, futureClients, scenarioId, scenarioName }
+  const state = { raiseFrom, raiseUntil, raises, extraClient, otherMonthly, offBooks, overhead, clientEnds, clientPlans, futureClients, scenarioId, scenarioName }
 
   if (!ready) return <div className="p-8 text-sm text-slate-500">Loading…</div>
 
@@ -343,10 +347,16 @@ export default function Scenarios() {
         <p className="mt-2 text-sm text-slate-600">
           Books net this year is {money(BOOKS.noiAvg)} / mo ({pct(BOOKS.noiAvg / BOOKS.incomeAvg)}). That is not cash to spend.
         </p>
-        <label className="mt-4 block max-w-sm text-sm font-semibold text-slate-700">
+        <div className="mt-4 flex flex-wrap gap-4">
+        <label className="block max-w-sm text-sm font-semibold text-slate-700">
+          Overhead / mo
+          <Input className="mt-1 h-12 text-lg tabular-nums" value={overhead} onChange={(event) => setOverhead(event.target.value)} placeholder="40000" />
+        </label>
+        <label className="block max-w-sm text-sm font-semibold text-slate-700">
           Off the books / mo
           <Input className="mt-1 h-12 text-lg tabular-nums" value={offBooks} onChange={(event) => setOffBooks(event.target.value)} placeholder="20000" />
         </label>
+        </div>
         <p className="mt-2 text-xs text-slate-400">SBA, extra rent, anything the P&L does not show. Only this page.</p>
       </div>
 
