@@ -1,7 +1,5 @@
 import PageHeader from '../components/PageHeader'
 
-const WORK = 'https://brandastic.com/work/'
-
 const DAILY = [
   'Family sign-ups that depend on search',
   'Ad spend that doesn’t turn into applications',
@@ -19,20 +17,30 @@ const MARKETS = [
   {
     rank: 'Primary',
     title: 'Schools',
-    clients: 'CalOPS, Heart, Think Together',
     note: 'Enrollment-led K–12. Private and public charter.',
+    cases: [
+      { name: 'CalOPS', href: 'https://brandastic.com/portfolio/california-online-public-schools/' },
+      { name: 'Think Together', href: 'https://brandastic.com/portfolio/think-together/' },
+    ],
   },
   {
     rank: 'Secondary',
     title: 'Medical, Dental',
-    clients: 'Young Surgical, DESS, Salvin',
     note: 'Practices and device brands that need patients and referrals.',
+    cases: [
+      { name: 'Salvin', href: 'https://brandastic.com/portfolio/salvin-dental/' },
+      { name: 'Young Surgical', href: 'https://brandastic.com/portfolio/young-surgical/' },
+      { name: 'DESS USA', href: 'https://brandastic.com/portfolio/dess-usa/' },
+    ],
   },
   {
     rank: 'Third',
     title: 'Health & Wellness',
-    clients: 'Healthmate, UFC Gym, Orangetheory Fitness',
     note: 'Fitness and wellness brands that need members in the door.',
+    cases: [
+      { name: 'Health Mate', href: 'https://brandastic.com/portfolio/health-mate/' },
+      { name: 'Orangetheory Fitness', href: 'https://brandastic.com/portfolio/orangetheory-fitness/' },
+    ],
   },
 ]
 
@@ -48,16 +56,16 @@ export default function IdealTargetClient() {
           <div key={market.title} className="rounded-2xl border bg-white p-6 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-wide text-[#1644ED]">{market.rank}</p>
             <h2 className="mt-1 text-2xl font-bold">{market.title}</h2>
-            <p className="mt-3 text-sm font-medium text-slate-800">{market.clients}</p>
             <p className="mt-2 text-sm text-muted-foreground">{market.note}</p>
-            <a
-              href={WORK}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 inline-block text-sm font-medium text-[#FF6B00] hover:underline"
-            >
-              Case studies
-            </a>
+            <ul className="mt-4 space-y-1.5">
+              {market.cases.map((item) => (
+                <li key={item.href}>
+                  <a href={item.href} target="_blank" rel="noreferrer" className="text-sm font-medium text-[#FF6B00] hover:underline">
+                    {item.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
         ))}
       </div>
