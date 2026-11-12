@@ -20,7 +20,7 @@ function commaNumber(value) {
   return dec != null ? `${grouped}.${dec}` : grouped
 }
 
-export default function ClientRetainers() {
+export default function ClientRetainers({ embedded = false }) {
   const { rows, setRows, missing, error: loadError, ready } = useClientRetainers()
   const [draft, setDraft] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -77,23 +77,38 @@ export default function ClientRetainers() {
 
   if (!ready) return <div className="p-8 text-sm text-slate-500">Loading clients…</div>
 
-  return (
-    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-      <PageHeader
-        title="Client retainers"
-        description="Monthly revenue by client. Same idea as People. Scenarios uses this list."
-        actions={(
+  const body = (
+    <>
+      {embedded ? (
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Client retainers</h2>
+            <p className="text-sm text-slate-500">Monthly amounts from HQ. Edit and save. Scenarios uses this list.</p>
+          </div>
           <Button type="button" variant="outline" size="sm" onClick={addClient}>
             <Plus className="mr-1 h-4 w-4" />
             Add client
           </Button>
-        )}
-      />
+        </div>
+      ) : (
+        <PageHeader
+          title="Client retainers"
+          description="Monthly revenue by client. Same idea as People. Scenarios uses this list."
+          actions={(
+            <Button type="button" variant="outline" size="sm" onClick={addClient}>
+              <Plus className="mr-1 h-4 w-4" />
+              Add client
+            </Button>
+          )}
+        />
+      )}
+      {embedded ? null : (
       <p className="mt-2 text-sm text-slate-500">
         <Link className="font-medium text-[#1644ED]" to="/people">People</Link>
         {' · '}
         <Link className="font-medium text-[#1644ED]" to="/scenarios">Scenarios</Link>
       </p>
+      )}
       <div className="mt-6 rounded-2xl border bg-white p-5 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Monthly retainers</p>
         <p className="mt-1 text-3xl font-semibold tabular-nums">{money(total)}</p>
@@ -101,7 +116,7 @@ export default function ClientRetainers() {
       </div>
       {missing ? (
         <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          The client_retainers table is not in Supabase yet. Run supabase/client-retainers.sql, then save.
+          Saving on this browser until the client_retainers table is in Supabase.
         </p>
       ) : null}
       {loadError || error ? <p className="mt-4 text-sm text-red-600">{error || loadError}</p> : null}
@@ -131,6 +146,8 @@ export default function ClientRetainers() {
           Save clients
         </Button>
       </div>
-    </div>
+    </>
   )
+  if (embedded) return <div className="pr-page pb-0">{body}</div>
+  return <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">{body}</div>
 }

@@ -6,6 +6,7 @@ import { profitRange } from '../lib/profitability'
 import { cachedProfitability, fetchProfitability } from '../lib/profitabilityCache'
 import { applyProfitInputs, useLaborRateRows } from '../lib/laborRates'
 import { useAuth } from '../contexts/AuthContext'
+import ClientRetainers from './ClientRetainers'
 
 function clientSlugFromPath(pathname) {
   const parts = String(pathname || '').split('/').filter(Boolean)
@@ -59,6 +60,7 @@ export default function Profitability() {
           <h1>Marketing Retainers</h1>
           <p className="pr-note">{error}</p>
         </div>
+        {!slug ? <ClientRetainers embedded /> : null}
       </div>
     )
   }
@@ -71,6 +73,7 @@ export default function Profitability() {
           <Link to="/profitability/websites" className="text-sm font-medium text-[#1644ED]">Websites</Link>
         </span>
       </div>
+      {!slug ? <ClientRetainers embedded /> : null}
       <ProfitabilityDashboard
         data={applyProfitInputs(data, rows, overhead)}
         view={slug ? 'client' : 'overview'}
