@@ -25,10 +25,17 @@ function stageFromLead(row) {
   return 'lead'
 }
 
+function contractMonths(row) {
+  const months = Number(row.contract_months)
+  return months > 0 ? months : 12
+}
+
 function amountOf(row) {
   const stage = stageFromLead(row)
   if (stage === 'won') return Number(row.close_amount || row.value_2026) || 0
-  return Number(row.value_2026) || 0
+  const estimate = Number(row.value_2026) || 0
+  if (row.deal_type === 'Monthly') return estimate * contractMonths(row)
+  return estimate
 }
 
 export default function ScoreCardPipeline() {
@@ -287,7 +294,14 @@ export default function ScoreCardPipeline() {
                                           {row.source || '—'}
                                         </span>
                                       </div>
-                                      <div>{formatMoney(amountOf(row)) || '$0'}</div>
+                                      <div>
+                                        {row.deal_type === 'Monthly' && Number(row.value_2026) ? (
+                                          <>
+                                            {formatMoney(row.value_2026)} × {contractMonths(row)}
+                                            <div className="font-semibold">{formatMoney(amountOf(row))}</div>
+                                          </>
+                                        ) : (formatMoney(amountOf(row)) || '$0')}
+                                      </div>
                                       <div>{displayDate(row.first_contact_date) || '—'}</div>
                                       {link ? (
                                         <a className="text-[#1644ED] hover:underline" href={link} target="_blank" rel="noreferrer">

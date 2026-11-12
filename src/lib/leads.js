@@ -26,7 +26,7 @@ export const LEAD_QUALITIES = [
 
 export const DEAL_TYPES = ['One-time', 'Monthly']
 export const DEAL_TYPE_LABELS = {
-  Monthly: 'Retainer',
+  Monthly: 'Monthly contract',
   'One-time': 'One-time project',
 }
 export const DEAL_INTERESTS = ['SEO', 'Google PPC', 'Paid Social', 'Email', 'Website', 'Organic Social', 'Creative']

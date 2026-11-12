@@ -57,3 +57,4 @@ create policy "Team can delete sales leads" on public.sales_leads
 
 alter table public.sales_leads add column if not exists deal_interest text;
 alter table public.sales_leads add column if not exists pipeline_stage text;
+alter table public.sales_leads add column if not exists contract_months numeric;

@@ -40,6 +40,7 @@ const EMPTY = {
   deal_type: '',
   deal_interest: '',
   value_2026: '',
+  contract_months: '12',
   pipeline_stage: '',
 }
 
@@ -70,6 +71,7 @@ function draftFromLead(lead, defaultStage) {
     deal_type: lead.deal_type || '',
     deal_interest: lead.deal_interest || '',
     value_2026: commaMoney(lead.value_2026),
+    contract_months: String(lead.contract_months || 12),
     pipeline_stage: lead.pipeline_stage || defaultStage || '',
   }
 }
@@ -110,6 +112,7 @@ export default function LeadContactDialog({ open, onOpenChange, lead, defaultSta
       deal_type: draft.deal_type || null,
       deal_interest: (draft.deal_interest || '').trim() || null,
       value_2026: amount(draft.value_2026),
+      contract_months: draft.deal_type === 'Monthly' ? Number(draft.contract_months) || 12 : null,
       pipeline_stage: draft.pipeline_stage || defaultStage || null,
       updated_at: new Date().toISOString(),
     }
@@ -133,6 +136,12 @@ export default function LeadContactDialog({ open, onOpenChange, lead, defaultSta
     }
     if (result.error && String(result.error.message || '').includes('deal_interest')) {
       const { deal_interest, ...rest } = payload
+      result = lead?.id
+        ? await supabase.from('sales_leads').update(rest).eq('id', lead.id).select('*').single()
+        : await supabase.from('sales_leads').insert(rest).select('*').single()
+    }
+    if (result.error && String(result.error.message || '').includes('contract_months')) {
+      const { contract_months, ...rest } = payload
       result = lead?.id
         ? await supabase.from('sales_leads').update(rest).eq('id', lead.id).select('*').single()
         : await supabase.from('sales_leads').insert(rest).select('*').single()
@@ -239,10 +248,16 @@ export default function LeadContactDialog({ open, onOpenChange, lead, defaultSta
                   {DEAL_TYPES.map((item) => <option key={item} value={item}>{DEAL_TYPE_LABELS[item] || item}</option>)}
                 </select>
               </Field>
-              <Field label={draft.deal_type === 'One-time' ? 'Project estimate' : draft.deal_type === 'Monthly' ? 'Monthly estimate' : 'Estimate'}>
+              <Field label={draft.deal_type === 'One-time' ? 'Project estimate' : 'Monthly estimate'}>
                 <Input inputMode="decimal" value={draft.value_2026} onChange={(event) => updateDraft('value_2026', commaMoney(event.target.value))} />
-                <p className="mt-1 text-xs text-muted-foreground">Retainer = monthly. One-time = project total.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Monthly contract uses this × months. One-time is the project total.</p>
               </Field>
+              {draft.deal_type === 'Monthly' ? (
+                <Field label="Contract months">
+                  <Input inputMode="numeric" value={draft.contract_months} onChange={(event) => updateDraft('contract_months', event.target.value.replace(/[^0-9]/g, ''))} />
+                  <p className="mt-1 text-xs text-muted-foreground">Default 12. Pipeline shows monthly × months (3,500 × 12).</p>
+                </Field>
+              ) : null}
               <Field label="Closed amount">
                 <Input inputMode="decimal" value={draft.close_amount} onChange={(event) => updateDraft('close_amount', commaMoney(event.target.value))} />
               </Field>
