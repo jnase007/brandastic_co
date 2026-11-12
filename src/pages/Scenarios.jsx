@@ -55,6 +55,8 @@ export default function Scenarios() {
   const [raiseFrom, setRaiseFrom] = useState('2027-02')
   const [raises, setRaises] = useState({})
   const [extraClient, setExtraClient] = useState('')
+  const [trendYear, setTrendYear] = useState('2,100,000')
+  const [otherMonthly, setOtherMonthly] = useState('')
   const [clientEnds, setClientEnds] = useState({})
   const [clientPlans, setClientPlans] = useState({})
   const [futureClients, setFutureClients] = useState([])
@@ -69,6 +71,8 @@ export default function Scenarios() {
       if (loaded.raiseFrom) setRaiseFrom(loaded.raiseFrom)
       if (loaded.raises) setRaises(loaded.raises)
       if (loaded.extraClient != null) setExtraClient(loaded.extraClient)
+      if (loaded.trendYear != null) setTrendYear(loaded.trendYear)
+      if (loaded.otherMonthly != null) setOtherMonthly(loaded.otherMonthly)
       if (loaded.clientEnds) setClientEnds(loaded.clientEnds)
       if (loaded.clientPlans) setClientPlans(loaded.clientPlans)
       if (loaded.futureClients) setFutureClients(loaded.futureClients)
@@ -81,7 +85,10 @@ export default function Scenarios() {
   const overheadAmount = overhead == null || overhead === '' ? 40000 : Number(overhead) || 0
 
   const projection = useMemo(() => {
-    const extra = Number(String(extraClient).replace(/[$,]/g, '')) || 0
+    const extra = num(extraClient)
+    const retainerNow = clients.reduce((sum, client) => sum + (Number(client.monthly) || 0), 0)
+    const trendMonth = (num(trendYear) || 2100000) / 12
+    const other = otherMonthly === '' ? Math.max(0, trendMonth - retainerNow) : num(otherMonthly)
     const hasRaises = Object.values(raises).some((value) => Number(value) > 0)
     const now = new Date()
     const months = []
@@ -94,20 +101,24 @@ export default function Scenarios() {
         return sum + trueMonthly(row, pct)
       }, 0)
       const cost = staff + overheadAmount
-      const revenue = extra + clients.reduce((sum, client) => {
+      const retainers = clients.reduce((sum, client) => {
         const plan = {
           end: clientPlans[client.id]?.end || clientEnds[client.id] || '',
           nextFrom: clientPlans[client.id]?.nextFrom || '',
           nextAmount: clientPlans[client.id]?.nextAmount || '',
         }
         return sum + amountInMonth(client.monthly, key, plan)
-      }, 0) + futureClients.reduce((sum, row) => sum + futureInMonth(row, key), 0)
+      }, 0)
+      const later = futureClients.reduce((sum, row) => sum + futureInMonth(row, key), 0)
+      const revenue = retainers + later + extra + other
       const profit = revenue - cost
       months.push({
         key,
         label: date.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
         staff,
         overhead: overheadAmount,
+        retainers,
+        other,
         cost,
         revenue,
         profit,
@@ -118,8 +129,8 @@ export default function Scenarios() {
     const peak = Math.max(1, ...months.map((row) => Math.max(row.revenue, row.cost)))
     const after = months.find((row) => row.raised) || null
     const nowRow = months[0]
-    return { months, peak, after, nowRow, hasRaises: months.some((row) => row.raised) }
-  }, [people, overheadAmount, clients, clientEnds, clientPlans, futureClients, extraClient, raiseFrom, raises])
+    return { months, peak, after, nowRow, hasRaises: months.some((row) => row.raised), trendMonth, other, retainerNow }
+  }, [people, overheadAmount, clients, clientEnds, clientPlans, futureClients, extraClient, trendYear, otherMonthly, raiseFrom, raises])
 
   function setAllRaises(pct) {
     if (!pct) {
@@ -152,7 +163,7 @@ export default function Scenarios() {
               setSaveError('')
               setSaved('')
               try {
-                const result = await saveScenario({ raiseFrom, raises, extraClient, clientEnds, clientPlans, futureClients })
+                const result = await saveScenario({ raiseFrom, raises, extraClient, trendYear, otherMonthly, clientEnds, clientPlans, futureClients })
                 if (result.error) setSaved('Saved on this browser. Run supabase/scenario-plans.sql to share it.')
                 else setSaved('Scenario saved.')
               } catch (err) {
@@ -178,9 +189,19 @@ export default function Scenarios() {
 
       <div className="mt-6 grid gap-3 sm:grid-cols-4">
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Client retainers / mo</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums">{money(projection.nowRow.revenue)}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Retainers / mo</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums">{money(projection.nowRow.retainers)}</p>
           <p className="text-xs text-slate-500">{clients.length} clients</p>
+        </div>
+        <div className="rounded-2xl border bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Other projects / mo</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums">{money(projection.other)}</p>
+          <p className="text-xs text-slate-500">$2.1M year ÷ 12 = {money(projection.trendMonth)} average month. Other fills the gap after retainers.</p>
+        </div>
+        <div className="rounded-2xl border bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total in / mo</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums">{money(projection.nowRow.revenue)}</p>
+          <p className="text-xs text-slate-500">Retainers + other + extras</p>
         </div>
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Cost now</p>
@@ -227,7 +248,15 @@ export default function Scenarios() {
             ))}
           </div>
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Extra client / mo
+            Company trend / year
+            <Input className="mt-1 h-10" inputMode="decimal" value={trendYear} onChange={(event) => setTrendYear(event.target.value)} />
+          </label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Other projects / mo
+            <Input className="mt-1 h-10" inputMode="decimal" placeholder="auto" value={otherMonthly} onChange={(event) => setOtherMonthly(event.target.value)} />
+          </label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Extra / mo
             <Input className="mt-1 h-10" inputMode="decimal" value={extraClient} onChange={(event) => setExtraClient(event.target.value)} />
           </label>
         </div>
@@ -246,7 +275,7 @@ export default function Scenarios() {
             <p key={row.key} className={cn('min-w-0 flex-1 text-center text-[10px] text-slate-400', row.raised && 'font-semibold text-orange-600')}>{row.label}</p>
           ))}
         </div>
-        <p className="mt-3 text-xs text-slate-400">Blue = retainers. Gray = team. Orange = team after raises. Teal = $40k overhead.</p>
+        <p className="mt-3 text-xs text-slate-400">Blue = all revenue (retainers + other projects). Gray = team. Orange = team after raises. Teal = overhead.</p>
       </div>
 
       <div className="mt-6 overflow-hidden rounded-2xl border bg-white shadow-sm">
@@ -341,6 +370,8 @@ export default function Scenarios() {
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-2">Month</th>
+              <th className="px-4 py-2 text-right">Retainers</th>
+              <th className="px-4 py-2 text-right">Other</th>
               <th className="px-4 py-2 text-right">Revenue</th>
               <th className="px-4 py-2 text-right">Team</th>
               <th className="px-4 py-2 text-right">Overhead</th>
@@ -352,6 +383,8 @@ export default function Scenarios() {
             {projection.months.map((row) => (
               <tr key={row.key} className="border-t">
                 <td className={cn('px-4 py-2', row.raised && 'font-semibold text-orange-700')}>{row.label}</td>
+                <td className="px-4 py-2 text-right tabular-nums">{money(row.retainers)}</td>
+                <td className="px-4 py-2 text-right tabular-nums">{money(row.other)}</td>
                 <td className="px-4 py-2 text-right tabular-nums">{money(row.revenue)}</td>
                 <td className="px-4 py-2 text-right tabular-nums">{money(row.staff)}</td>
                 <td className="px-4 py-2 text-right tabular-nums">{money(row.overhead)}</td>
