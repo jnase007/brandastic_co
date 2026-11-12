@@ -82,9 +82,9 @@ function payloadOf(state) {
 
 function BreakEvenChart({ months }) {
   if (!months?.length) return null
-  const width = 640
-  const height = 280
-  const pad = { l: 48, r: 16, t: 20, b: 36 }
+  const width = 920
+  const height = 300
+  const pad = { l: 8, r: 8, t: 16, b: 28 }
   const innerW = width - pad.l - pad.r
   const innerH = height - pad.t - pad.b
   const maxY = Math.max(1, ...months.map((row) => Math.max(row.revenue, row.cost, row.staff, 0)))
@@ -96,38 +96,42 @@ function BreakEvenChart({ months }) {
   const avgCost = months.reduce((sum, row) => sum + row.cost, 0) / months.length
   const zero = y(0)
   return (
-    <div className="mt-6 rounded-2xl border bg-slate-950 p-5 text-white shadow-sm">
+    <div className="mt-6 rounded-2xl border bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold">Revenue and costs</p>
-          <p className="text-xs text-white/60">Purple is in. Yellow dotted is break-even (total out). Blue is what’s left.</p>
+          <p className="text-sm font-semibold text-slate-900">Revenue and costs</p>
+          <p className="text-xs text-slate-500">Purple is in. Yellow dotted is break-even. Blue is what’s left.</p>
         </div>
-        <p className="text-xs text-white/70">Break-even at {money(avgCost)} / mo</p>
+        <p className="text-xs font-medium text-slate-600">Break-even at {money(avgCost)} / mo</p>
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} className="mt-4 h-64 w-full" preserveAspectRatio="xMidYMid meet">
-        {[0.25, 0.5, 0.75, 1].map((tick) => (
-          <line key={tick} x1={pad.l} x2={width - pad.r} y1={pad.t + innerH * (1 - tick)} y2={pad.t + innerH * (1 - tick)} stroke="rgba(255,255,255,0.08)" />
+      <svg viewBox={`0 0 ${width} ${height}`} className="mt-3 h-64 w-full" preserveAspectRatio="none">
+        {[0.25, 0.5, 0.75].map((tick) => (
+          <line key={tick} x1={0} x2={width} y1={pad.t + innerH * (1 - tick)} y2={pad.t + innerH * (1 - tick)} stroke="#e2e8f0" />
         ))}
-        <line x1={pad.l} x2={width - pad.r} y1={zero} y2={zero} stroke="#ef4444" strokeDasharray="4 4" strokeWidth="1.5" />
-        <path d={line('revenue')} fill="none" stroke="#a78bfa" strokeWidth="3" />
-        <path d={line('cost')} fill="none" stroke="#eab308" strokeWidth="2.5" strokeDasharray="7 6" />
-        <path d={line('staff')} fill="none" stroke="#f97316" strokeWidth="2.5" />
-        <path d={line('profit')} fill="none" stroke="#22d3ee" strokeWidth="3" />
+        <line x1={0} x2={width} y1={zero} y2={zero} stroke="#fca5a5" strokeDasharray="4 4" strokeWidth="1.5" />
+        <path d={line('revenue')} fill="none" stroke="#7c3aed" strokeWidth="3" />
+        <path d={line('cost')} fill="none" stroke="#ca8a04" strokeWidth="2.5" strokeDasharray="7 6" />
+        <path d={line('staff')} fill="none" stroke="#ea580c" strokeWidth="2.5" />
+        <path d={line('profit')} fill="none" stroke="#0891b2" strokeWidth="3" />
         {months.map((row, i) => (
           <g key={row.key}>
-            <circle cx={x(i)} cy={y(row.revenue)} r="4" fill="#a78bfa" />
-            <circle cx={x(i)} cy={y(row.cost)} r="4" fill="#eab308" />
-            <circle cx={x(i)} cy={y(row.staff)} r="3.5" fill="#f97316" />
-            <circle cx={x(i)} cy={y(row.profit)} r="4" fill="#22d3ee" />
-            <text x={x(i)} y={height - 10} textAnchor="middle" fill="rgba(255,255,255,0.55)" fontSize="10">{row.label.replace(' ', '')}</text>
+            <circle cx={x(i)} cy={y(row.revenue)} r="4.5" fill="#7c3aed" />
+            <circle cx={x(i)} cy={y(row.cost)} r="4.5" fill="#ca8a04" />
+            <circle cx={x(i)} cy={y(row.staff)} r="4" fill="#ea580c" />
+            <circle cx={x(i)} cy={y(row.profit)} r="4.5" fill="#0891b2" />
           </g>
         ))}
       </svg>
-      <div className="mt-2 flex flex-wrap gap-4 text-xs text-white/70">
-        <span className="text-[#a78bfa]">● Revenue</span>
-        <span className="text-[#eab308]">● Total costs (break-even)</span>
-        <span className="text-[#f97316]">● Team</span>
-        <span className="text-[#22d3ee]">● Left / profit</span>
+      <div className="mt-1 grid" style={{ gridTemplateColumns: `repeat(${months.length}, minmax(0, 1fr))` }}>
+        {months.map((row) => (
+          <p key={row.key} className="text-center text-[10px] text-slate-500">{row.label}</p>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-600">
+        <span className="text-violet-700">● Revenue</span>
+        <span className="text-yellow-700">● Total costs (break-even)</span>
+        <span className="text-orange-700">● Team</span>
+        <span className="text-cyan-700">● Left / profit</span>
       </div>
     </div>
   )
