@@ -76,6 +76,127 @@ function monthCells(monthKey) {
   return cells
 }
 
+function UpcomingCalendar({
+  title,
+  today,
+  windowEnd,
+  byDay,
+  view,
+  setView,
+  selectedDay,
+  setSelectedDay,
+  hoveredDay,
+  setHoveredDay,
+  noteSaving,
+  onEditNote,
+  onDeleteNote,
+  groups,
+}) {
+  const listGroups = groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        const start = item.rangeStart || item.date
+        const end = item.rangeEnd && item.rangeEnd >= start ? item.rangeEnd : start
+        return start <= windowEnd && end >= today
+      }),
+    }))
+    .filter((group) => group.items.length && group.id <= windowEnd && addDays(group.id, 6) >= today)
+
+  return (
+    <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
+        <div className="flex rounded-full bg-[#f4f7fa] p-1 text-sm font-semibold">
+          <button type="button" className={`rounded-full px-3 py-1 ${view === 'calendar' ? 'bg-white shadow-sm' : 'text-[#5c6b7a]'}`} onClick={() => setView('calendar')}>Calendar</button>
+          <button type="button" className={`rounded-full px-3 py-1 ${view === 'list' ? 'bg-white shadow-sm' : 'text-[#5c6b7a]'}`} onClick={() => setView('list')}>List</button>
+        </div>
+      </div>
+      {view === 'calendar' ? (
+        <div className="mt-6 space-y-6">
+          {monthsThrough(today, windowEnd).map((month) => (
+            <div key={month}>
+              <p className="text-sm font-semibold">{monthName(month)}</p>
+              <div className="mt-2 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-[#8b98a5]">
+                {WEEKDAYS.map((day) => <span key={day}>{day}</span>)}
+              </div>
+              <div className="mt-1 grid grid-cols-7 gap-1" onMouseLeave={() => setHoveredDay(null)}>
+                {monthCells(month).map((day, index) => {
+                  const dayItems = day ? byDay.get(day) || [] : []
+                  const inWindow = day && day >= today && day <= windowEnd
+                  const inMarked = dayItems.some((item) => item.type === 'holiday' || item.type === 'note')
+                  const open = Boolean(day) && (inWindow || inMarked)
+                  const selected = day === selectedDay
+                  return (
+                    <button
+                      key={`${month}-${index}`}
+                      type="button"
+                      disabled={!open}
+                      onMouseEnter={() => {
+                        if (day && open) {
+                          setSelectedDay(day)
+                          setHoveredDay(day)
+                        }
+                      }}
+                      onClick={() => day && setSelectedDay(day)}
+                      className={`relative min-h-11 rounded-xl px-1 py-1 text-left text-xs ${selected ? 'bg-[#e8eeff] ring-1 ring-[#1644ED]' : ''} ${open ? '' : 'opacity-40'}`}
+                    >
+                      <span className="font-semibold">{day ? Number(day.slice(8)) : ''}</span>
+                      <span className="mt-1 flex flex-wrap gap-1">
+                        {dayItems.map((item) => <span key={`${item.type}-${item.id || item.title}-${item.rangeStart || item.date}`} className={`h-1.5 w-1.5 rounded-full ${TYPES[item.type].dot}`} />)}
+                      </span>
+                      {hoveredDay === day && dayItems.length ? (
+                        <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 w-44 -translate-x-1/2 rounded-xl bg-white px-2 py-1.5 text-left text-[11px] font-medium text-[#1b2838] shadow-lg ring-1 ring-black/10">
+                          {dayItems.map((item) => (
+                            <span key={`${item.type}-${item.id || item.title}-${item.rangeStart || item.date}`} className="block leading-snug">
+                              {isCelebration(item) ? shownTitle(item) : `${TYPES[item.type].label}: ${shownTitle(item)}`}
+                            </span>
+                          ))}
+                        </span>
+                      ) : null}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+          <div>
+            <p className="text-sm font-semibold">{selectedDay ? weekdayDate(selectedDay) : 'Pick a day'}</p>
+            {(byDay.get(selectedDay) || []).length ? (
+              <ul className="mt-2 space-y-2">
+                {byDay.get(selectedDay).map((item) => (
+                  <li key={`${item.type}-${item.id || item.title}-${item.rangeStart || item.date}`} className={`rounded-2xl px-3 py-2 text-sm ${TYPES[item.type].chip}`}>
+                    {isCelebration(item) ? shownTitle(item) : `${TYPES[item.type].label}: ${shownTitle(item)}${item.detail ? ` · ${item.detail}` : ''}`}
+                    {item.type === 'note' ? <NoteActions disabled={noteSaving} onEdit={() => onEditNote(item)} onDelete={() => onDeleteNote(item)} /> : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-[#5c6b7a]">Nothing on this day.</p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-6 space-y-5">
+          {listGroups.length ? listGroups.map((group) => (
+            <div key={group.id}>
+              <p className="text-sm font-semibold">{group.label}</p>
+              <ul className="mt-2 space-y-2">
+                {group.items.map((item) => (
+                  <li key={`${item.type}-${item.id || item.date}-${item.title}`} className="flex items-baseline justify-between gap-3 text-sm">
+                    <span><span className="font-semibold">{shownTitle(item)}</span>{isCelebration(item) || !item.detail ? '' : ` · ${item.detail}`}{item.type === 'note' ? <NoteActions disabled={noteSaving} onEdit={() => onEditNote(item)} onDelete={() => onDeleteNote(item)} /> : null}</span>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${TYPES[item.type].chip}`}>{weekdayDate(item.date)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )) : <p className="text-sm text-[#5c6b7a]">Nothing in this window.</p>}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function monthsThrough(today, throughDate) {
   const endKey = throughDate.slice(0, 7)
   const keys = []
@@ -139,7 +260,8 @@ export default function Announcements() {
   const [holidayColumnsMissing, setHolidayColumnsMissing] = useState(false)
   const [holidayError, setHolidayError] = useState('')
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState('calendar')
+  const [view30, setView30] = useState('calendar')
+  const [view60, setView60] = useState('calendar')
   const [selectedDay, setSelectedDay] = useState(today)
   const [hoveredDay, setHoveredDay] = useState(null)
   const [noteRows, setNoteRows] = useState([])
@@ -191,9 +313,10 @@ export default function Announcements() {
   }), [today, people, holidays, noteRows])
   const week = itemsThisWeek(today, items)
   const groups = weekGroups(today, items)
-  const windowEnd = addDays(today, 30)
-  const calendarHolidays = useMemo(() => visibleHolidays(holidays, today, windowEnd), [holidays, today, windowEnd])
-  const calendarThrough = monthEnd(windowEnd)
+  const window30 = addDays(today, 30)
+  const window60 = addDays(today, 60)
+  const calendarHolidays = useMemo(() => visibleHolidays(holidays, today, window60), [holidays, today, window60])
+  const calendarThrough = monthEnd(window60)
   const calendarNotes = useMemo(() => noteCalendarItems(noteRows, today, calendarThrough), [noteRows, today, calendarThrough])
   const laterNotes = noteRows.filter((row) => {
     const start = String(row.start_date || '').slice(0, 10)
@@ -307,7 +430,7 @@ export default function Announcements() {
   }
   return (
     <div className="min-h-screen bg-[#f4f7fa] px-4 py-6 text-[#15202b] sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-7xl">
         <PageHeader title="Announcements" description="What to share with the team this week." />
 
         {loading ? <p className="mt-8 text-sm text-[#5c6b7a]">Loading announcements…</p> : null}
@@ -316,7 +439,7 @@ export default function Announcements() {
 
         {!loading ? (
           <>
-            <div className="mt-6 grid items-start gap-4 lg:grid-cols-2">
+            <div className="mt-6 space-y-4">
               <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -387,96 +510,40 @@ export default function Announcements() {
                 ) : null}
               </section>
 
-              <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-2xl font-semibold tracking-tight">Coming up · next 30 days</h2>
-                  <div className="flex rounded-full bg-[#f4f7fa] p-1 text-sm font-semibold">
-                    <button type="button" className={`rounded-full px-3 py-1 ${view === 'calendar' ? 'bg-white shadow-sm' : 'text-[#5c6b7a]'}`} onClick={() => setView('calendar')}>Calendar</button>
-                    <button type="button" className={`rounded-full px-3 py-1 ${view === 'list' ? 'bg-white shadow-sm' : 'text-[#5c6b7a]'}`} onClick={() => setView('list')}>List</button>
-                  </div>
-                </div>
-                {view === 'calendar' ? (
-                  <div className="mt-6 space-y-6">
-                    {monthsThrough(today, windowEnd).map((month) => (
-                      <div key={month}>
-                        <p className="text-sm font-semibold">{monthName(month)}</p>
-                        <div className="mt-2 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-[#8b98a5]">
-                          {WEEKDAYS.map((day) => <span key={day}>{day}</span>)}
-                        </div>
-                        <div className="mt-1 grid grid-cols-7 gap-1" onMouseLeave={() => setHoveredDay(null)}>
-                          {monthCells(month).map((day, index) => {
-                            const dayItems = day ? byDay.get(day) || [] : []
-                            const inWindow = day && day >= today && day <= windowEnd
-                            const inMarked = dayItems.some((item) => item.type === 'holiday' || item.type === 'note')
-                            const open = Boolean(day) && (inWindow || inMarked)
-                            const selected = day === selectedDay
-                            return (
-                              <button
-                                key={`${month}-${index}`}
-                                type="button"
-                                disabled={!open}
-                                onMouseEnter={() => {
-                                  if (day && open) {
-                                    setSelectedDay(day)
-                                    setHoveredDay(day)
-                                  }
-                                }}
-                                onClick={() => day && setSelectedDay(day)}
-                                className={`relative min-h-12 rounded-xl px-1 py-1 text-left text-xs ${selected ? 'bg-[#e8eeff] ring-1 ring-[#1644ED]' : ''} ${open ? '' : 'opacity-40'}`}
-                              >
-                                <span className="font-semibold">{day ? Number(day.slice(8)) : ''}</span>
-                                <span className="mt-1 flex flex-wrap gap-1">
-                                  {dayItems.map((item) => <span key={`${item.type}-${item.id || item.title}-${item.rangeStart || item.date}`} className={`h-1.5 w-1.5 rounded-full ${TYPES[item.type].dot}`} />)}
-                                </span>
-                                {hoveredDay === day && dayItems.length ? (
-                                  <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 w-44 -translate-x-1/2 rounded-xl bg-white px-2 py-1.5 text-left text-[11px] font-medium text-[#1b2838] shadow-lg ring-1 ring-black/10">
-                                    {dayItems.map((item) => (
-                                      <span key={`${item.type}-${item.id || item.title}-${item.rangeStart || item.date}`} className="block leading-snug">
-                                        {isCelebration(item) ? shownTitle(item) : `${TYPES[item.type].label}: ${shownTitle(item)}`}
-                                      </span>
-                                    ))}
-                                  </span>
-                                ) : null}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                    <div>
-                      <p className="text-sm font-semibold">{selectedDay ? weekdayDate(selectedDay) : 'Pick a day'}</p>
-                      {(byDay.get(selectedDay) || []).length ? (
-                        <ul className="mt-2 space-y-2">
-                          {byDay.get(selectedDay).map((item) => (
-                            <li key={`${item.type}-${item.id || item.title}-${item.rangeStart || item.date}`} className={`rounded-2xl px-3 py-2 text-sm ${TYPES[item.type].chip}`}>
-                              {isCelebration(item) ? shownTitle(item) : `${TYPES[item.type].label}: ${shownTitle(item)}${item.detail ? ` · ${item.detail}` : ''}`}
-                              {item.type === 'note' ? <NoteActions disabled={noteSaving} onEdit={() => editNoteItem(item)} onDelete={() => removeNoteItem(item)} /> : null}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="mt-2 text-sm text-[#5c6b7a]">Nothing on this day.</p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-6 space-y-5">
-                    {groups.length ? groups.map((group) => (
-                      <div key={group.id}>
-                        <p className="text-sm font-semibold">{group.label}</p>
-                        <ul className="mt-2 space-y-2">
-                          {group.items.map((item) => (
-                            <li key={`${item.type}-${item.id || item.date}-${item.title}`} className="flex items-baseline justify-between gap-3 text-sm">
-                              <span><span className="font-semibold">{shownTitle(item)}</span>{isCelebration(item) || !item.detail ? '' : ` · ${item.detail}`}{item.type === 'note' ? <NoteActions disabled={noteSaving} onEdit={() => editNoteItem(item)} onDelete={() => removeNoteItem(item)} /> : null}</span>
-                              <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${TYPES[item.type].chip}`}>{weekdayDate(item.date)}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )) : <p className="text-sm text-[#5c6b7a]">Nothing in the next 30 days.</p>}
-                  </div>
-                )}
-              </section>
+              <div className="grid items-start gap-4 lg:grid-cols-2">
+                <UpcomingCalendar
+                  title="Upcoming · next 30 days"
+                  today={today}
+                  windowEnd={window30}
+                  byDay={byDay}
+                  view={view30}
+                  setView={setView30}
+                  selectedDay={selectedDay}
+                  setSelectedDay={setSelectedDay}
+                  hoveredDay={hoveredDay}
+                  setHoveredDay={setHoveredDay}
+                  noteSaving={noteSaving}
+                  onEditNote={editNoteItem}
+                  onDeleteNote={removeNoteItem}
+                  groups={groups}
+                />
+                <UpcomingCalendar
+                  title="Upcoming · 60 days"
+                  today={today}
+                  windowEnd={window60}
+                  byDay={byDay}
+                  view={view60}
+                  setView={setView60}
+                  selectedDay={selectedDay}
+                  setSelectedDay={setSelectedDay}
+                  hoveredDay={hoveredDay}
+                  setHoveredDay={setHoveredDay}
+                  noteSaving={noteSaving}
+                  onEditNote={editNoteItem}
+                  onDeleteNote={removeNoteItem}
+                  groups={groups}
+                />
+              </div>
             </div>
 
             <div className="mt-6">
