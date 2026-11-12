@@ -113,7 +113,22 @@ function UpcomingCalendar({
         </div>
       </div>
       {view === 'calendar' ? (
-        <div className="mt-6 space-y-6">
+        <div className="mt-6 space-y-8">
+          <div>
+            <p className="text-sm font-semibold">{selectedDay ? weekdayDate(selectedDay) : 'Hover a day'}</p>
+            {(byDay.get(selectedDay) || []).length ? (
+              <ul className="mt-2 space-y-2">
+                {byDay.get(selectedDay).map((item) => (
+                  <li key={`${item.type}-${item.id || item.title}-${item.rangeStart || item.date}`} className={`rounded-2xl px-3 py-2 text-sm ${TYPES[item.type].chip}`}>
+                    {isCelebration(item) ? shownTitle(item) : `${TYPES[item.type].label}: ${shownTitle(item)}${item.detail ? ` · ${item.detail}` : ''}`}
+                    {item.type === 'note' ? <NoteActions disabled={noteSaving} onEdit={() => onEditNote(item)} onDelete={() => onDeleteNote(item)} /> : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-[#5c6b7a]">Nothing on this day.</p>
+            )}
+          </div>
           {monthsThrough(today, windowEnd).map((month) => (
             <div key={month}>
               <p className="text-sm font-semibold">{monthName(month)}</p>
@@ -123,9 +138,9 @@ function UpcomingCalendar({
               <div className="mt-1 grid grid-cols-7 gap-1" onMouseLeave={() => setHoveredDay(null)}>
                 {monthCells(month).map((day, index) => {
                   const dayItems = day ? byDay.get(day) || [] : []
-                  const inWindow = day && day >= today && day <= windowEnd
+                  const inRange = day && day.slice(0, 7) >= today.slice(0, 7) && day <= windowEnd
                   const inMarked = dayItems.some((item) => item.type === 'holiday' || item.type === 'note')
-                  const open = Boolean(day) && (inWindow || inMarked)
+                  const open = Boolean(day) && (inRange || inMarked)
                   const selected = day === selectedDay
                   return (
                     <button
@@ -160,21 +175,6 @@ function UpcomingCalendar({
               </div>
             </div>
           ))}
-          <div>
-            <p className="text-sm font-semibold">{selectedDay ? weekdayDate(selectedDay) : 'Pick a day'}</p>
-            {(byDay.get(selectedDay) || []).length ? (
-              <ul className="mt-2 space-y-2">
-                {byDay.get(selectedDay).map((item) => (
-                  <li key={`${item.type}-${item.id || item.title}-${item.rangeStart || item.date}`} className={`rounded-2xl px-3 py-2 text-sm ${TYPES[item.type].chip}`}>
-                    {isCelebration(item) ? shownTitle(item) : `${TYPES[item.type].label}: ${shownTitle(item)}${item.detail ? ` · ${item.detail}` : ''}`}
-                    {item.type === 'note' ? <NoteActions disabled={noteSaving} onEdit={() => onEditNote(item)} onDelete={() => onDeleteNote(item)} /> : null}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-sm text-[#5c6b7a]">Nothing on this day.</p>
-            )}
-          </div>
         </div>
       ) : (
         <div className="mt-6 space-y-5">
@@ -197,16 +197,26 @@ function UpcomingCalendar({
   )
 }
 
+function nextMonthKey(monthKey) {
+  const [year, month] = monthKey.split('-').map(Number)
+  return month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, '0')}`
+}
+
 function monthsThrough(today, throughDate) {
   const endKey = throughDate.slice(0, 7)
   const keys = []
   let cursor = today.slice(0, 7)
   while (cursor <= endKey) {
     keys.push(cursor)
-    const [year, month] = cursor.split('-').map(Number)
-    cursor = month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, '0')}`
+    cursor = nextMonthKey(cursor)
   }
   return keys
+}
+
+function yearWindowEnd(today) {
+  let cursor = today.slice(0, 7)
+  for (let i = 0; i < 11; i += 1) cursor = nextMonthKey(cursor)
+  return monthEnd(`${cursor}-01`)
 }
 
 function holidayBounds(item) {
@@ -260,8 +270,7 @@ export default function Announcements() {
   const [holidayColumnsMissing, setHolidayColumnsMissing] = useState(false)
   const [holidayError, setHolidayError] = useState('')
   const [loading, setLoading] = useState(true)
-  const [view30, setView30] = useState('calendar')
-  const [view60, setView60] = useState('calendar')
+  const [view, setView] = useState('calendar')
   const [selectedDay, setSelectedDay] = useState(today)
   const [hoveredDay, setHoveredDay] = useState(null)
   const [noteRows, setNoteRows] = useState([])
@@ -313,10 +322,9 @@ export default function Announcements() {
   }), [today, people, holidays, noteRows])
   const week = itemsThisWeek(today, items)
   const groups = weekGroups(today, items)
-  const window30 = addDays(today, 30)
-  const window60 = addDays(today, 60)
-  const calendarHolidays = useMemo(() => visibleHolidays(holidays, today, window60), [holidays, today, window60])
-  const calendarThrough = monthEnd(window60)
+  const windowEnd = yearWindowEnd(today)
+  const calendarHolidays = useMemo(() => visibleHolidays(holidays, today, windowEnd), [holidays, today, windowEnd])
+  const calendarThrough = monthEnd(windowEnd)
   const calendarNotes = useMemo(() => noteCalendarItems(noteRows, today, calendarThrough), [noteRows, today, calendarThrough])
   const laterNotes = noteRows.filter((row) => {
     const start = String(row.start_date || '').slice(0, 10)
@@ -510,40 +518,22 @@ export default function Announcements() {
                 ) : null}
               </section>
 
-              <div className="grid items-start gap-4 lg:grid-cols-2">
-                <UpcomingCalendar
-                  title="Upcoming · next 30 days"
-                  today={today}
-                  windowEnd={window30}
-                  byDay={byDay}
-                  view={view30}
-                  setView={setView30}
-                  selectedDay={selectedDay}
-                  setSelectedDay={setSelectedDay}
-                  hoveredDay={hoveredDay}
-                  setHoveredDay={setHoveredDay}
-                  noteSaving={noteSaving}
-                  onEditNote={editNoteItem}
-                  onDeleteNote={removeNoteItem}
-                  groups={groups}
-                />
-                <UpcomingCalendar
-                  title="Upcoming · 60 days"
-                  today={today}
-                  windowEnd={window60}
-                  byDay={byDay}
-                  view={view60}
-                  setView={setView60}
-                  selectedDay={selectedDay}
-                  setSelectedDay={setSelectedDay}
-                  hoveredDay={hoveredDay}
-                  setHoveredDay={setHoveredDay}
-                  noteSaving={noteSaving}
-                  onEditNote={editNoteItem}
-                  onDeleteNote={removeNoteItem}
-                  groups={groups}
-                />
-              </div>
+              <UpcomingCalendar
+                title="Coming up"
+                today={today}
+                windowEnd={windowEnd}
+                byDay={byDay}
+                view={view}
+                setView={setView}
+                selectedDay={selectedDay}
+                setSelectedDay={setSelectedDay}
+                hoveredDay={hoveredDay}
+                setHoveredDay={setHoveredDay}
+                noteSaving={noteSaving}
+                onEditNote={editNoteItem}
+                onDeleteNote={removeNoteItem}
+                groups={groups}
+              />
             </div>
 
             <div className="mt-6">
