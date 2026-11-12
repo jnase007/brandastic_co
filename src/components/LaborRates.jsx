@@ -81,6 +81,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
+  const [typeFilter, setTypeFilter] = useState('all')
 
   const costs = useMemo(() => {
     let employeeTotal = 0
@@ -197,16 +198,30 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Employees</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{money(costs.employeeTotal)} / mo</p>
-          <p className="text-sm tabular-nums text-slate-500">{money(costs.employeeTotal * 12)} / yr</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Contractors</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{money(costs.contractorTotal)} / mo</p>
-          <p className="text-sm tabular-nums text-slate-500">{money(costs.contractorTotal * 12)} / yr</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => setTypeFilter(typeFilter === 'employee' ? 'all' : 'employee')}
+          className={cn(
+            'rounded-2xl border p-4 text-left shadow-sm',
+            typeFilter === 'employee' ? 'border-blue-400 bg-blue-50' : 'border-blue-100 bg-blue-50/60'
+          )}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Employees</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums text-blue-950">{money(costs.employeeTotal)} / mo</p>
+          <p className="text-sm tabular-nums text-blue-700">{money(costs.employeeTotal * 12)} / yr</p>
+        </button>
+        <button
+          type="button"
+          onClick={() => setTypeFilter(typeFilter === 'contractor' ? 'all' : 'contractor')}
+          className={cn(
+            'rounded-2xl border p-4 text-left shadow-sm',
+            typeFilter === 'contractor' ? 'border-amber-400 bg-amber-50' : 'border-amber-100 bg-amber-50/60'
+          )}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Contractors</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums text-amber-950">{money(costs.contractorTotal)} / mo</p>
+          <p className="text-sm tabular-nums text-amber-800">{money(costs.contractorTotal * 12)} / yr</p>
+        </button>
       </div>
 
       {alwaysOpen || open ? (
@@ -238,10 +253,37 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
               <div>
                 <h2 className="text-base font-semibold">People</h2>
-                <p className="text-sm text-slate-500">{draft.length} people</p>
+                <p className="text-sm text-slate-500">
+                  {typeFilter === 'all' ? draft.length : draft.filter((row) => row.workerType === typeFilter).length} people
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  ['all', 'All'],
+                  ['employee', 'Employees'],
+                  ['contractor', 'Contractors'],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setTypeFilter(value)}
+                    className={cn(
+                      'rounded-full px-3 py-1 text-sm font-semibold',
+                      typeFilter === value
+                        ? value === 'contractor'
+                          ? 'bg-amber-100 text-amber-900'
+                          : value === 'employee'
+                            ? 'bg-blue-100 text-blue-900'
+                            : 'bg-slate-900 text-white'
+                        : 'bg-slate-100 text-slate-600'
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
               {editable ? (
                 <Button
@@ -260,8 +302,17 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
               ) : null}
             </div>
             <div>
-              {draft.map((row, index) => (
-                <div key={row.id || `new-${index}`} className="space-y-3 border-t px-5 py-4">
+              {draft.map((row, index) => {
+                if (typeFilter !== 'all' && row.workerType !== typeFilter) return null
+                const contractor = row.workerType === 'contractor'
+                return (
+                <div
+                  key={row.id || `new-${index}`}
+                  className={cn(
+                    'space-y-3 border-t px-5 py-4',
+                    contractor ? 'border-l-4 border-l-amber-400 bg-amber-50/40' : 'border-l-4 border-l-blue-400 bg-blue-50/30'
+                  )}
+                >
                   <div className="grid items-end gap-3 md:grid-cols-[minmax(0,1.5fr)_140px_130px_150px_110px_110px_auto]">
                     <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Name
@@ -277,7 +328,11 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                       Type
                       <select
                         aria-label={`Type for ${row.name || 'person'}`}
-                        className={cn(fieldClass, 'mt-1 w-full')}
+                        className={cn(
+                          fieldClass,
+                          'mt-1 w-full',
+                          contractor ? 'border-amber-300 bg-amber-50 text-amber-950' : 'border-blue-300 bg-blue-50 text-blue-950'
+                        )}
                         value={row.workerType}
                         disabled={!editable || saving}
                         onChange={(event) => update(index, 'workerType', event.target.value)}
@@ -376,7 +431,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                     </label>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           </div>
 
