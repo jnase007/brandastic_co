@@ -79,21 +79,21 @@ const navItems = [
 ]
 
 const simpleNavItems = [
-  { path: '/deals', icon: Target, label: 'Deal Pipeline' },
-  { path: '/score-card', icon: ClipboardList, label: 'Score Card' },
-  { path: '/profitability', icon: BarChart3, label: 'Marketing Retainers' },
-  { path: '/profitability/team', icon: Users2, label: 'Team' },
-  { path: '/profitability/websites', icon: Globe, label: 'Websites' },
-  { path: '/hosting', icon: Server, label: 'Hosting' },
-  { path: '/announcements', icon: Megaphone, label: 'Announcements' },
-  { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
-  { path: '/working', icon: CheckCircle, label: 'Working/Not' },
-  { path: '/mission', icon: Target, label: 'Mission' },
-  { path: '/strategy', icon: Compass, label: 'Strategy' },
-  { path: '/ideal-target-client', icon: Crosshair, label: 'Ideal Target Client' },
-  { path: '/new_admin', icon: Shield, label: 'Admin' },
-  { path: '/people', icon: Users, label: 'People' },
-  { path: '/scenarios', icon: BarChart3, label: 'Scenarios' },
+  { path: '/deals', icon: Target, label: 'Deal Pipeline', group: 'Sales' },
+  { path: '/score-card', icon: ClipboardList, label: 'Score Card', group: 'Sales' },
+  { path: '/profitability', icon: BarChart3, label: 'Marketing Retainers', group: 'Delivery' },
+  { path: '/profitability/team', icon: Users2, label: 'Team', group: 'Delivery' },
+  { path: '/profitability/websites', icon: Globe, label: 'Websites', group: 'Delivery' },
+  { path: '/hosting', icon: Server, label: 'Hosting', group: 'Ops' },
+  { path: '/announcements', icon: Megaphone, label: 'Announcements', group: 'Ops' },
+  { path: '/feature-list', icon: ListChecks, label: 'Feature List', group: 'Ops' },
+  { path: '/working', icon: CheckCircle, label: 'Working/Not', group: 'Ops' },
+  { path: '/mission', icon: Target, label: 'Mission', group: 'Company' },
+  { path: '/strategy', icon: Compass, label: 'Strategy', group: 'Company' },
+  { path: '/ideal-target-client', icon: Crosshair, label: 'Ideal Target Client', group: 'Company' },
+  { path: '/new_admin', icon: Shield, label: 'Admin', group: 'Team' },
+  { path: '/people', icon: Users, label: 'People', group: 'Team' },
+  { path: '/scenarios', icon: BarChart3, label: 'Scenarios', group: 'Team' },
 ]
 
 const adminNavItems = [
@@ -358,7 +358,9 @@ export default function Sidebar({
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-        {visibleNavItems.map((item) => {
+        {visibleNavItems.map((item, index) => {
+          const prevGroup = visibleNavItems[index - 1]?.group
+          const showGroup = Boolean(item.group && item.group !== prevGroup && !collapsed)
           const isActive = item.path === '/profitability'
             ? (location.pathname === '/profitability' || (location.pathname.startsWith('/profitability/') && !location.pathname.startsWith('/profitability/team') && !location.pathname.startsWith('/profitability/websites')))
             : item.path === '/profitability/team'
@@ -372,6 +374,9 @@ export default function Sidebar({
           const hiddenItem = showFullNav && !simplePaths.has(item.path)
           return (
             <div key={item.path}>
+              {showGroup ? (
+                <p className={cn('px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400', index > 0 && 'mt-3 pt-2')}>{item.group}</p>
+              ) : null}
               <Link
                 to={item.path}
                 onMouseEnter={() => prefetchRoute(item.path)}
