@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
+import { saveClientRate } from './clientRates'
 
 const STORE = 'brd-client-retainers-v1'
 const RATE = 175
@@ -65,10 +66,11 @@ export function isInternalClient(row) {
   )
 }
 
-function amountOf(row) {
+function amountOf(row, rate) {
   if (isInternalClient(row)) return 0
-  const hours = Number(row.monthly_hours) || 0
-  if (hours > 0) return Math.round(hours * RATE)
+  const hours = Number(row.monthly_hours ?? row.hours) || 0
+  const hourly = Number(rate) > 0 ? Number(rate) : RATE
+  if (hours > 0) return Math.round(hours * hourly)
   return hqAmount(row.name)
 }
 
@@ -78,16 +80,27 @@ export async function fetchClientRetainers() {
     .select('id, name, monthly_hours, is_active, client_status')
     .order('name')
   if (error) throw error
+  const { data: rates } = await supabase.from('client_rates').select('client_id, rate')
+  const rateMap = {}
+  for (const row of rates || []) {
+    const value = Number(row.rate)
+    if (row.client_id && value > 0) rateMap[row.client_id] = value
+  }
   return {
     rows: (data || [])
       .filter((row) => row.is_active !== false && row.client_status !== 'inactive')
-      .map((row) => ({
-        id: row.id,
-        name: row.name,
-        monthly: amountOf(row),
-        internal: isInternalClient(row),
-        hours: Number(row.monthly_hours) || 0,
-      })),
+      .map((row) => {
+        const hours = Number(row.monthly_hours) || 0
+        const rate = rateMap[row.id] || RATE
+        return {
+          id: row.id,
+          name: row.name,
+          hours,
+          rate,
+          monthly: amountOf(row, rate),
+          internal: isInternalClient(row),
+        }
+      }),
     missing: false,
   }
 }
@@ -95,16 +108,18 @@ export async function fetchClientRetainers() {
 export async function saveClientRetainers(rows) {
   for (const row of rows) {
     const name = String(row.name || '').trim()
-    if (isInternalClient({ name })) continue
-    const monthly = Number(row.monthly) || 0
-    const hours = monthly / RATE
+    const hours = Number(row.hours)
+    const rate = Number(row.rate) > 0 ? Number(row.rate) : RATE
+    const monthlyHours = Number.isFinite(hours) ? hours : 0
     if (!row.id || String(row.id).startsWith('local-')) {
-      const { error } = await supabase.from('clients').insert({ name, monthly_hours: hours, is_active: true, client_status: 'active' })
+      const { data, error } = await supabase.from('clients').insert({ name, monthly_hours: monthlyHours, is_active: true, client_status: 'active' }).select('id').single()
       if (error) throw error
+      if (data?.id) await saveClientRate(supabase, data.id, rate)
       continue
     }
-    const { error } = await supabase.from('clients').update({ monthly_hours: hours, name }).eq('id', row.id)
+    const { error } = await supabase.from('clients').update({ monthly_hours: monthlyHours, name }).eq('id', row.id)
     if (error) throw error
+    await saveClientRate(supabase, row.id, rate)
   }
   const next = await fetchClientRetainers()
   return next.rows

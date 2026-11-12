@@ -17,6 +17,14 @@ function moneyNum(value) {
   return Number(String(value || '').replace(/[$,]/g, ''))
 }
 
+function commaMoney(value) {
+  const raw = String(value ?? '').replace(/[^\d.]/g, '')
+  if (!raw) return ''
+  const [whole, frac] = raw.split('.')
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return frac != null && frac !== undefined && raw.includes('.') ? `${grouped}.${frac}` : grouped
+}
+
 function toSaveRow(row) {
   const type = workerTypeOf(row)
   const annual = moneyNum(row.annual)
@@ -41,7 +49,7 @@ function fromPeople(rows) {
       ...row,
       worker_type: type,
       hourly: hourly ? String(hourly) : '',
-      annual: type === 'employee' && hourly ? String(Math.round(hourly * 1920)) : '',
+      annual: type === 'employee' && hourly ? commaMoney(Math.round(hourly * 1920)) : '',
     }
   })
 }
@@ -163,7 +171,7 @@ export default function NewAdmin() {
               inputMode="decimal"
               value={annual}
               onChange={(event) => {
-                const value = event.target.value
+                const value = commaMoney(event.target.value)
                 setAnnual(value)
                 const amount = moneyNum(value)
                 if (amount > 0) setHourly(String(Math.round((amount / 1920) * 100) / 100))
@@ -351,7 +359,7 @@ function Roster({ title, hint, rows, employee, onChange, onRemove }) {
                 inputMode="decimal"
                 value={row.annual || ''}
                 onChange={(event) => {
-                  const annual = event.target.value
+                  const annual = commaMoney(event.target.value)
                   const amount = moneyNum(annual)
                   onChange(row.id, {
                     annual,
