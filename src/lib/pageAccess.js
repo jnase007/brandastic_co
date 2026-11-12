@@ -22,7 +22,7 @@ export function hasAreaAccess(user, profile, key) {
   const access = profile?.page_access
   if (access && Object.prototype.hasOwnProperty.call(access, key)) return access[key] === true
   if (key === 'profitability' && email.startsWith('maxwell@')) return true
-  if (key === 'score_card' && email.startsWith('aaron@')) return true
+  if (key === 'score_card' && (email.startsWith('aaron@') || email.startsWith('erin@'))) return true
   return false
 }
 
