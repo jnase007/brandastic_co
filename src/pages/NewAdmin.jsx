@@ -12,22 +12,43 @@ function workerTypeOf(row) {
     : 'employee'
 }
 
+function moneyNum(value) {
+  return Number(String(value || '').replace(/[$,]/g, ''))
+}
+
 function toSaveRow(row) {
+  const type = workerTypeOf(row)
+  const monthly = moneyNum(row.monthly)
+  const hourly = moneyNum(row.hourly) || (type === 'employee' && monthly > 0 ? monthly / 160 : 0)
   return {
     id: row.id,
     name: row.name,
-    hourly: row.hourly,
-    workerType: workerTypeOf(row),
-    weeklyCapacity: Number(row.weekly_capacity) > 0 ? Number(row.weekly_capacity) : 40,
+    hourly,
+    workerType: type,
+    weeklyCapacity: Number(row.weekly_capacity || row.weeklyCapacity) > 0 ? Number(row.weekly_capacity || row.weeklyCapacity) : 40,
     birthday: row.birthday || '',
     startDate: row.start_date || row.startDate || '',
     showOnAnnouncements: row.show_on_announcements !== false,
   }
 }
 
+function fromPeople(rows) {
+  return (rows || []).map((row) => {
+    const type = workerTypeOf(row)
+    const hourly = Number(row.hourly) || 0
+    return {
+      ...row,
+      worker_type: type,
+      hourly: hourly ? String(hourly) : '',
+      monthly: type === 'employee' && hourly ? String(Math.round(hourly * 160)) : '',
+    }
+  })
+}
+
 export default function NewAdmin() {
   const { rows, setRows, ready, error } = useLaborRateRows()
-  const people = rows || []
+  const [draft, setDraft] = useState(null)
+  const people = draft || fromPeople(rows)
   const employees = people.filter((row) => workerTypeOf(row) === 'employee')
   const contractors = people.filter((row) => workerTypeOf(row) === 'contractor')
   const [name, setName] = useState('')
@@ -45,48 +66,57 @@ export default function NewAdmin() {
     return `${window.location.origin}/login?invite=true&email=${encodeURIComponent(email.trim())}&role=team`
   }, [email])
 
+  function patch(id, changes) {
+    setDraft((current) => (current || fromPeople(rows)).map((row) => (row.id === id ? { ...row, ...changes } : row)))
+  }
+
+  async function saveTeam(nextPeople, note) {
+    setSaving(true)
+    setFail('')
+    setMessage('')
+    try {
+      const saved = await saveLaborRates(nextPeople.map(toSaveRow))
+      setRows(saved.rows)
+      setDraft(fromPeople(saved.rows))
+      setMessage(note)
+    } catch (err) {
+      setFail(err.message || 'Could not save.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function addPerson() {
     const trimmed = name.trim()
-    const monthlyAmount = Number(String(monthly).replace(/[$,]/g, ''))
-    const rate = Number(String(hourly).replace(/[$,]/g, '')) || (type === 'employee' && monthlyAmount > 0 ? monthlyAmount / 160 : NaN)
+    const monthlyAmount = moneyNum(monthly)
+    const rate = moneyNum(hourly) || (type === 'employee' && monthlyAmount > 0 ? monthlyAmount / 160 : NaN)
     if (!trimmed) {
       setFail('Name is required.')
       return
     }
     if (!(rate >= 0)) {
-      setFail('Hourly rate has to be 0 or more.')
+      setFail(type === 'employee' ? 'Salary or hourly is required.' : 'Hourly rate is required.')
       return
     }
-    setSaving(true)
-    setFail('')
-    setMessage('')
-    try {
-      const saved = await saveLaborRates([
-        ...people.map(toSaveRow),
+    await saveTeam(
+      [
+        ...people,
         {
           name: trimmed,
-          hourly: rate,
-          workerType: type,
-          weeklyCapacity: 40,
-          birthday: '',
-          startDate: '',
-          showOnAnnouncements: true,
+          hourly: String(rate),
+          monthly: type === 'employee' ? String(Math.round(rate * 160)) : '',
+          worker_type: type,
+          weekly_capacity: 40,
         },
-      ])
-      setRows(saved.rows)
-      setName('')
-      setHourly('')
-      setMonthly('')
-      setMessage(`${trimmed} added. Pay also shows on People.`)
-
-      if (email.trim()) {
-        const link = `${window.location.origin}/login?invite=true&email=${encodeURIComponent(email.trim())}&role=team`
-        setInviteLink(link)
-      }
-    } catch (err) {
-      setFail(err.message || 'Could not add person.')
-    } finally {
-      setSaving(false)
+      ],
+      `${trimmed} added.`
+    )
+    setName('')
+    setHourly('')
+    setMonthly('')
+    if (email.trim()) {
+      const link = `${window.location.origin}/login?invite=true&email=${encodeURIComponent(email.trim())}&role=team`
+      setInviteLink(link)
     }
   }
 
@@ -95,9 +125,8 @@ export default function NewAdmin() {
       setFail('Email is required to invite.')
       return
     }
-    const link = invitePreview
-    setInviteLink(link)
-    navigator.clipboard?.writeText(link)
+    setInviteLink(invitePreview)
+    navigator.clipboard?.writeText(invitePreview)
     setMessage('Invite link copied. Send it to them so they can log in.')
     setFail('')
   }
@@ -108,11 +137,10 @@ export default function NewAdmin() {
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
       <PageHeader
         title="Admin"
-        description="Current employees and contractors. Add someone to People, then invite them to log in."
+        description="Edit people and rates here. Employees are salary. Contractors are hourly. Invite is how they log in."
       />
       <p className="mt-2 text-sm text-slate-500">
-        <Link className="font-medium text-[#1644ED]" to="/people">People</Link>
-        {' is pay. This page is who is on the team and how they get in.'}
+        Same list as <Link className="font-medium text-[#1644ED]" to="/people">People</Link>.
       </p>
       {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
       {fail ? <p className="mt-3 text-sm text-red-600">{fail}</p> : null}
@@ -120,21 +148,21 @@ export default function NewAdmin() {
 
       <div className="mt-6 rounded-2xl border bg-white p-5 shadow-sm">
         <h2 className="text-base font-semibold">Add someone</h2>
-        <p className="mt-1 text-sm text-slate-500">{type === 'employee' ? 'Employees: monthly salary ÷ 160 hours = hourly. Contractors stay hourly.' : 'Contractors: hourly only.'}</p>
+        <p className="mt-1 text-sm text-slate-500">{type === 'employee' ? 'Employees: monthly salary ÷ 160 = hourly.' : 'Contractors: hourly only.'}</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <Input placeholder="Name" value={name} onChange={(event) => setName(event.target.value)} />
           {type === 'employee' ? (
-          <Input
-            placeholder="Monthly salary $"
-            inputMode="decimal"
-            value={monthly}
-            onChange={(event) => {
-              const value = event.target.value
-              setMonthly(value)
-              const amount = Number(String(value).replace(/[$,]/g, ''))
-              if (amount > 0) setHourly(String(Math.round((amount / 160) * 100) / 100))
-            }}
-          />
+            <Input
+              placeholder="Monthly salary $"
+              inputMode="decimal"
+              value={monthly}
+              onChange={(event) => {
+                const value = event.target.value
+                setMonthly(value)
+                const amount = moneyNum(value)
+                if (amount > 0) setHourly(String(Math.round((amount / 160) * 100) / 100))
+              }}
+            />
           ) : null}
           <Input
             placeholder="Hourly $"
@@ -144,7 +172,7 @@ export default function NewAdmin() {
               const value = event.target.value
               setHourly(value)
               if (type === 'employee') {
-                const amount = Number(String(value).replace(/[$,]/g, ''))
+                const amount = moneyNum(value)
                 if (amount > 0) setMonthly(String(Math.round(amount * 160)))
               }
             }}
@@ -162,31 +190,81 @@ export default function NewAdmin() {
           </Button>
           <Button type="button" variant="outline" onClick={makeInvite}>Copy invite link</Button>
         </div>
-        {inviteLink ? (
-          <p className="mt-3 break-all rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">{inviteLink}</p>
-        ) : null}
+        {inviteLink ? <p className="mt-3 break-all rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">{inviteLink}</p> : null}
       </div>
 
-      <Roster title="Employees" rows={employees} />
-      <Roster title="Contractors" rows={contractors} />
+      <Roster
+        title="Employees"
+        hint="Salary ÷ 160 hours"
+        rows={employees}
+        employee
+        onChange={patch}
+      />
+      <Roster
+        title="Contractors"
+        hint="Hourly"
+        rows={contractors}
+        onChange={patch}
+      />
+      <div className="mt-4">
+        <Button type="button" className="bg-[#FF6B00] text-white hover:bg-[#e05f00]" disabled={saving} onClick={() => saveTeam(people, 'Rates saved.')}>
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          Save rates
+        </Button>
+      </div>
     </div>
   )
 }
 
-function Roster({ title, rows }) {
+function Roster({ title, hint, rows, employee, onChange }) {
   return (
     <div className="mt-6 overflow-hidden rounded-2xl border bg-white shadow-sm">
       <div className="border-b px-5 py-4">
         <h2 className="text-base font-semibold">{title}</h2>
-        <p className="text-sm text-slate-500">{rows.length}</p>
+        <p className="text-sm text-slate-500">{rows.length} · {hint}</p>
       </div>
       {rows.map((row) => (
-        <div key={row.id || row.name} className="flex items-center justify-between border-t px-5 py-3">
-          <div>
-            <p className="font-medium">{row.name}</p>
-            <p className="text-xs text-slate-500">{row.start_date ? `Started ${row.start_date.slice(0, 10)}` : 'No start date'}</p>
-          </div>
-          <p className="text-sm tabular-nums text-slate-600">${Number(row.hourly || 0)}/hr</p>
+        <div key={row.id || row.name} className="grid items-end gap-3 border-t px-5 py-3 sm:grid-cols-[1fr_140px_120px]">
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Name
+            <Input className="mt-1" value={row.name || ''} onChange={(event) => onChange(row.id, { name: event.target.value })} />
+          </label>
+          {employee ? (
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Monthly $
+              <Input
+                className="mt-1"
+                inputMode="decimal"
+                value={row.monthly || ''}
+                onChange={(event) => {
+                  const monthly = event.target.value
+                  const amount = moneyNum(monthly)
+                  onChange(row.id, {
+                    monthly,
+                    hourly: amount > 0 ? String(Math.round((amount / 160) * 100) / 100) : row.hourly,
+                  })
+                }}
+              />
+            </label>
+          ) : (
+            <span />
+          )}
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Hourly $
+            <Input
+              className="mt-1"
+              inputMode="decimal"
+              value={row.hourly || ''}
+              onChange={(event) => {
+                const hourly = event.target.value
+                const amount = moneyNum(hourly)
+                onChange(row.id, {
+                  hourly,
+                  monthly: employee && amount > 0 ? String(Math.round(amount * 160)) : row.monthly,
+                })
+              }}
+            />
+          </label>
         </div>
       ))}
       {!rows.length ? <p className="px-5 py-4 text-sm text-slate-500">None yet.</p> : null}
