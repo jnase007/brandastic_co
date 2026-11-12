@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { saveLaborRates, saveMonthlyOverhead } from '../lib/laborRates'
-import { cachedTeam, fetchTeam } from '../lib/profitabilityCache'
 import PageHeader from './PageHeader'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -16,10 +15,6 @@ function money(value) {
 
 function hourlyNumber(row) {
   return Number(String(row.hourly ?? '').replace(/[$,]/g, '')) || 0
-}
-
-function nameKey(name) {
-  return String(name || '').trim().toLowerCase()
 }
 
 function plannedMonthly(row) {
@@ -82,43 +77,12 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
-  const [teamData, setTeamData] = useState(() => cachedTeam())
-
-  useEffect(() => {
-    let cancel = false
-    fetchTeam()
-      .then((data) => {
-        if (!cancel) setTeamData(data)
-      })
-      .catch(() => {})
-    return () => {
-      cancel = true
-    }
-  }, [])
-
-  const tempoHours = useMemo(() => {
-    const hours = {}
-    const start = teamData?.bounds?.monthStart
-    for (const entry of teamData?.entries || []) {
-      if (start && entry.date < start) continue
-      const key = nameKey(entry.member)
-      hours[key] = (hours[key] || 0) + (Number(entry.minutes) || 0) / 60
-    }
-    return hours
-  }, [teamData])
-
-  function contractorMonth(row) {
-    const hourly = hourlyNumber(row)
-    const hours = tempoHours[nameKey(row.name)]
-    if (hours != null) return hourly * hours
-    return plannedMonthly(row)
-  }
 
   const costs = useMemo(() => {
     let employeeTotal = 0
     let contractorTotal = 0
     for (const row of draft) {
-      if (row.workerType === 'contractor') contractorTotal += contractorMonth(row)
+      if (row.workerType === 'contractor') contractorTotal += plannedMonthly(row)
       else employeeTotal += plannedMonthly(row)
     }
     const overheadAmount = Number(String(overheadDraft).replace(/[$,]/g, '')) || 0
@@ -129,7 +93,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
       overheadAmount,
       companyTotal: employeeTotal + contractorTotal + overheadAmount,
     }
-  }, [draft, overheadDraft, tempoHours])
+  }, [draft, overheadDraft])
 
   function update(index, field, value) {
     setSaved(false)
@@ -157,8 +121,8 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
       setError('Every hourly cost has to be greater than 0.')
       return
     }
-    if (cleaned.some((row) => row.workerType === 'employee' && !(Number(row.weeklyCapacity) > 0))) {
-      setError('Weekly hours for an employee have to be greater than 0.')
+    if (cleaned.some((row) => !(Number(row.weeklyCapacity) > 0))) {
+      setError('Weekly hours have to be greater than 0.')
       return
     }
     const latestStart = addDays(todayIso(), 60)
@@ -205,7 +169,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
     <section className="space-y-6">
       <PageHeader
         title="People"
-        description="Employee salary from weekly hours. Contractor cost from this month’s Tempo hours."
+        description="Monthly updates as you type weekly hours. Hourly × weekly × 52 / 12. Then Save people."
         actions={alwaysOpen ? null : (
           <Button variant="outline" type="button" onClick={() => setOpen((value) => !value)}>
             {open ? 'Hide' : 'Edit'}
@@ -219,9 +183,9 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
           <p className="mt-1 text-xs text-slate-500">Hourly × weekly hours × 52 / 12</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Contractors this month</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Contractors / month</p>
           <p className="mt-1 text-xl font-semibold tabular-nums">{money(costs.contractorTotal)}</p>
-          <p className="mt-1 text-xs text-slate-500">Hourly × Tempo hours this month</p>
+          <p className="mt-1 text-xs text-slate-500">Hourly × weekly hours × 52 / 12</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Team labor / month</p>
@@ -340,7 +304,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                     <div className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Monthly
                       <p className="mt-2 text-sm font-semibold tabular-nums text-slate-900">
-                        {money(row.workerType === 'contractor' ? contractorMonth(row) : plannedMonthly(row))}
+                        {money(plannedMonthly(row))}
                       </p>
                     </div>
                     {editable ? (
@@ -408,7 +372,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                 onClick={save}
               >
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? 'Saving…' : 'Save people'}
               </Button>
               {saved ? <span className="text-sm font-medium text-green-600">Saved</span> : null}
               {error ? <p className="text-sm text-red-600">{error}</p> : null}
