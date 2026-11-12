@@ -15,6 +15,9 @@ export async function writeFeaturePriority(env, body) {
   endpoint.searchParams.set('category', category)
   endpoint.searchParams.set('name', name)
   endpoint.searchParams.set('priority', priority)
+  if (body?.complete === true || body?.complete === false) {
+    endpoint.searchParams.set('complete', body.complete ? 'Yes' : 'No')
+  }
   const response = await fetch(endpoint)
   const text = await response.text()
   let payload

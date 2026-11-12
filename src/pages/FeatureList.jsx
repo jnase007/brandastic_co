@@ -29,6 +29,31 @@ function featureKey(feature) {
   return `${feature.category}|${feature.name}`
 }
 
+const COMPLETE_STORE = 'featureCompleteOverrides'
+
+function loadCompleteOverrides() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(COMPLETE_STORE) || '{}')
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveCompleteOverrides(map) {
+  localStorage.setItem(COMPLETE_STORE, JSON.stringify(map))
+}
+
+function applyCompleteOverrides(rows) {
+  const overrides = loadCompleteOverrides()
+  return rows.map((feature) => {
+    const key = featureKey(feature)
+    return Object.prototype.hasOwnProperty.call(overrides, key)
+      ? { ...feature, complete: Boolean(overrides[key]) }
+      : feature
+  })
+}
+
 function featureCountLabel(total, completed) {
   const noun = total === 1 ? 'feature' : 'features'
   return `${total} ${noun} · ${completed} completed`
@@ -67,7 +92,7 @@ export default function FeatureList() {
       try {
         const response = await fetch(FEATURE_SHEET_CSV_URL)
         if (!response.ok) throw new Error(`Sheet download failed (${response.status})`)
-        const rows = parseFeatureSheet(await response.text())
+        const rows = applyCompleteOverrides(parseFeatureSheet(await response.text()))
         if (cancel) return
         setFeatures(rows)
         setStatus('ready')
@@ -102,6 +127,35 @@ export default function FeatureList() {
         featureKey(item) === key ? { ...item, priority: previous } : item
       )))
       setCardErrors((current) => ({ ...current, [key]: err.message || 'Could not save priority' }))
+    } finally {
+      setSavingKey('')
+    }
+  }
+
+  async function updateComplete(feature, complete) {
+    const key = featureKey(feature)
+    setFeatures((current) => current.map((item) => (
+      featureKey(item) === key ? { ...item, complete } : item
+    )))
+    const overrides = loadCompleteOverrides()
+    overrides[key] = complete
+    saveCompleteOverrides(overrides)
+    if (complete) setShowCompleted(true)
+    setSavingKey(key)
+    setCardErrors((current) => ({ ...current, [key]: '' }))
+    try {
+      await fetch('/api/feature-priority', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: feature.category,
+          name: feature.name,
+          priority: feature.priority || '',
+          complete,
+        }),
+      })
+    } catch {
+      setCardErrors((current) => ({ ...current, [key]: 'Marked here. Sheet save may have failed.' }))
     } finally {
       setSavingKey('')
     }
@@ -319,6 +373,7 @@ export default function FeatureList() {
                       saving={savingKey === featureKey(feature)}
                       error={cardErrors[featureKey(feature)]}
                       onPriority={(priority) => updatePriority(feature, priority)}
+                      onComplete={(complete) => updateComplete(feature, complete)}
                     />
                   ))}
                 </div>
@@ -334,7 +389,7 @@ export default function FeatureList() {
   )
 }
 
-function FeatureCard({ feature, saving, error, onPriority }) {
+function FeatureCard({ feature, saving, error, onPriority, onComplete }) {
   const [open, setOpen] = useState(false)
   const hasDetails = Boolean(feature.goal || feature.source || feature.notes)
   return (
@@ -386,7 +441,27 @@ function FeatureCard({ feature, saving, error, onPriority }) {
           ) : null}
         </>
       ) : null}
-      <label className="mt-4 block border-t border-[#e6ebf2] pt-4">
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#e6ebf2] pt-4">
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => onComplete(!feature.complete)}
+          className={`rounded-full px-3 py-1.5 text-sm font-semibold ${feature.complete ? 'bg-[#dcfce7] text-[#166534]' : 'bg-white text-[#15202b] ring-1 ring-[#d5dde6]'}`}
+        >
+          {feature.complete ? 'Completed' : 'Mark complete'}
+        </button>
+        {feature.complete ? (
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => onComplete(false)}
+            className="text-sm font-semibold text-[#64748b] underline"
+          >
+            Move back
+          </button>
+        ) : null}
+      </div>
+      <label className="mt-3 block">
         <span className="text-xs font-medium uppercase tracking-wide text-[#8b98a5]">Priority</span>
         <select
           className="mt-1 h-10 w-full rounded-lg border border-[#d5dde6] bg-white px-3 text-sm text-[#15202b]"
