@@ -131,9 +131,10 @@ export default function Sidebar({
   }, [canRevealNav])
 
   const showFullNav = Boolean(canRevealNav && fullNav)
+  const simplePaths = new Set(simpleNavItems.map((item) => item.path))
   const visibleNavItems = [
     ...simpleNavItems,
-    ...(showFullNav ? navItems.filter((item) => !simpleNavItems.some((shown) => shown.path === item.path)) : []),
+    ...(showFullNav ? navItems.filter((item) => !simplePaths.has(item.path)) : []),
   ].filter((item) => {
     if (item.path === '/people') return canSeePeople
     if (item.path === '/score-card') return canSeeScoreCard
@@ -366,6 +367,7 @@ export default function Sidebar({
                   ? location.pathname.startsWith('/score-card')
                   : location.pathname === item.path
           const sections = item.path === '/feature-list' && location.pathname === '/feature-list' && !collapsed ? featureNav?.sections : null
+          const hiddenItem = showFullNav && !simplePaths.has(item.path)
           return (
             <div key={item.path}>
               <Link
@@ -374,9 +376,13 @@ export default function Sidebar({
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all relative group",
                   collapsed && "justify-center px-0",
-                  isActive
-                    ? "bg-brand-orange text-white"
-                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                  isActive && hiddenItem
+                    ? "bg-pink-500 text-white"
+                    : isActive
+                      ? "bg-brand-orange text-white"
+                      : hiddenItem
+                        ? "text-pink-500 hover:bg-pink-500/10 hover:text-pink-600"
+                        : "hover:bg-muted text-muted-foreground hover:text-foreground"
                 )}
               >
                 <item.icon className="h-5 w-5 flex-shrink-0" />
