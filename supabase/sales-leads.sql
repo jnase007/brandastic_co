@@ -54,3 +54,6 @@ create policy "Team can delete sales leads" on public.sales_leads
   using (
     exists (select 1 from public.profiles where id = auth.uid() and role in ('team', 'admin'))
   );
+
+alter table public.sales_leads add column if not exists deal_interest text;
+alter table public.sales_leads add column if not exists pipeline_stage text;

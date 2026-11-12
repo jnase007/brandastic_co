@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog'
-import { DEAL_TYPES, LEAD_QUALITIES, LEAD_SOURCES, commaMoney, monthLabel, parseJiraKey, parseMoney } from '../lib/leads'
+import { DEAL_INTERESTS, DEAL_TYPE_LABELS, DEAL_TYPES, LEAD_QUALITIES, LEAD_SOURCES, commaMoney, monthLabel, parseJiraKey, parseMoney } from '../lib/leads'
 
 export const PIPELINE_STAGES = [
   { id: 'lead', label: 'Lead' },
@@ -38,6 +38,7 @@ const EMPTY = {
   close_amount: '',
   referred_by: '',
   deal_type: '',
+  deal_interest: '',
   value_2026: '',
   pipeline_stage: '',
 }
@@ -67,6 +68,7 @@ function draftFromLead(lead, defaultStage) {
     close_amount: commaMoney(lead.close_amount),
     referred_by: lead.referred_by || '',
     deal_type: lead.deal_type || '',
+    deal_interest: lead.deal_interest || '',
     value_2026: commaMoney(lead.value_2026),
     pipeline_stage: lead.pipeline_stage || defaultStage || '',
   }
@@ -106,6 +108,7 @@ export default function LeadContactDialog({ open, onOpenChange, lead, defaultSta
       close_amount: amount(draft.close_amount),
       referred_by: draft.referred_by.trim(),
       deal_type: draft.deal_type || null,
+      deal_interest: (draft.deal_interest || '').trim() || null,
       value_2026: amount(draft.value_2026),
       pipeline_stage: draft.pipeline_stage || defaultStage || null,
       updated_at: new Date().toISOString(),
@@ -124,6 +127,12 @@ export default function LeadContactDialog({ open, onOpenChange, lead, defaultSta
       : await supabase.from('sales_leads').insert(payload).select('*').single()
     if (result.error && String(result.error.message || '').includes('pipeline_stage')) {
       const { pipeline_stage, ...rest } = payload
+      result = lead?.id
+        ? await supabase.from('sales_leads').update(rest).eq('id', lead.id).select('*').single()
+        : await supabase.from('sales_leads').insert(rest).select('*').single()
+    }
+    if (result.error && String(result.error.message || '').includes('deal_interest')) {
+      const { deal_interest, ...rest } = payload
       result = lead?.id
         ? await supabase.from('sales_leads').update(rest).eq('id', lead.id).select('*').single()
         : await supabase.from('sales_leads').insert(rest).select('*').single()
@@ -207,30 +216,65 @@ export default function LeadContactDialog({ open, onOpenChange, lead, defaultSta
           <section>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Deal</p>
             <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Pipeline stage">
+                <select
+                  className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+                  value={draft.pipeline_stage || 'lead'}
+                  onChange={(event) => {
+                    const stage = event.target.value
+                    setDraft((current) => ({
+                      ...current,
+                      pipeline_stage: stage,
+                      quality: stage === 'won' ? 'Closed' : stage === 'proposal' || stage === 'contract' ? 'Proposal sent' : current.quality || 'Good Lead',
+                    }))
+                  }}
+                >
+                  {PIPELINE_STAGES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                </select>
+                <p className="mt-1 text-xs text-muted-foreground">Puts this deal in that column on Deal Pipeline.</p>
+              </Field>
+              <Field label="Deal type">
+                <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.deal_type} onChange={(event) => updateDraft('deal_type', event.target.value)}>
+                  <option value=""></option>
+                  {DEAL_TYPES.map((item) => <option key={item} value={item}>{DEAL_TYPE_LABELS[item] || item}</option>)}
+                </select>
+              </Field>
+              <Field label={draft.deal_type === 'One-time' ? 'Project estimate' : draft.deal_type === 'Monthly' ? 'Monthly estimate' : 'Estimate'}>
+                <Input inputMode="decimal" value={draft.value_2026} onChange={(event) => updateDraft('value_2026', commaMoney(event.target.value))} />
+                <p className="mt-1 text-xs text-muted-foreground">Retainer = monthly. One-time = project total.</p>
+              </Field>
+              <Field label="Closed amount">
+                <Input inputMode="decimal" value={draft.close_amount} onChange={(event) => updateDraft('close_amount', commaMoney(event.target.value))} />
+              </Field>
               <Field label="Quality">
                 <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.quality} onChange={(event) => updateDraft('quality', event.target.value)}>
                   <option value=""></option>
                   {LEAD_QUALITIES.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
               </Field>
-              <Field label="Pipeline stage">
-                <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.pipeline_stage} onChange={(event) => updateDraft('pipeline_stage', event.target.value)}>
-                  <option value=""></option>
-                  {PIPELINE_STAGES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-                </select>
-              </Field>
-              <Field label="Deal type">
-                <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.deal_type} onChange={(event) => updateDraft('deal_type', event.target.value)}>
-                  <option value=""></option>
-                  {DEAL_TYPES.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
-              </Field>
-              <Field label="Estimate">
-                <Input inputMode="decimal" value={draft.value_2026} onChange={(event) => updateDraft('value_2026', commaMoney(event.target.value))} />
-              </Field>
-              <Field label="Closed amount">
-                <Input inputMode="decimal" value={draft.close_amount} onChange={(event) => updateDraft('close_amount', commaMoney(event.target.value))} />
-              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Deal interest">
+                  <div className="flex flex-wrap gap-2">
+                    {DEAL_INTERESTS.map((item) => {
+                      const selected = (draft.deal_interest || '').split(',').map((part) => part.trim()).filter(Boolean)
+                      const on = selected.includes(item)
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => {
+                            const next = on ? selected.filter((part) => part !== item) : [...selected, item]
+                            updateDraft('deal_interest', next.join(', '))
+                          }}
+                          className={`rounded-full border px-3 py-1 text-xs font-medium ${on ? 'border-[#1644ED] bg-[#1644ED] text-white' : 'bg-white'}`}
+                        >
+                          {item}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </Field>
+              </div>
             </div>
           </section>
           <Field label="Notes">

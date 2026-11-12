@@ -25,6 +25,11 @@ export const LEAD_QUALITIES = [
 ]
 
 export const DEAL_TYPES = ['One-time', 'Monthly']
+export const DEAL_TYPE_LABELS = {
+  Monthly: 'Retainer',
+  'One-time': 'One-time project',
+}
+export const DEAL_INTERESTS = ['SEO', 'Google PPC', 'Paid Social', 'Email', 'Website', 'Organic Social', 'Creative']
 
 export const CHANNEL_COLORS = {
   Direct: 'bg-[#cfe8f8] text-[#23637d]',
