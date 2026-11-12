@@ -44,7 +44,7 @@ function profileRecord(row) {
   return {
     name: row.name.trim(),
     workerType,
-    weeklyCapacity: workerType === 'contractor' ? null : Number(row.weeklyCapacity) || 40,
+    weeklyCapacity: Number(row.weeklyCapacity) || 40,
     birthday: dateOrBlank(row.birthday),
     startDate: dateOrBlank(row.startDate),
     showOnAnnouncements: row.showOnAnnouncements !== false,
@@ -190,7 +190,7 @@ export async function saveLaborRates(rows) {
       hourly: Number(row.hourly),
       position,
       worker_type: row.workerType === 'contractor' ? 'contractor' : 'employee',
-      weekly_capacity: row.workerType === 'contractor' ? null : Number(row.weeklyCapacity) || 40,
+      weekly_capacity: Number(row.weeklyCapacity) || 40,
       birthday: dateOrBlank(row.birthday) || null,
       start_date: dateOrBlank(row.startDate) || null,
       show_on_announcements: row.showOnAnnouncements !== false,
