@@ -162,9 +162,12 @@ export default function Education() {
   const courseSlugs = new Set(
     NAV.find((section) => section.group === 'Courses').blocks.flatMap((block) => block.items.map((item) => item.slug))
   )
-  const visibleNav = NAV.filter((section) =>
-    courseSlugs.has(slug) ? section.group === 'Courses' : section.group === 'Masterclass 2026'
-  )
+  const downloadsOnly = slug === 'course-downloads'
+  const visibleNav = downloadsOnly
+    ? []
+    : NAV.filter((section) =>
+        courseSlugs.has(slug) ? section.group === 'Courses' : section.group === 'Masterclass 2026'
+      )
 
   useEffect(() => {
     let cancel = false
@@ -186,6 +189,7 @@ export default function Education() {
 
   return (
     <div className="education-shell mx-auto flex max-w-7xl gap-6 px-4 py-6 sm:px-6">
+      {visibleNav.length ? (
       <aside className="education-nav hidden w-[272px] shrink-0 lg:block">
         {visibleNav.map((section) => (
           <div key={section.group} className="mb-6">
@@ -213,8 +217,10 @@ export default function Education() {
           </div>
         ))}
       </aside>
+      ) : null}
       <div className="min-w-0 flex-1">
-        <PageHeader title="Education" description="Masterclass and courses. PDFs open from All downloads." />
+        <PageHeader title={downloadsOnly ? 'Course downloads' : 'Education'} description={downloadsOnly ? 'All PDFs and files. Click download on any row.' : 'Masterclass and courses. PDFs open from All downloads.'} />
+        {!downloadsOnly ? (
         <div className="mt-4 lg:hidden">
           <select
             className="h-10 w-full rounded-lg border px-3 text-sm"
@@ -226,6 +232,7 @@ export default function Education() {
             ))}
           </select>
         </div>
+        ) : null}
         {error ? <p className="mt-6 text-sm text-red-600">{error}</p> : null}
         <article className={cn('education-body mt-6 rounded-2xl border bg-white p-5 shadow-sm sm:p-8', `tone-${tone}`)} dangerouslySetInnerHTML={{ __html: html }} />
       </div>
