@@ -87,6 +87,7 @@ const simpleNavItems = [
   { path: '/people', icon: Users, label: 'People' },
   { path: '/admin', icon: Shield, label: 'Users' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
+  { path: '/working', icon: CheckCircle, label: 'Working/Not' },
   { path: '/mission', icon: Target, label: 'Mission' },
   { path: '/strategy', icon: Compass, label: 'Strategy' },
   { path: '/ideal-target-client', icon: Crosshair, label: 'Ideal Target Client' },

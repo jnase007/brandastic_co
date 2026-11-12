@@ -5,7 +5,7 @@ import {
   Menu, X, LayoutDashboard, Kanban, Building2, Clock, BarChart3,
   Users, Users2, Trophy, User, Shield, LogOut, Timer, Activity,
   Search, ChevronRight, Zap, Bell, BookOpen, ActivitySquare, Settings,
-  ListTodo, Lightbulb, Target, ListChecks,
+  ListTodo, Lightbulb, Target, ListChecks, CheckCircle,
   Server,
   Globe,
   Compass,
@@ -85,6 +85,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         { path: '/people', icon: Users, label: 'People' },
         { path: '/admin', icon: Shield, label: 'Users' },
         { path: '/feature-list', icon: ListChecks, label: 'Features' },
+        { path: '/working', icon: CheckCircle, label: 'Working/Not' },
       ].filter((item) => canSeePath(item.path))
 
   const [showMore, setShowMore] = useState(false)
