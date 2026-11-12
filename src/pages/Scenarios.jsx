@@ -12,6 +12,22 @@ import { loadScenario, saveScenario } from '../lib/scenarioStore'
 const WEEKS = 52 / 12
 const TAX = 0.062 + 0.0145 + 0.006 + 0.034 + 0.001
 
+// Goal Sheet 2026 (Jan–Oct actuals). Do not round away cents.
+const GOAL_SHEET_2026 = {
+  months: 10,
+  incomeYtd: 1716358.34,
+  incomeAvg: 171635.83,
+  incomeAnnualized: 2059630.01,
+  cogsYtd: 800675.53,
+  cogsAvg: 80067.55,
+  expensesYtd: 710565.53,
+  expensesAvg: 71056.55,
+  noiYtd: 205087.18,
+  noiAvg: 20508.72,
+  recurringAug: 126585.33,
+  goalYear: 2500000,
+}
+
 function money(value) {
   if (value == null || Number.isNaN(value)) return '—'
   return value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
@@ -55,7 +71,7 @@ export default function Scenarios() {
   const [raiseFrom, setRaiseFrom] = useState('2027-02')
   const [raises, setRaises] = useState({})
   const [extraClient, setExtraClient] = useState('')
-  const [trendYear, setTrendYear] = useState('2,100,000')
+  const [trendYear, setTrendYear] = useState('2,059,630.01')
   const [otherMonthly, setOtherMonthly] = useState('')
   const [clientEnds, setClientEnds] = useState({})
   const [clientPlans, setClientPlans] = useState({})
@@ -82,12 +98,12 @@ export default function Scenarios() {
 
   const people = rows || []
   const clients = (retainers.rows || []).filter((row) => !row.internal)
-  const overheadAmount = overhead == null || overhead === '' ? 40000 : Number(overhead) || 0
+  const overheadAmount = GOAL_SHEET_2026.expensesAvg
 
   const projection = useMemo(() => {
     const extra = num(extraClient)
     const retainerNow = clients.reduce((sum, client) => sum + (Number(client.monthly) || 0), 0)
-    const trendMonth = (num(trendYear) || 2100000) / 12
+    const trendMonth = (num(trendYear) || GOAL_SHEET_2026.incomeAnnualized) / 12
     const other = otherMonthly === '' ? Math.max(0, trendMonth - retainerNow) : num(otherMonthly)
     const hasRaises = Object.values(raises).some((value) => Number(value) > 0)
     const now = new Date()
@@ -187,6 +203,50 @@ export default function Scenarios() {
       {saveError ? <p className="mt-4 text-sm text-red-600">{saveError}</p> : null}
       {saved ? <p className="mt-4 text-sm text-emerald-700">{saved}</p> : null}
 
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">2026 Goal Sheet · Jan–Oct actuals</p>
+        <p className="mt-1 text-sm text-slate-600">These are the books. Scenarios starts from here, not a round $2.1M.</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-5">
+          <div>
+            <p className="text-xs text-slate-400">Income YTD</p>
+            <p className="font-semibold tabular-nums">{money(GOAL_SHEET_2026.incomeYtd)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400">Avg month</p>
+            <p className="font-semibold tabular-nums">{money(GOAL_SHEET_2026.incomeAvg)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400">Annualized</p>
+            <p className="font-semibold tabular-nums">{money(GOAL_SHEET_2026.incomeAnnualized)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400">Recurring (Aug)</p>
+            <p className="font-semibold tabular-nums">{money(GOAL_SHEET_2026.recurringAug)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400">Other (avg − recurring)</p>
+            <p className="font-semibold tabular-nums">{money(GOAL_SHEET_2026.incomeAvg - GOAL_SHEET_2026.recurringAug)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400">COGS / mo</p>
+            <p className="font-semibold tabular-nums">{money(GOAL_SHEET_2026.cogsAvg)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400">OpEx / mo</p>
+            <p className="font-semibold tabular-nums">{money(GOAL_SHEET_2026.expensesAvg)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400">NOI / mo</p>
+            <p className="font-semibold tabular-nums">{money(GOAL_SHEET_2026.noiAvg)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400">Year goal</p>
+            <p className="font-semibold tabular-nums">{money(GOAL_SHEET_2026.goalYear)}</p>
+          </div>
+        </div>
+      </div>
+
+
       <div className="mt-6 grid gap-3 sm:grid-cols-4">
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Retainers / mo</p>
@@ -196,7 +256,7 @@ export default function Scenarios() {
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Other projects / mo</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">{money(projection.other)}</p>
-          <p className="text-xs text-slate-500">$2.1M year ÷ 12 = {money(projection.trendMonth)} average month. Other fills the gap after retainers.</p>
+          <p className="text-xs text-slate-500">Annualized {money(GOAL_SHEET_2026.incomeAnnualized)} ÷ 12 = {money(GOAL_SHEET_2026.incomeAvg)}/mo. Other = avg − retainers unless you lock it.</p>
         </div>
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total in / mo</p>
