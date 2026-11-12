@@ -40,12 +40,13 @@ export default function Scenarios() {
 
   const projection = useMemo(() => {
     const extra = Number(String(extraClient).replace(/[$,]/g, '')) || 0
+    const hasRaises = Object.values(raises).some((value) => Number(value) > 0)
     const now = new Date()
     const months = []
     for (let i = 0; i < 12; i++) {
       const date = new Date(now.getFullYear(), now.getMonth() + i, 1)
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      const raised = key >= raiseFrom
+      const raised = hasRaises && Boolean(raiseFrom) && key >= raiseFrom
       const staff = people.reduce((sum, row) => {
         const pct = raised && String(row.worker_type || '').toLowerCase() !== 'contractor' ? Number(raises[row.id || row.name] || 0) : 0
         return sum + trueMonthly(row, pct)
@@ -68,15 +69,19 @@ export default function Scenarios() {
       })
     }
     const peak = Math.max(1, ...months.map((row) => Math.max(row.revenue, row.cost)))
-    const after = months.find((row) => row.raised) || months[months.length - 1]
+    const after = months.find((row) => row.raised) || null
     const nowRow = months[0]
-    return { months, peak, after, nowRow }
+    return { months, peak, after, nowRow, hasRaises: months.some((row) => row.raised) }
   }, [people, overheadAmount, clients, clientEnds, extraClient, raiseFrom, raises])
 
   function setAllRaises(pct) {
+    if (!pct) {
+      setRaises({})
+      return
+    }
     const next = {}
     for (const row of people) {
-      if (row.worker_type !== 'contractor') next[row.id || row.name] = pct
+      if (String(row.worker_type || '').toLowerCase() !== 'contractor') next[row.id || row.name] = pct
     }
     setRaises(next)
   }
@@ -109,16 +114,24 @@ export default function Scenarios() {
           <p className="mt-1 text-2xl font-semibold tabular-nums">{money(projection.nowRow.cost)}</p>
           <p className="text-xs font-medium text-teal-700">Includes {money(overheadAmount)} overhead</p>
         </div>
-        <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">After planned raises</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-orange-950">{money(projection.after.cost)}</p>
-        </div>
+        {projection.hasRaises ? (
+          <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">After planned raises</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-orange-950">{money(projection.after.cost)}</p>
+          </div>
+        ) : (
+          <div className="rounded-2xl border bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">No raises planned</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums">{money(projection.nowRow.cost)}</p>
+            <p className="text-xs text-slate-500">Pick 2–4% to add one</p>
+          </div>
+        )}
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Margin after</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{projection.hasRaises ? 'Margin after' : 'Margin now'}</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">
-            {projection.after.margin == null ? '—' : `${Math.round(projection.after.margin * 1000) / 10}%`}
+            {(projection.hasRaises ? projection.after.margin : projection.nowRow.margin) == null ? '—' : `${Math.round((projection.hasRaises ? projection.after.margin : projection.nowRow.margin) * 1000) / 10}%`}
           </p>
-          <p className="text-xs text-slate-500">{money(projection.after.profit)} / mo</p>
+          <p className="text-xs text-slate-500">{money(projection.hasRaises ? projection.after.profit : projection.nowRow.profit)} / mo</p>
         </div>
       </div>
 
