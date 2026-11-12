@@ -32,6 +32,7 @@ export default function NewAdmin() {
   const contractors = people.filter((row) => workerTypeOf(row) === 'contractor')
   const [name, setName] = useState('')
   const [hourly, setHourly] = useState('')
+  const [monthly, setMonthly] = useState('')
   const [type, setType] = useState('employee')
   const [email, setEmail] = useState('')
   const [inviteLink, setInviteLink] = useState('')
@@ -46,7 +47,8 @@ export default function NewAdmin() {
 
   async function addPerson() {
     const trimmed = name.trim()
-    const rate = Number(String(hourly).replace(/[$,]/g, ''))
+    const monthlyAmount = Number(String(monthly).replace(/[$,]/g, ''))
+    const rate = Number(String(hourly).replace(/[$,]/g, '')) || (monthlyAmount > 0 ? monthlyAmount / 160 : NaN)
     if (!trimmed) {
       setFail('Name is required.')
       return
@@ -74,7 +76,9 @@ export default function NewAdmin() {
       setRows(saved.rows)
       setName('')
       setHourly('')
+      setMonthly('')
       setMessage(`${trimmed} added. Pay also shows on People.`)
+
       if (email.trim()) {
         const link = `${window.location.origin}/login?invite=true&email=${encodeURIComponent(email.trim())}&role=team`
         setInviteLink(link)
@@ -116,9 +120,31 @@ export default function NewAdmin() {
 
       <div className="mt-6 rounded-2xl border bg-white p-5 shadow-sm">
         <h2 className="text-base font-semibold">Add someone</h2>
+        <p className="mt-1 text-sm text-slate-500">Monthly salary ÷ 160 hours = hourly. Type either one.</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <Input placeholder="Name" value={name} onChange={(event) => setName(event.target.value)} />
-          <Input placeholder="Hourly $" inputMode="decimal" value={hourly} onChange={(event) => setHourly(event.target.value)} />
+          <Input
+            placeholder="Monthly salary $"
+            inputMode="decimal"
+            value={monthly}
+            onChange={(event) => {
+              const value = event.target.value
+              setMonthly(value)
+              const amount = Number(String(value).replace(/[$,]/g, ''))
+              if (amount > 0) setHourly(String(Math.round((amount / 160) * 100) / 100))
+            }}
+          />
+          <Input
+            placeholder="Hourly $"
+            inputMode="decimal"
+            value={hourly}
+            onChange={(event) => {
+              const value = event.target.value
+              setHourly(value)
+              const amount = Number(String(value).replace(/[$,]/g, ''))
+              if (amount > 0) setMonthly(String(Math.round(amount * 160)))
+            }}
+          />
           <select className="h-10 rounded-lg border border-slate-200 px-3 text-sm" value={type} onChange={(event) => setType(event.target.value)}>
             <option value="employee">Employee</option>
             <option value="contractor">Contractor</option>
