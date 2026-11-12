@@ -353,8 +353,8 @@ export default function ScoreCardFinancials() {
       <div className="mb-8 overflow-auto rounded-xl border bg-white shadow-sm">
         <table className="min-w-full border-collapse text-xs">
           <thead>
-            <tr className="bg-slate-900 text-white">
-              <th className="sticky left-0 bg-slate-900 px-3 py-2 text-left">Channel</th>
+            <tr className="bg-slate-50 text-slate-600">
+              <th className="sticky left-0 bg-slate-50 px-3 py-2 text-left">Channel</th>
               {MONTHS.map((month) => (
                 <th key={month.id} className="px-2 py-2 text-right">{month.label}</th>
               ))}
@@ -395,8 +395,8 @@ export default function ScoreCardFinancials() {
       <div className="mb-8 overflow-visible rounded-xl border bg-white shadow-sm">
         <table className="min-w-full border-collapse text-xs">
           <thead>
-            <tr className="bg-slate-900 text-white">
-              <th className="sticky left-0 bg-slate-900 px-3 py-2 text-left">Channel</th>
+            <tr className="bg-slate-50 text-slate-600">
+              <th className="sticky left-0 bg-slate-50 px-3 py-2 text-left">Channel</th>
               {MONTHS.map((month) => (
                 <th key={month.id} className="px-2 py-2 text-right">{month.label}</th>
               ))}
