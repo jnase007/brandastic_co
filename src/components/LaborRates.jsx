@@ -272,9 +272,6 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                         disabled={!editable || saving}
                         onChange={(event) => update(index, 'name', event.target.value)}
                       />
-                      <p className="mt-1 text-sm font-semibold tabular-nums text-slate-700">
-                        {money(plannedMonthly(row))} / mo · {money(plannedAnnual(row))} / yr
-                      </p>
                     </label>
                     <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Type
