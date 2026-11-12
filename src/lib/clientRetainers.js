@@ -106,6 +106,12 @@ export async function saveClientRetainers(rows) {
   return next.rows
 }
 
+export async function deactivateClient(id) {
+  if (!id) return
+  const { error } = await supabase.from('clients').update({ is_active: false, client_status: 'inactive' }).eq('id', id)
+  if (error) throw error
+}
+
 export function useClientRetainers() {
   const [rows, setRows] = useState(undefined)
   const [missing, setMissing] = useState(false)

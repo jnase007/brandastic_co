@@ -5,6 +5,7 @@ import PageHeader from '../components/PageHeader'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { saveLaborRates, useLaborRateRows } from '../lib/laborRates'
+import { deactivateClient, saveClientRetainers, useClientRetainers } from '../lib/clientRetainers'
 
 function workerTypeOf(row) {
   return String(row?.worker_type || row?.workerType || '').trim().toLowerCase() === 'contractor'
@@ -47,6 +48,11 @@ function fromPeople(rows) {
 
 export default function NewAdmin() {
   const { rows, setRows, ready, error } = useLaborRateRows()
+  const retainers = useClientRetainers()
+  const [clientDraft, setClientDraft] = useState(null)
+  const [clientName, setClientName] = useState('')
+  const [clientMonthly, setClientMonthly] = useState('')
+  const clients = clientDraft || (retainers.rows || []).filter((row) => !row.internal)
   const [draft, setDraft] = useState(null)
   const people = draft || fromPeople(rows)
   const employees = people.filter((row) => workerTypeOf(row) === 'employee')
@@ -137,7 +143,7 @@ export default function NewAdmin() {
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
       <PageHeader
         title="Admin"
-        description="Edit people and rates here. Employees are salary. Contractors are hourly. Invite is how they log in."
+        description="Add and edit team and clients here. Same people as People. Same clients as Scenarios."
       />
       <p className="mt-2 text-sm text-slate-500">
         Same list as <Link className="font-medium text-[#1644ED]" to="/people">People</Link>.
@@ -213,6 +219,111 @@ export default function NewAdmin() {
           {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           Save rates
         </Button>
+      </div>
+
+      <div className="mt-10 rounded-2xl border bg-white p-5 shadow-sm">
+        <h2 className="text-base font-semibold">Add a client</h2>
+        <p className="mt-1 text-sm text-slate-500">Monthly retainer. Brandastic stays internal / not billable.</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <Input placeholder="Client name" value={clientName} onChange={(event) => setClientName(event.target.value)} />
+          <Input placeholder="Monthly $" inputMode="decimal" value={clientMonthly} onChange={(event) => setClientMonthly(event.target.value)} />
+        </div>
+        <Button
+          type="button"
+          className="mt-4 bg-[#FF6B00] text-white hover:bg-[#e05f00]"
+          disabled={saving}
+          onClick={async () => {
+            const trimmed = clientName.trim()
+            const monthly = moneyNum(clientMonthly)
+            if (!trimmed) {
+              setFail('Client name is required.')
+              return
+            }
+            if (!(monthly >= 0)) {
+              setFail('Monthly retainer has to be 0 or more.')
+              return
+            }
+            setSaving(true)
+            setFail('')
+            try {
+              const saved = await saveClientRetainers([...clients, { name: trimmed, monthly }])
+              retainers.setRows(saved)
+              setClientDraft(saved.filter((row) => !row.internal))
+              setClientName('')
+              setClientMonthly('')
+              setMessage(`${trimmed} added.`)
+            } catch (err) {
+              setFail(err.message || 'Could not add client.')
+            } finally {
+              setSaving(false)
+            }
+          }}
+        >
+          Add client
+        </Button>
+      </div>
+
+      <div className="mt-6 overflow-hidden rounded-2xl border bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b px-5 py-4">
+          <div>
+            <h2 className="text-base font-semibold">Clients</h2>
+            <p className="text-sm text-slate-500">{clients.length} billable</p>
+          </div>
+          <Button type="button" className="bg-[#FF6B00] text-white hover:bg-[#e05f00]" disabled={saving} onClick={async () => {
+            setSaving(true)
+            setFail('')
+            try {
+              const saved = await saveClientRetainers(clients)
+              retainers.setRows(saved)
+              setClientDraft(saved.filter((row) => !row.internal))
+              setMessage('Clients saved.')
+            } catch (err) {
+              setFail(err.message || 'Could not save clients.')
+            } finally {
+              setSaving(false)
+            }
+          }}>
+            Save clients
+          </Button>
+        </div>
+        {clients.map((row) => (
+          <div key={row.id || row.name} className="grid items-end gap-3 border-t px-5 py-3 sm:grid-cols-[1fr_160px_auto]">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Client
+              <Input className="mt-1" value={row.name || ''} onChange={(event) => setClientDraft((current) => (current || clients).map((item) => (item.id === row.id ? { ...item, name: event.target.value } : item)))} />
+            </label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Monthly $
+              <Input className="mt-1" inputMode="decimal" value={row.monthly ?? ''} onChange={(event) => setClientDraft((current) => (current || clients).map((item) => (item.id === row.id ? { ...item, monthly: event.target.value } : item)))} />
+            </label>
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-slate-400 hover:text-red-600"
+              onClick={async () => {
+                if (!row.id) {
+                  setClientDraft((current) => (current || clients).filter((item) => item !== row))
+                  return
+                }
+                setSaving(true)
+                try {
+                  await deactivateClient(row.id)
+                  const next = clients.filter((item) => item.id !== row.id)
+                  setClientDraft(next)
+                  retainers.setRows((current) => (current || []).filter((item) => item.id !== row.id))
+                  setMessage(`${row.name} removed.`)
+                } catch (err) {
+                  setFail(err.message || 'Could not remove client.')
+                } finally {
+                  setSaving(false)
+                }
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+        {!clients.length ? <p className="px-5 py-4 text-sm text-slate-500">Add billable clients here.</p> : null}
       </div>
     </div>
   )
