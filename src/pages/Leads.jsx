@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, ExternalLink, Loader2, Plus, Search, Upload } from 'lucide-react'
+import { ChevronDown, ChevronUp, ExternalLink, Loader2, Plus, Search, Trash2, Upload } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../hooks/useToast'
 import { Button } from '../components/ui/button'
@@ -61,6 +61,7 @@ export default function Leads({ embedded = false }) {
   const [importing, setImporting] = useState(false)
   const [selected, setSelected] = useState(() => new Set())
   const [quick, setQuick] = useState({ name: '', company: '', source: 'Direct', jira_key: '' })
+  const [pendingRemove, setPendingRemove] = useState(null)
   const [overviewOpen, setOverviewOpen] = useState(() => {
     try {
       const saved = localStorage.getItem('brandastic-leads-overview')
@@ -199,6 +200,23 @@ export default function Leads({ embedded = false }) {
       }
       return next
     })
+  }
+
+  async function deleteLead(row) {
+    if (!setupNeeded) {
+      const { error } = await supabase.from('sales_leads').delete().eq('id', row.id)
+      if (error) {
+        toast({ title: 'Could not remove lead', description: error.message, variant: 'destructive' })
+        return
+      }
+    }
+    setRows((current) => current.filter((item) => item.id !== row.id))
+    setSelected((current) => {
+      const next = new Set(current)
+      next.delete(row.id)
+      return next
+    })
+    setPendingRemove(null)
   }
 
   async function bulkStage(stageId, quality) {
@@ -375,39 +393,51 @@ export default function Leads({ embedded = false }) {
         </div>
       ) : null}
 
-      <div className="overflow-auto rounded-xl border bg-white shadow-sm" style={{ maxHeight: '70vh' }}>
-        <table className="min-w-[1500px] w-full text-left text-sm">
-          <thead className="sticky top-0 z-10 bg-slate-900 text-xs uppercase tracking-wide text-white">
+      <div className="overflow-auto rounded-xl border border-slate-300 bg-white shadow-sm" style={{ maxHeight: '70vh' }}>
+        <table className="min-w-[1600px] w-full border-collapse text-left text-sm">
+          <thead className="sticky top-0 z-10 text-xs uppercase tracking-wide text-white">
             <tr>
-              <th className="px-2 py-3">
+              <th className="border border-slate-300 bg-slate-600 px-2 py-3">
                 <input
                   type="checkbox"
                   checked={shown.length > 0 && shown.every((row) => selected.has(row.id))}
                   onChange={(event) => toggleShown(event.target.checked)}
                 />
               </th>
-              {['Date', 'Channel', 'Jira', 'Name', 'Company', 'Phone', 'Email', 'Notes', 'Month', 'Quality', 'Close $', 'Referred by', 'Deal type', '2026 value'].map((label) => (
-                <th key={label} className="whitespace-nowrap px-3 py-3 font-medium">{label}</th>
-              ))}
+              <th className="whitespace-nowrap border border-slate-300 bg-slate-700 px-3 py-3 font-medium">Date</th>
+              <th className="whitespace-nowrap border border-slate-300 bg-sky-600 px-3 py-3 font-medium">Channel</th>
+              <th className="whitespace-nowrap border border-slate-300 bg-indigo-600 px-3 py-3 font-medium">Jira</th>
+              <th className="whitespace-nowrap border border-slate-300 bg-emerald-600 px-3 py-3 font-medium">Name</th>
+              <th className="whitespace-nowrap border border-slate-300 bg-teal-600 px-3 py-3 font-medium">Company</th>
+              <th className="whitespace-nowrap border border-slate-300 bg-cyan-700 px-3 py-3 font-medium">Phone</th>
+              <th className="whitespace-nowrap border border-slate-300 bg-blue-600 px-3 py-3 font-medium">Email</th>
+              <th className="whitespace-nowrap border border-slate-300 bg-violet-600 px-3 py-3 font-medium">Notes</th>
+              <th className="whitespace-nowrap border border-slate-300 bg-amber-500 px-3 py-3 font-medium">Month</th>
+              <th className="whitespace-nowrap border border-slate-300 bg-orange-500 px-3 py-3 font-medium">Quality</th>
+              <th className="whitespace-nowrap border border-slate-300 bg-lime-600 px-3 py-3 font-medium">Close $</th>
+              <th className="whitespace-nowrap border border-slate-300 bg-fuchsia-600 px-3 py-3 font-medium">Referred by</th>
+              <th className="whitespace-nowrap border border-slate-300 bg-rose-500 px-3 py-3 font-medium">Deal type</th>
+              <th className="whitespace-nowrap border border-slate-300 bg-green-700 px-3 py-3 font-medium">2026 value</th>
+              <th className="w-12 border border-slate-300 bg-slate-500 px-2 py-3" />
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={15} className="px-3 py-10 text-muted-foreground">Loading leads…</td></tr>
+              <tr><td colSpan={16} className="border border-slate-300 px-3 py-10 text-muted-foreground">Loading leads…</td></tr>
             ) : shown.length === 0 ? (
-              <tr><td colSpan={15} className="px-3 py-10 text-muted-foreground">Nothing matches. Add a lead above.</td></tr>
+              <tr><td colSpan={16} className="border border-slate-300 px-3 py-10 text-muted-foreground">Nothing matches. Add a lead above.</td></tr>
             ) : shown.map((row) => {
               const link = jiraUrl(row.jira_key)
-              const cell = 'border-t px-2 py-1.5 align-middle'
+              const cell = 'border border-slate-300 px-2 py-1.5 align-middle'
               return (
-                <tr key={row.id} className="cursor-pointer hover:bg-slate-50" onClick={() => { if (!setupNeeded) openEdit(row) }}>
-                  <td className={`${cell}`} onClick={(event) => event.stopPropagation()}>
+                <tr key={row.id} className="cursor-pointer" onClick={() => { if (!setupNeeded) openEdit(row) }}>
+                  <td className={`${cell} bg-white`} onClick={(event) => event.stopPropagation()}>
                     <input type="checkbox" checked={selected.has(row.id)} onChange={(event) => toggleSelected(row.id, event.target.checked)} />
                   </td>
-                  <td className={`${cell} whitespace-nowrap`}>
+                  <td className={`${cell} whitespace-nowrap bg-slate-50`}>
                     <input className="h-8 w-[132px] rounded border-0 bg-transparent px-1 text-sm" type="date" defaultValue={row.first_contact_date || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { first_contact_date: event.target.value || null, month: monthLabel(event.target.value) })} />
                   </td>
-                  <td className={cell}>
+                  <td className={`${cell} bg-sky-50`}>
                     <CellSelect
                       className={`h-8 max-w-[170px] rounded-full px-2 text-xs font-semibold ${chipClass(CHANNEL_COLORS, row.source)}`}
                       value={row.source}
@@ -415,21 +445,21 @@ export default function Leads({ embedded = false }) {
                       onSave={(value) => patchRow(row.id, { source: value })}
                     />
                   </td>
-                  <td className={`${cell} whitespace-nowrap`}>
+                  <td className={`${cell} whitespace-nowrap bg-indigo-50`}>
                     <div className="flex items-center gap-1">
-                      <input className="h-8 w-24 rounded border px-1.5 text-sm" defaultValue={row.jira_key || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { jira_key: event.target.value.trim() })} />
+                      <input className="h-8 w-24 rounded border bg-white px-1.5 text-sm" defaultValue={row.jira_key || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { jira_key: event.target.value.trim() })} />
                       {link ? <a className="text-[#1644ED]" href={link} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}><ExternalLink className="h-3.5 w-3.5" /></a> : null}
                     </div>
                   </td>
-                  <td className={cell}><input className="h-8 w-full min-w-[110px] rounded border-0 bg-transparent px-1 font-medium" defaultValue={row.name || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { name: event.target.value.trim() })} /></td>
-                  <td className={cell}><input className="h-8 w-full min-w-[120px] rounded border-0 bg-transparent px-1" defaultValue={row.company || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { company: event.target.value.trim() })} /></td>
-                  <td className={cell}><input className="h-8 w-full min-w-[110px] rounded border-0 bg-transparent px-1" defaultValue={row.telephone || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { telephone: event.target.value.trim() })} /></td>
-                  <td className={cell}><input className="h-8 w-full min-w-[150px] rounded border-0 bg-transparent px-1" defaultValue={row.email || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { email: event.target.value.trim() })} /></td>
-                  <td className={cell}>
+                  <td className={`${cell} bg-emerald-50`}><input className="h-8 w-full min-w-[110px] rounded border-0 bg-transparent px-1 font-medium" defaultValue={row.name || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { name: event.target.value.trim() })} /></td>
+                  <td className={`${cell} bg-teal-50`}><input className="h-8 w-full min-w-[120px] rounded border-0 bg-transparent px-1" defaultValue={row.company || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { company: event.target.value.trim() })} /></td>
+                  <td className={`${cell} bg-cyan-50`}><input className="h-8 w-full min-w-[110px] rounded border-0 bg-transparent px-1" defaultValue={row.telephone || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { telephone: event.target.value.trim() })} /></td>
+                  <td className={`${cell} bg-blue-50`}><input className="h-8 w-full min-w-[150px] rounded border-0 bg-transparent px-1" defaultValue={row.email || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { email: event.target.value.trim() })} /></td>
+                  <td className={`${cell} bg-violet-50`}>
                     <button type="button" className="max-w-[180px] truncate text-left text-muted-foreground hover:text-foreground" onClick={() => openEdit(row)}>{row.notes || 'Notes…'}</button>
                   </td>
-                  <td className={cell}><input className="h-8 w-16 rounded border-0 bg-transparent px-1" defaultValue={row.month || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { month: event.target.value.trim() })} /></td>
-                  <td className={cell}>
+                  <td className={`${cell} bg-amber-50`}><input className="h-8 w-16 rounded border-0 bg-transparent px-1" defaultValue={row.month || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { month: event.target.value.trim() })} /></td>
+                  <td className={`${cell} bg-orange-50`}>
                     <CellSelect
                       className={`h-8 max-w-[190px] rounded-full px-2 text-xs font-semibold ${chipClass(QUALITY_COLORS, row.quality)}`}
                       value={row.quality}
@@ -438,15 +468,26 @@ export default function Leads({ embedded = false }) {
                       onSave={(value) => patchRow(row.id, { quality: value })}
                     />
                   </td>
-                  <td className={`${cell} whitespace-nowrap`}>
+                  <td className={`${cell} whitespace-nowrap bg-lime-50`}>
                     <input className="h-8 w-24 rounded border-0 bg-transparent px-1" defaultValue={row.close_amount ?? ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { close_amount: event.target.value === '' ? null : Number(event.target.value) })} />
                   </td>
-                  <td className={cell}><input className="h-8 w-full min-w-[110px] rounded border-0 bg-transparent px-1" defaultValue={row.referred_by || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { referred_by: event.target.value.trim() })} /></td>
-                  <td className={cell}>
+                  <td className={`${cell} bg-fuchsia-50`}><input className="h-8 w-full min-w-[110px] rounded border-0 bg-transparent px-1" defaultValue={row.referred_by || ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { referred_by: event.target.value.trim() })} /></td>
+                  <td className={`${cell} bg-rose-50`}>
                     <CellSelect className="h-8 rounded bg-transparent text-sm" value={row.deal_type} options={DEAL_TYPES} allowBlank onSave={(value) => patchRow(row.id, { deal_type: value || null })} />
                   </td>
-                  <td className={`${cell} whitespace-nowrap`}>
+                  <td className={`${cell} whitespace-nowrap bg-green-50`}>
                     <input className="h-8 w-24 rounded border-0 bg-transparent px-1" defaultValue={row.value_2026 ?? ''} disabled={setupNeeded} onBlur={(event) => patchRow(row.id, { value_2026: event.target.value === '' ? null : Number(event.target.value) })} />
+                  </td>
+                  <td className={`${cell} bg-white text-center`} onClick={(event) => event.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => setPendingRemove(row)}
+                      className="inline-flex rounded-md p-2 text-red-600 hover:bg-red-50"
+                      title="Remove lead"
+                      aria-label="Remove lead"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </td>
                 </tr>
               )
@@ -454,6 +495,19 @@ export default function Leads({ embedded = false }) {
           </tbody>
         </table>
       </div>
+
+      {pendingRemove ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <p className="text-base font-semibold">Are you sure you want to remove this?</p>
+            <p className="mt-2 text-sm text-slate-600">{pendingRemove.name || pendingRemove.company || 'This lead'}</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setPendingRemove(null)} className="rounded-lg border px-3 py-2 text-sm">Cancel</button>
+              <button type="button" onClick={() => deleteLead(pendingRemove)} className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white">Remove</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <LeadContactDialog
         open={dialogOpen}
