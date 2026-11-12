@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cn } from '../lib/utils'
 import PageHeader from '../components/PageHeader'
+import './education.css'
 
 const NAV = [
   {
@@ -103,8 +104,8 @@ export default function Education() {
   }, [slug])
 
   return (
-    <div className="mx-auto flex max-w-7xl gap-6 px-4 py-6 sm:px-6">
-      <aside className="hidden w-56 shrink-0 lg:block">
+    <div className="education-shell mx-auto flex max-w-7xl gap-6 px-4 py-6 sm:px-6">
+      <aside className="education-nav hidden w-60 shrink-0 lg:block">
         {NAV.map((section) => (
           <div key={section.group} className="mb-5">
             <p className="px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{section.group}</p>
@@ -139,7 +140,7 @@ export default function Education() {
           </select>
         </div>
         {error ? <p className="mt-6 text-sm text-red-600">{error}</p> : null}
-        <article className="prose mt-6 max-w-none" dangerouslySetInnerHTML={{ __html: html }} />
+        <article className="education-body mt-6 rounded-2xl border bg-white p-5 shadow-sm sm:p-8" dangerouslySetInnerHTML={{ __html: html }} />
       </div>
     </div>
   )
