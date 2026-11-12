@@ -135,7 +135,7 @@ function UpcomingCalendar({
               <div className="mt-2 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-[#8b98a5]">
                 {WEEKDAYS.map((day) => <span key={day}>{day}</span>)}
               </div>
-              <div className="mt-1 grid grid-cols-7 gap-1" onMouseLeave={() => setHoveredDay(null)}>
+              <div className="mt-1 grid grid-cols-7 overflow-hidden rounded-xl border border-[#d5dde6]" onMouseLeave={() => setHoveredDay(null)}>
                 {monthCells(month).map((day, index) => {
                   const dayItems = day ? byDay.get(day) || [] : []
                   const inRange = day && day.slice(0, 7) >= today.slice(0, 7) && day <= windowEnd
@@ -154,7 +154,7 @@ function UpcomingCalendar({
                         }
                       }}
                       onClick={() => day && setSelectedDay(day)}
-                      className={`relative min-h-11 rounded-xl px-1 py-1 text-left text-xs ${selected ? 'bg-[#e8eeff] ring-1 ring-[#1644ED]' : ''} ${open ? '' : 'opacity-40'}`}
+                      className={`relative min-h-12 border-b border-r border-[#d5dde6] px-1.5 py-1.5 text-left text-xs ${selected ? 'bg-[#e8eeff]' : day ? 'bg-white' : 'bg-[#f8fafc]'} ${open ? 'hover:bg-[#f1f5f9]' : 'opacity-40'}`}
                     >
                       <span className="font-semibold">{day ? Number(day.slice(8)) : ''}</span>
                       <span className="mt-1 flex flex-wrap gap-1">
