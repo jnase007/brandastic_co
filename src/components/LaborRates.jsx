@@ -467,6 +467,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                         disabled={saving}
                         aria-label={`Remove ${row.name || 'person'}`}
                         onClick={() => {
+                          if (!window.confirm(`Are you sure you want to remove ${row.name || 'this person'}?`)) return
                           setSaved(false)
                           setDraft((current) => current.filter((_, rowIndex) => rowIndex !== index))
                         }}

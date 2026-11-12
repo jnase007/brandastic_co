@@ -133,7 +133,7 @@ export default function ClientRetainers({ embedded = false }) {
               Monthly $
               <Input className="mt-1" inputMode="decimal" value={row.monthly} onChange={(event) => update(index, 'monthly', commaNumber(event.target.value))} />
             </label>
-            <Button type="button" variant="ghost" className="text-slate-400 hover:text-red-600" onClick={() => { setSaved(false); setDraft((current) => (current || list).filter((_, i) => i !== index)) }}>
+            <Button type="button" variant="ghost" className="text-slate-400 hover:text-red-600" onClick={() => { if (!window.confirm(`Are you sure you want to remove ${row.name || 'this client'}?`)) return; setSaved(false); setDraft((current) => (current || list).filter((_, i) => i !== index)) }}>
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>

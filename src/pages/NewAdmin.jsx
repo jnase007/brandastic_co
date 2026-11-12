@@ -301,6 +301,7 @@ export default function NewAdmin() {
               variant="ghost"
               className="text-slate-400 hover:text-red-600"
               onClick={async () => {
+                if (!window.confirm(`Are you sure you want to remove ${row.name || 'this client'}?`)) return
                 if (!row.id) {
                   setClientDraft((current) => (current || clients).filter((item) => item !== row))
                   return
@@ -378,7 +379,10 @@ function Roster({ title, hint, rows, employee, onChange, onRemove }) {
               }}
             />
           </label>
-          <Button type="button" variant="ghost" className="text-slate-400 hover:text-red-600" onClick={() => onRemove(row.id)} aria-label={`Remove ${row.name}`}>
+          <Button type="button" variant="ghost" className="text-slate-400 hover:text-red-600" onClick={() => {
+            if (!window.confirm(`Are you sure you want to remove ${row.name || 'this person'}?`)) return
+            onRemove(row.id)
+          }} aria-label={`Remove ${row.name}`}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
