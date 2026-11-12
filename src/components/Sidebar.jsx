@@ -90,7 +90,7 @@ const simpleNavItems = [
   { path: '/strategy', icon: Compass, label: 'Strategy', group: 'Company' },
   { path: '/ideal-target-client', icon: Crosshair, label: 'Ideal Target Client', group: 'Company' },
   { path: '/new_admin', icon: Shield, label: 'Admin', group: 'Team' },
-  { path: '/profitability/team', icon: Users2, label: 'Team', group: 'Team' },
+  { path: '/profitability/team', icon: Users2, label: 'Team Hours', group: 'Team' },
   { path: '/people', icon: Users, label: 'People', group: 'Team' },
   { path: '/scenarios', icon: BarChart3, label: 'Scenarios', group: 'Team' },
   { path: '/working', icon: CheckCircle, label: 'Working/Not', group: 'Team' },

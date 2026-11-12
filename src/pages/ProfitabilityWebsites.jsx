@@ -77,7 +77,7 @@ export default function ProfitabilityWebsites() {
       </header>
       <p className="pr-back ws-links">
         <Link to="/profitability">← Marketing retainers</Link>
-        <Link to="/profitability/team">Team</Link>
+        <Link to="/profitability/team">Team Hours</Link>
         {canSeePeople ? <Link to="/people">People</Link> : null}
       </p>
 

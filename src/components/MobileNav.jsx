@@ -88,7 +88,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         { path: '/strategy', icon: Compass, label: 'Strategy' },
         { path: '/ideal-target-client', icon: Crosshair, label: 'Ideal Target Client' },
         { path: '/new_admin', icon: Shield, label: 'Admin' },
-        { path: '/profitability/team', icon: Users2, label: 'Team' },
+        { path: '/profitability/team', icon: Users2, label: 'Team Hours' },
         { path: '/people', icon: Users, label: 'People' },
         { path: '/scenarios', icon: BarChart3, label: 'Scenarios' },
         { path: '/working', icon: CheckCircle, label: 'Working/Not' },
