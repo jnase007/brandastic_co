@@ -502,22 +502,38 @@ export default function Scenarios() {
 
       <div className="mt-6 overflow-hidden rounded-2xl border bg-white shadow-sm">
         <div className="border-b px-5 py-4">
-          <p className="text-sm font-semibold">Retainer changes</p>
-          <p className="text-sm text-slate-500">End this $, start the next $ later.</p>
+          <p className="text-sm font-semibold">Clients</p>
+          <p className="text-sm text-slate-500">Last month they pay the current amount. Leave blank if they stay.</p>
+        </div>
+        <div className="hidden gap-2 border-t bg-slate-50 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 sm:grid sm:grid-cols-[1fr_90px_150px_110px_150px]">
+          <p>Client</p>
+          <p>Now / mo</p>
+          <p>Last month</p>
+          <p>New amount</p>
+          <p>New amount starts</p>
         </div>
         {clients.map((client) => {
           const plan = clientPlans[client.id] || {}
           return (
-            <div key={client.id} className="grid gap-2 border-t px-5 py-3 sm:grid-cols-[1fr_90px_130px_90px_130px]">
+            <div key={client.id} className="grid gap-2 border-t px-5 py-3 sm:grid-cols-[1fr_90px_150px_110px_150px]">
               <p className="font-medium">{client.name}</p>
               <p className="tabular-nums text-slate-600">{money(Number(client.monthly) || 0)}</p>
-              <Input type="month" value={plan.end || clientEnds[client.id] || ''} onChange={(event) => {
-                const end = event.target.value
-                setClientEnds((current) => ({ ...current, [client.id]: end }))
-                setClientPlans((current) => ({ ...current, [client.id]: { ...current[client.id], end } }))
-              }} />
-              <Input placeholder="Next $" value={plan.nextAmount || ''} onChange={(event) => setClientPlans((current) => ({ ...current, [client.id]: { ...current[client.id], nextAmount: event.target.value } }))} />
-              <Input type="month" value={plan.nextFrom || ''} onChange={(event) => setClientPlans((current) => ({ ...current, [client.id]: { ...current[client.id], nextFrom: event.target.value } }))} />
+              <label className="text-xs text-slate-500 sm:text-[0]">
+                Last month
+                <Input type="month" className="mt-1" value={plan.end || clientEnds[client.id] || ''} onChange={(event) => {
+                  const end = event.target.value
+                  setClientEnds((current) => ({ ...current, [client.id]: end }))
+                  setClientPlans((current) => ({ ...current, [client.id]: { ...current[client.id], end } }))
+                }} />
+              </label>
+              <label className="text-xs text-slate-500 sm:text-[0]">
+                New amount
+                <Input className="mt-1" placeholder="0 if they leave" value={plan.nextAmount || ''} onChange={(event) => setClientPlans((current) => ({ ...current, [client.id]: { ...current[client.id], nextAmount: event.target.value } }))} />
+              </label>
+              <label className="text-xs text-slate-500 sm:text-[0]">
+                New amount starts
+                <Input className="mt-1" type="month" value={plan.nextFrom || ''} onChange={(event) => setClientPlans((current) => ({ ...current, [client.id]: { ...current[client.id], nextFrom: event.target.value } }))} />
+              </label>
             </div>
           )
         })}
