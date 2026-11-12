@@ -159,6 +159,12 @@ export default function Education() {
   const [html, setHtml] = useState('')
   const [error, setError] = useState('')
   const tone = ALL_ITEMS.find((item) => item.slug === slug)?.tone || 'hub'
+  const courseSlugs = new Set(
+    NAV.find((section) => section.group === 'Courses').blocks.flatMap((block) => block.items.map((item) => item.slug))
+  )
+  const visibleNav = NAV.filter((section) =>
+    courseSlugs.has(slug) ? section.group === 'Courses' : section.group === 'Masterclass 2026'
+  )
 
   useEffect(() => {
     let cancel = false
@@ -181,7 +187,7 @@ export default function Education() {
   return (
     <div className="education-shell mx-auto flex max-w-7xl gap-6 px-4 py-6 sm:px-6">
       <aside className="education-nav hidden w-[272px] shrink-0 lg:block">
-        {NAV.map((section) => (
+        {visibleNav.map((section) => (
           <div key={section.group} className="mb-6">
             <p className="px-1 pb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{section.group}</p>
             <div className="space-y-4">
@@ -215,7 +221,7 @@ export default function Education() {
             value={slug}
             onChange={(event) => navigate(`/education/${event.target.value}`)}
           >
-            {ALL_ITEMS.map((item) => (
+            {visibleNav.flatMap((section) => section.blocks.flatMap((block) => block.items.map((item) => ({ ...item, group: `${block.kicker} · ${item.label}` })))).map((item) => (
               <option key={item.slug} value={item.slug}>{item.group}</option>
             ))}
           </select>
