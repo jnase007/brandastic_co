@@ -198,3 +198,84 @@
   overflow: auto;
   padding-right: 0.25rem;
 }
+
+.ed-kicker {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 0.45rem 0.15rem;
+}
+.ed-kicker.v1 { color: #0284c7; }
+.ed-kicker.v2 { color: #7c3aed; }
+.ed-kicker.v3 { color: #d97706; }
+.ed-kicker.v4 { color: #059669; }
+.ed-kicker.hub { color: #475569; }
+.ed-kicker.sales { color: #0284c7; }
+.ed-kicker.mkt { color: #7c3aed; }
+.ed-kicker.fin { color: #059669; }
+.ed-kicker.ops { color: #c2410c; }
+.ed-kicker.people { color: #db2777; }
+
+.ed-card {
+  border-radius: 16px;
+  padding: 0.85rem 0.85rem 0.7rem;
+  border: 1px solid;
+}
+.ed-card.v1 { background: #e0f2fe; border-color: #38bdf8; }
+.ed-card.v2 { background: #ede9fe; border-color: #a78bfa; }
+.ed-card.v3 { background: #ffedd5; border-color: #fb923c; }
+.ed-card.v4 { background: #d1fae5; border-color: #34d399; }
+.ed-card.hub { background: #f1f5f9; border-color: #cbd5e1; }
+.ed-card.sales { background: #e0f2fe; border-color: #38bdf8; }
+.ed-card.mkt { background: #ede9fe; border-color: #a78bfa; }
+.ed-card.fin { background: #d1fae5; border-color: #34d399; }
+.ed-card.ops { background: #ffedd5; border-color: #fb923c; }
+.ed-card.people { background: #fce7f3; border-color: #f9a8d4; }
+
+.ed-card-title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.3;
+  color: #0f172a;
+  margin: 0 0 0.15rem;
+}
+.ed-link {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.32rem 0.15rem;
+  font-size: 0.84rem;
+  color: #1e293b;
+  border-radius: 8px;
+}
+.ed-link:hover { background: rgba(255,255,255,0.55); }
+.ed-link.on { font-weight: 700; background: rgba(255,255,255,0.8); }
+.ed-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+.ed-card.v1 .ed-dot { color: #0284c7; }
+.ed-card.v2 .ed-dot { color: #7c3aed; }
+.ed-card.v3 .ed-dot { color: #d97706; }
+.ed-card.v4 .ed-dot { color: #059669; }
+.ed-card.sales .ed-dot { color: #0284c7; }
+.ed-card.mkt .ed-dot { color: #7c3aed; }
+.ed-card.fin .ed-dot { color: #059669; }
+.ed-card.ops .ed-dot { color: #c2410c; }
+.ed-card.people .ed-dot { color: #db2777; }
+.ed-card.hub .ed-dot { color: #64748b; }
+
+.education-body.tone-v1 { box-shadow: inset 4px 0 0 #0284c7; }
+.education-body.tone-v2 { box-shadow: inset 4px 0 0 #7c3aed; }
+.education-body.tone-v3 { box-shadow: inset 4px 0 0 #d97706; }
+.education-body.tone-v4 { box-shadow: inset 4px 0 0 #059669; }
+.education-body.tone-sales { box-shadow: inset 4px 0 0 #0284c7; }
+.education-body.tone-mkt { box-shadow: inset 4px 0 0 #7c3aed; }
+.education-body.tone-fin { box-shadow: inset 4px 0 0 #059669; }
+.education-body.tone-ops { box-shadow: inset 4px 0 0 #c2410c; }
+.education-body.tone-people { box-shadow: inset 4px 0 0 #db2777; }
