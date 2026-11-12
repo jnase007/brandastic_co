@@ -1,9 +1,33 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { saveLaborRates, saveMonthlyOverhead } from '../lib/laborRates'
+import { cachedTeam, fetchTeam } from '../lib/profitabilityCache'
+import PageHeader from './PageHeader'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { cn } from '../lib/utils'
+
+const WEEKS_PER_MONTH = 52 / 12
+
+function money(value) {
+  if (value == null || Number.isNaN(value)) return '—'
+  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+}
+
+function hourlyNumber(row) {
+  return Number(String(row.hourly ?? '').replace(/[$,]/g, '')) || 0
+}
+
+function nameKey(name) {
+  return String(name || '').trim().toLowerCase()
+}
+
+function plannedMonthly(row) {
+  const hourly = hourlyNumber(row)
+  const weekly = Number(row.weeklyCapacity) || 0
+  if (!(hourly > 0) || !(weekly > 0)) return 0
+  return hourly * weekly * WEEKS_PER_MONTH
+}
 
 function draftFrom(rows) {
   return (rows || []).map((row) => ({
@@ -58,6 +82,54 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
+  const [teamData, setTeamData] = useState(() => cachedTeam())
+
+  useEffect(() => {
+    let cancel = false
+    fetchTeam()
+      .then((data) => {
+        if (!cancel) setTeamData(data)
+      })
+      .catch(() => {})
+    return () => {
+      cancel = true
+    }
+  }, [])
+
+  const tempoHours = useMemo(() => {
+    const hours = {}
+    const start = teamData?.bounds?.monthStart
+    for (const entry of teamData?.entries || []) {
+      if (start && entry.date < start) continue
+      const key = nameKey(entry.member)
+      hours[key] = (hours[key] || 0) + (Number(entry.minutes) || 0) / 60
+    }
+    return hours
+  }, [teamData])
+
+  function contractorMonth(row) {
+    const hourly = hourlyNumber(row)
+    const hours = tempoHours[nameKey(row.name)]
+    if (hours != null) return hourly * hours
+    return plannedMonthly(row)
+  }
+
+  const costs = useMemo(() => {
+    let employeeTotal = 0
+    let contractorTotal = 0
+    for (const row of draft) {
+      if (row.workerType === 'contractor') contractorTotal += contractorMonth(row)
+      else employeeTotal += plannedMonthly(row)
+    }
+    const overheadAmount = Number(String(overheadDraft).replace(/[$,]/g, '')) || 0
+    return {
+      employeeTotal,
+      contractorTotal,
+      peopleTotal: employeeTotal + contractorTotal,
+      overheadAmount,
+      companyTotal: employeeTotal + contractorTotal + overheadAmount,
+    }
+  }, [draft, overheadDraft, tempoHours])
 
   function update(index, field, value) {
     setSaved(false)
@@ -131,18 +203,35 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">People</h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-500">
-            Everyone on the team. Hourly cost and monthly overhead feed profitability; type and weekly hours feed Team; birthday, start date, and Announce feed Company Announcements.
-          </p>
-        </div>
-        {alwaysOpen ? null : (
+      <PageHeader
+        title="People"
+        description="Employee salary from weekly hours. Contractor cost from this month’s Tempo hours."
+        actions={alwaysOpen ? null : (
           <Button variant="outline" type="button" onClick={() => setOpen((value) => !value)}>
             {open ? 'Hide' : 'Edit'}
           </Button>
         )}
+      />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Employees / month</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums">{money(costs.employeeTotal)}</p>
+          <p className="mt-1 text-xs text-slate-500">Hourly × weekly hours × 52 / 12</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Contractors this month</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums">{money(costs.contractorTotal)}</p>
+          <p className="mt-1 text-xs text-slate-500">Hourly × Tempo hours this month</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Team labor / month</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums">{money(costs.peopleTotal)}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Team + overhead</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums">{money(costs.companyTotal)}</p>
+          <p className="mt-1 text-xs text-slate-500">Includes {money(costs.overheadAmount)} overhead</p>
+        </div>
       </div>
 
       {alwaysOpen || open ? (
@@ -198,7 +287,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
             <div>
               {draft.map((row, index) => (
                 <div key={row.id || `new-${index}`} className="space-y-3 border-t px-5 py-4">
-                  <div className="grid items-end gap-3 md:grid-cols-[minmax(0,1.4fr)_150px_140px_160px_auto]">
+                  <div className="grid items-end gap-3 md:grid-cols-[minmax(0,1.4fr)_150px_140px_160px_120px_auto]">
                     <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Name
                       <Input
@@ -228,9 +317,9 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                         className={cn(fieldClass, 'mt-1')}
                         aria-label={`Weekly hours for ${row.name || 'person'}`}
                         inputMode="decimal"
-                        value={row.workerType === 'contractor' ? '' : row.weeklyCapacity}
-                        placeholder={row.workerType === 'contractor' ? '—' : '40'}
-                        disabled={!editable || saving || row.workerType === 'contractor'}
+                        value={row.weeklyCapacity}
+                        placeholder={row.workerType === 'contractor' ? 'typical' : '40'}
+                        disabled={!editable || saving}
                         onChange={(event) => update(index, 'weeklyCapacity', event.target.value)}
                       />
                     </label>
@@ -248,6 +337,12 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                         />
                       </div>
                     </label>
+                    <div className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Monthly
+                      <p className="mt-2 text-sm font-semibold tabular-nums text-slate-900">
+                        {money(row.workerType === 'contractor' ? contractorMonth(row) : plannedMonthly(row))}
+                      </p>
+                    </div>
                     {editable ? (
                       <Button
                         type="button"
