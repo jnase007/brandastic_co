@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Loader2, Plus } from 'lucide-react'
+import { Loader2, Plus, Trash2 } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -199,12 +199,14 @@ export default function NewAdmin() {
         rows={employees}
         employee
         onChange={patch}
+        onRemove={(id) => saveTeam(people.filter((row) => row.id !== id), 'Removed.')}
       />
       <Roster
         title="Contractors"
         hint="Hourly"
         rows={contractors}
         onChange={patch}
+        onRemove={(id) => saveTeam(people.filter((row) => row.id !== id), 'Removed.')}
       />
       <div className="mt-4">
         <Button type="button" className="bg-[#FF6B00] text-white hover:bg-[#e05f00]" disabled={saving} onClick={() => saveTeam(people, 'Rates saved.')}>
@@ -216,7 +218,7 @@ export default function NewAdmin() {
   )
 }
 
-function Roster({ title, hint, rows, employee, onChange }) {
+function Roster({ title, hint, rows, employee, onChange, onRemove }) {
   return (
     <div className="mt-6 overflow-hidden rounded-2xl border bg-white shadow-sm">
       <div className="border-b px-5 py-4">
@@ -224,7 +226,7 @@ function Roster({ title, hint, rows, employee, onChange }) {
         <p className="text-sm text-slate-500">{rows.length} · {hint}</p>
       </div>
       {rows.map((row) => (
-        <div key={row.id || row.name} className="grid items-end gap-3 border-t px-5 py-3 sm:grid-cols-[1fr_140px_120px]">
+        <div key={row.id || row.name} className="grid items-end gap-3 border-t px-5 py-3 sm:grid-cols-[1fr_140px_120px_auto]">
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Name
             <Input className="mt-1" value={row.name || ''} onChange={(event) => onChange(row.id, { name: event.target.value })} />
@@ -265,6 +267,9 @@ function Roster({ title, hint, rows, employee, onChange }) {
               }}
             />
           </label>
+          <Button type="button" variant="ghost" className="text-slate-400 hover:text-red-600" onClick={() => onRemove(row.id)} aria-label={`Remove ${row.name}`}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       ))}
       {!rows.length ? <p className="px-5 py-4 text-sm text-slate-500">None yet.</p> : null}
