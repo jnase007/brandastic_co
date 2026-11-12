@@ -30,6 +30,25 @@ function trueMonthly(row, raisePct = 0) {
   return pay * (1 + TAX)
 }
 
+function num(value) {
+  return Number(String(value || '').replace(/[$,]/g, '')) || 0
+}
+
+function amountInMonth(current, key, plan) {
+  const nextFrom = plan?.nextFrom || ''
+  const nextAmount = num(plan?.nextAmount)
+  const end = plan?.end || ''
+  if (nextFrom && key >= nextFrom) return nextAmount
+  if (end && key > end) return 0
+  return Number(current) || 0
+}
+
+function futureInMonth(row, key) {
+  if (row.from && key < row.from) return 0
+  if (row.end && key > row.end) return 0
+  return num(row.monthly)
+}
+
 export default function Scenarios() {
   const { rows, overhead, ready, error } = useLaborRateRows()
   const retainers = useClientRetainers()
@@ -37,6 +56,8 @@ export default function Scenarios() {
   const [raises, setRaises] = useState({})
   const [extraClient, setExtraClient] = useState('')
   const [clientEnds, setClientEnds] = useState({})
+  const [clientPlans, setClientPlans] = useState({})
+  const [futureClients, setFutureClients] = useState([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState('')
   const [saveError, setSaveError] = useState('')
@@ -49,6 +70,8 @@ export default function Scenarios() {
       if (loaded.raises) setRaises(loaded.raises)
       if (loaded.extraClient != null) setExtraClient(loaded.extraClient)
       if (loaded.clientEnds) setClientEnds(loaded.clientEnds)
+      if (loaded.clientPlans) setClientPlans(loaded.clientPlans)
+      if (loaded.futureClients) setFutureClients(loaded.futureClients)
     })
     return () => { cancel = true }
   }, [])
@@ -72,14 +95,19 @@ export default function Scenarios() {
       }, 0)
       const cost = staff + overheadAmount
       const revenue = extra + clients.reduce((sum, client) => {
-        const end = clientEnds[client.id]
-        if (end && key > end) return sum
-        return sum + (Number(client.monthly) || 0)
-      }, 0)
+        const plan = {
+          end: clientPlans[client.id]?.end || clientEnds[client.id] || '',
+          nextFrom: clientPlans[client.id]?.nextFrom || '',
+          nextAmount: clientPlans[client.id]?.nextAmount || '',
+        }
+        return sum + amountInMonth(client.monthly, key, plan)
+      }, 0) + futureClients.reduce((sum, row) => sum + futureInMonth(row, key), 0)
       const profit = revenue - cost
       months.push({
         key,
         label: date.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
+        staff,
+        overhead: overheadAmount,
         cost,
         revenue,
         profit,
@@ -91,7 +119,7 @@ export default function Scenarios() {
     const after = months.find((row) => row.raised) || null
     const nowRow = months[0]
     return { months, peak, after, nowRow, hasRaises: months.some((row) => row.raised) }
-  }, [people, overheadAmount, clients, clientEnds, extraClient, raiseFrom, raises])
+  }, [people, overheadAmount, clients, clientEnds, clientPlans, futureClients, extraClient, raiseFrom, raises])
 
   function setAllRaises(pct) {
     if (!pct) {
@@ -124,7 +152,7 @@ export default function Scenarios() {
               setSaveError('')
               setSaved('')
               try {
-                const result = await saveScenario({ raiseFrom, raises, extraClient, clientEnds })
+                const result = await saveScenario({ raiseFrom, raises, extraClient, clientEnds, clientPlans, futureClients })
                 if (result.error) setSaved('Saved on this browser. Run supabase/scenario-plans.sql to share it.')
                 else setSaved('Scenario saved.')
               } catch (err) {
@@ -260,16 +288,79 @@ export default function Scenarios() {
       <div className="mt-6 overflow-hidden rounded-2xl border bg-white shadow-sm">
         <div className="border-b px-5 py-4">
           <h2 className="text-base font-semibold">Clients in the model</h2>
-          <p className="text-sm text-slate-500">Amounts from Client retainers. Set an end month to drop them off.</p>
+          <p className="text-sm text-slate-500">End the current retainer, then start the next $ in a later month (same client, smaller book).</p>
         </div>
-        {clients.map((client) => (
-          <div key={client.id} className="grid items-center gap-3 border-t px-5 py-3 sm:grid-cols-[1fr_120px_160px]">
-            <p className="font-medium">{client.name}</p>
-            <p className="tabular-nums text-slate-700">{money(Number(client.monthly) || 0)} / mo</p>
-            <Input type="month" value={clientEnds[client.id] || ''} onChange={(event) => setClientEnds((current) => ({ ...current, [client.id]: event.target.value }))} />
+        <div className="hidden border-t px-5 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 sm:grid sm:grid-cols-[1fr_100px_140px_110px_140px]">
+          <span>Client</span><span>Now / mo</span><span>Ends</span><span>Next $</span><span>Next starts</span>
+        </div>
+        {clients.map((client) => {
+          const plan = clientPlans[client.id] || {}
+          return (
+            <div key={client.id} className="grid items-center gap-3 border-t px-5 py-3 sm:grid-cols-[1fr_100px_140px_110px_140px]">
+              <p className="font-medium">{client.name}</p>
+              <p className="tabular-nums text-slate-700">{money(Number(client.monthly) || 0)}</p>
+              <Input type="month" value={plan.end || clientEnds[client.id] || ''} onChange={(event) => {
+                const end = event.target.value
+                setClientEnds((current) => ({ ...current, [client.id]: end }))
+                setClientPlans((current) => ({ ...current, [client.id]: { ...current[client.id], end } }))
+              }} />
+              <Input inputMode="decimal" placeholder="Next $" value={plan.nextAmount || ''} onChange={(event) => setClientPlans((current) => ({ ...current, [client.id]: { ...current[client.id], nextAmount: event.target.value } }))} />
+              <Input type="month" value={plan.nextFrom || ''} onChange={(event) => setClientPlans((current) => ({ ...current, [client.id]: { ...current[client.id], nextFrom: event.target.value } }))} />
+            </div>
+          )
+        })}
+        {!clients.length ? <p className="px-5 py-4 text-sm text-slate-500">Add clients on Clients, then come back.</p> : null}
+      </div>
+
+      <div className="mt-6 overflow-hidden rounded-2xl border bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b px-5 py-4">
+          <div>
+            <h2 className="text-base font-semibold">New retainers later</h2>
+            <p className="text-sm text-slate-500">A client that is not on the book yet, or a split that starts in a given month.</p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => setFutureClients((current) => [...current, { id: `new-${Date.now()}`, name: '', monthly: '', from: '', end: '' }])}>Add later retainer</Button>
+        </div>
+        {futureClients.map((row) => (
+          <div key={row.id} className="grid items-center gap-3 border-t px-5 py-3 sm:grid-cols-[1fr_110px_140px_140px_auto]">
+            <Input placeholder="Client" value={row.name} onChange={(event) => setFutureClients((current) => current.map((item) => (item.id === row.id ? { ...item, name: event.target.value } : item)))} />
+            <Input placeholder="$ / mo" inputMode="decimal" value={row.monthly} onChange={(event) => setFutureClients((current) => current.map((item) => (item.id === row.id ? { ...item, monthly: event.target.value } : item)))} />
+            <Input type="month" value={row.from} onChange={(event) => setFutureClients((current) => current.map((item) => (item.id === row.id ? { ...item, from: event.target.value } : item)))} />
+            <Input type="month" value={row.end} onChange={(event) => setFutureClients((current) => current.map((item) => (item.id === row.id ? { ...item, end: event.target.value } : item)))} />
+            <Button type="button" variant="ghost" className="text-slate-400" onClick={() => setFutureClients((current) => current.filter((item) => item.id !== row.id))}>Remove</Button>
           </div>
         ))}
-        {!clients.length ? <p className="px-5 py-4 text-sm text-slate-500">Add retainers on Client retainers, then come back.</p> : null}
+        {!futureClients.length ? <p className="px-5 py-4 text-sm text-slate-500">None yet.</p> : null}
+      </div>
+
+      <div className="mt-6 overflow-auto rounded-2xl border bg-white shadow-sm">
+        <div className="border-b px-5 py-4">
+          <h2 className="text-base font-semibold">Margin vs expenses</h2>
+          <p className="text-sm text-slate-500">Revenue minus team minus overhead. Same 12 months as the chart.</p>
+        </div>
+        <table className="min-w-full text-sm">
+          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-4 py-2">Month</th>
+              <th className="px-4 py-2 text-right">Revenue</th>
+              <th className="px-4 py-2 text-right">Team</th>
+              <th className="px-4 py-2 text-right">Overhead</th>
+              <th className="px-4 py-2 text-right">Profit</th>
+              <th className="px-4 py-2 text-right">Margin</th>
+            </tr>
+          </thead>
+          <tbody>
+            {projection.months.map((row) => (
+              <tr key={row.key} className="border-t">
+                <td className={cn('px-4 py-2', row.raised && 'font-semibold text-orange-700')}>{row.label}</td>
+                <td className="px-4 py-2 text-right tabular-nums">{money(row.revenue)}</td>
+                <td className="px-4 py-2 text-right tabular-nums">{money(row.staff)}</td>
+                <td className="px-4 py-2 text-right tabular-nums">{money(row.overhead)}</td>
+                <td className={cn('px-4 py-2 text-right tabular-nums font-medium', row.profit < 0 ? 'text-red-600' : 'text-emerald-700')}>{money(row.profit)}</td>
+                <td className="px-4 py-2 text-right tabular-nums">{row.margin == null ? '—' : `${Math.round(row.margin * 1000) / 10}%`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )

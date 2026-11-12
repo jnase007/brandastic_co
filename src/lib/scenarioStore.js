@@ -19,10 +19,11 @@ export async function loadScenario() {
   const { data, error } = await supabase.from('scenario_plans').select('raise_from, raises, extra_client, client_ends').eq('id', 1).maybeSingle()
   if (error || !data) return local
   return {
-    raiseFrom: data.raise_from || '',
-    raises: data.raises || {},
-    extraClient: data.extra_client == null ? '' : String(data.extra_client),
-    clientEnds: data.client_ends || {},
+    ...local,
+    raiseFrom: data.raise_from || local?.raiseFrom || '',
+    raises: data.raises || local?.raises || {},
+    extraClient: data.extra_client == null ? (local?.extraClient || '') : String(data.extra_client),
+    clientEnds: data.client_ends || local?.clientEnds || {},
   }
 }
 
@@ -34,6 +35,8 @@ export async function saveScenario(payload) {
     raises: payload.raises || {},
     extra_client: Number(String(payload.extraClient || '').replace(/[$,]/g, '')) || 0,
     client_ends: payload.clientEnds || {},
+    client_plans: payload.clientPlans || {},
+    future_clients: payload.futureClients || [],
     updated_at: new Date().toISOString(),
   }
   const { error } = await supabase.from('scenario_plans').upsert(row)
