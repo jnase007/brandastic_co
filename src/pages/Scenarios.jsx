@@ -78,6 +78,7 @@ export default function Scenarios() {
   const { rows, overhead, ready, error } = useLaborRateRows()
   const retainers = useClientRetainers()
   const [raiseFrom, setRaiseFrom] = useState('2027-02')
+  const [raiseUntil, setRaiseUntil] = useState('')
   const [raises, setRaises] = useState({})
   const [extraClient, setExtraClient] = useState('')
   const [trendYear, setTrendYear] = useState('2,059,630.01')
@@ -94,6 +95,7 @@ export default function Scenarios() {
     loadScenario().then((loaded) => {
       if (cancel || !loaded) return
       if (loaded.raiseFrom) setRaiseFrom(loaded.raiseFrom)
+      if (loaded.raiseUntil != null) setRaiseUntil(loaded.raiseUntil)
       if (loaded.raises) setRaises(loaded.raises)
       if (loaded.extraClient != null) setExtraClient(loaded.extraClient)
       if (loaded.trendYear != null) setTrendYear(loaded.trendYear)
@@ -120,7 +122,7 @@ export default function Scenarios() {
     for (let i = 0; i < 12; i++) {
       const date = new Date(now.getFullYear(), now.getMonth() + i, 1)
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      const raised = hasRaises && Boolean(raiseFrom) && key >= raiseFrom
+      const raised = hasRaises && Boolean(raiseFrom) && key >= raiseFrom && (!raiseUntil || key <= raiseUntil)
       const staff = people.reduce((sum, row) => {
         const pct = raised && String(row.worker_type || '').toLowerCase() !== 'contractor' ? Number(raises[row.id || row.name] || 0) : 0
         return sum + trueMonthly(row, pct)
@@ -155,19 +157,29 @@ export default function Scenarios() {
     const after = months.find((row) => row.raised) || null
     const nowRow = months[0]
     return { months, peak, after, nowRow, hasRaises: months.some((row) => row.raised), trendMonth, other, retainerNow }
-  }, [people, overheadAmount, clients, clientEnds, clientPlans, futureClients, extraClient, trendYear, otherMonthly, raiseFrom, raises])
+  }, [people, overheadAmount, clients, clientEnds, clientPlans, futureClients, extraClient, trendYear, otherMonthly, raiseFrom, raiseUntil, raises])
 
   function setAllRaises(pct) {
     if (!pct) {
       setRaises({})
       return
     }
-    const next = {}
-    for (const row of people) {
-      if (String(row.worker_type || '').toLowerCase() !== 'contractor') next[row.id || row.name] = pct
+    const keys = people.filter((row) => String(row.worker_type || '').toLowerCase() !== 'contractor').map((row) => row.id || row.name)
+    const already = keys.length && keys.every((key) => Number(raises[key]) === pct)
+    if (already) {
+      setRaises({})
+      return
     }
+    const next = {}
+    for (const key of keys) next[key] = pct
     setRaises(next)
   }
+
+  const activeRaisePct = (() => {
+    const vals = Object.values(raises).map((value) => Number(value)).filter((value) => value > 0)
+    if (!vals.length) return 0
+    return vals.every((value) => value === vals[0]) ? vals[0] : null
+  })()
 
   if (!ready) {
     return <div className="p-8 text-sm text-slate-500">Loading people and clients…</div>
@@ -188,7 +200,7 @@ export default function Scenarios() {
               setSaveError('')
               setSaved('')
               try {
-                const result = await saveScenario({ raiseFrom, raises, extraClient, trendYear, otherMonthly, clientEnds, clientPlans, futureClients })
+                const result = await saveScenario({ raiseFrom, raiseUntil, raises, extraClient, trendYear, otherMonthly, clientEnds, clientPlans, futureClients })
                 if (result.error) setSaved('Saved on this browser. Run supabase/scenario-plans.sql to share it.')
                 else setSaved('Scenario saved.')
               } catch (err) {
@@ -317,17 +329,28 @@ export default function Scenarios() {
             Raises start
             <Input className="mt-1 h-10" type="month" value={raiseFrom} onChange={(event) => setRaiseFrom(event.target.value)} />
           </label>
-          <div className="flex gap-2">
-            {[0, 2, 3, 4].map((pct) => (
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Raises end (optional)
+            <Input className="mt-1 h-10" type="month" value={raiseUntil} onChange={(event) => setRaiseUntil(event.target.value)} />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {[2, 3, 4].map((pct) => (
               <button
                 key={pct}
                 type="button"
                 onClick={() => setAllRaises(pct)}
-                className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700"
+                className={cn('rounded-full px-3 py-1.5 text-sm font-semibold', activeRaisePct === pct ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-700')}
               >
-                {pct === 0 ? 'Clear' : `${pct}% all employees`}
+                {pct}% all employees
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => { setRaises({}); setRaiseUntil('') }}
+              className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700"
+            >
+              Remove raises
+            </button>
           </div>
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Company trend / year
@@ -385,7 +408,12 @@ export default function Scenarios() {
                     inputMode="decimal"
                     value={raises[key] ?? ''}
                     placeholder="0"
-                    onChange={(event) => setRaises((current) => ({ ...current, [key]: event.target.value }))}
+                    onChange={(event) => setRaises((current) => {
+                      const next = { ...current }
+                      if (!event.target.value) delete next[key]
+                      else next[key] = event.target.value
+                      return next
+                    })}
                   />
                 </label>
               )}
