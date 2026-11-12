@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Compass, ExternalLink, Target, TrendingUp } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
+import { Input } from '../components/ui/input'
+import { loadStrategyGoals, saveStrategyGoals, OWNERS } from '../lib/strategyGoals'
 
 const PILLARS = [
   {
@@ -26,6 +29,29 @@ const MOVES = [
 ]
 
 export default function Strategy() {
+  const [goals, setGoals] = useState(loadStrategyGoals)
+  const [editing, setEditing] = useState(false)
+
+  useEffect(() => {
+    saveStrategyGoals(goals)
+  }, [goals])
+
+  const updateGoal = (id, patch) => {
+    setGoals((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)))
+  }
+
+  const addGoal = () => {
+    setGoals((rows) => [
+      ...rows,
+      { id: `goal-${Date.now()}`, title: '', body: '', owner: 'Unassigned', href: '' },
+    ])
+    setEditing(true)
+  }
+
+  const removeGoal = (id) => {
+    setGoals((rows) => rows.filter((row) => row.id !== id))
+  }
+
   return (
     <div className="mx-auto max-w-4xl px-6 py-6">
       <PageHeader
@@ -113,6 +139,71 @@ export default function Strategy() {
             </li>
           ))}
         </ul>
+      </div>
+      <div className="mt-8 rounded-xl border bg-card p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Brandastic top goals 2027</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Pick an owner. Use Update to change the list.</p>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setEditing((value) => !value)} className="rounded-lg border px-3 py-1.5 text-sm font-medium">
+              {editing ? 'Done' : 'Update'}
+            </button>
+            <button type="button" onClick={addGoal} className="rounded-lg bg-brand-orange px-3 py-1.5 text-sm font-medium text-white">
+              Add goal
+            </button>
+          </div>
+        </div>
+        <ol className="mt-4 space-y-3">
+          {goals.map((goal, index) => (
+            <li key={goal.id} className="rounded-lg border bg-background p-4">
+              {editing ? (
+                <div className="space-y-2">
+                  <Input value={goal.title} onChange={(event) => updateGoal(goal.id, { title: event.target.value })} placeholder="Goal" />
+                  <textarea
+                    className="min-h-[80px] w-full rounded-md border px-3 py-2 text-sm"
+                    value={goal.body}
+                    onChange={(event) => updateGoal(goal.id, { body: event.target.value })}
+                    placeholder="What this means"
+                  />
+                  <Input value={goal.href || ''} onChange={(event) => updateGoal(goal.id, { href: event.target.value })} placeholder="Link (optional)" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="text-sm text-muted-foreground">Owner</label>
+                    <select
+                      className="h-10 rounded-md border px-2 text-sm"
+                      value={goal.owner || 'Unassigned'}
+                      onChange={(event) => updateGoal(goal.id, { owner: event.target.value })}
+                    >
+                      {OWNERS.map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={() => removeGoal(goal.id)} className="ml-auto text-sm text-red-600">Remove</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <p className="text-sm font-semibold">
+                      <span className="mr-2 text-brand-orange">{index + 1}.</span>
+                      {goal.title || 'Untitled'}
+                    </p>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                      {goal.owner || 'Unassigned'}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{goal.body}</p>
+                  {goal.href ? (
+                    <a href={goal.href} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-orange hover:underline">
+                      Open link <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  ) : null}
+                </>
+              )}
+            </li>
+          ))}
+        </ol>
       </div>
     </div>
   )
