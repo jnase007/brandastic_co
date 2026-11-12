@@ -43,6 +43,7 @@ import {
   GraduationCap,
   ClipboardList,
   Megaphone,
+  Heart,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { prefetchRoute } from '../lib/routePrefetch'
@@ -89,6 +90,7 @@ const simpleNavItems = [
   { path: '/mission', icon: Target, label: 'Mission', group: 'Company' },
   { path: '/strategy', icon: Compass, label: 'Strategy 2027', group: 'Company' },
   { path: '/ideal-target-client', icon: Crosshair, label: 'Target Client(s)', group: 'Company' },
+  { path: '/brand-care', icon: Heart, label: 'Brand Care', group: 'Company' },
   { path: '/announcements', icon: Megaphone, label: 'Announcements', group: 'Company' },
   { path: '/education/v1-overview', icon: GraduationCap, label: 'Masterclass', group: 'Education' },
   { path: '/education/agency-academy-course', icon: BookOpen, label: 'Courses', group: 'Education' },

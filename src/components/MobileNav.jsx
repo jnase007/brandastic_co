@@ -13,6 +13,7 @@ import {
   ClipboardList,
   Megaphone,
   GraduationCap,
+  Heart,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
@@ -87,6 +88,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         { path: '/mission', icon: Target, label: 'Mission' },
         { path: '/strategy', icon: Compass, label: 'Strategy 2027' },
         { path: '/ideal-target-client', icon: Crosshair, label: 'Target Client(s)' },
+        { path: '/brand-care', icon: Heart, label: 'Brand Care' },
         { path: '/announcements', icon: Megaphone, label: 'Announcements' },
         { path: '/education/v1-overview', icon: GraduationCap, label: 'Masterclass' },
         { path: '/education/agency-academy-course', icon: BookOpen, label: 'Courses' },

@@ -43,6 +43,7 @@ const FeatureList = lazy(() => import('./pages/FeatureList'))
 const Announcements = lazy(() => import('./pages/Announcements'))
 const Education = lazy(() => import('./pages/Education'))
 const OrgStructure = lazy(() => import('./pages/OrgStructure'))
+const BrandCare = lazy(() => import('./pages/BrandCare'))
 const Hosting = lazy(() => import('./pages/Hosting'))
 const Profitability = lazy(() => import('./pages/Profitability'))
 const ProfitabilityCosts = lazy(() => import('./pages/ProfitabilityCosts'))
@@ -1257,6 +1258,14 @@ function App() {
                 element={
                   <TeamRoute>
                     <OrgStructure />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/brand-care"
+                element={
+                  <TeamRoute>
+                    <BrandCare />
                   </TeamRoute>
                 }
               />
