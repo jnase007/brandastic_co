@@ -1389,6 +1389,19 @@
   align-items: end;
 }
 
+.an-holiday-fields.an-note-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.an-holiday-fields.an-note-fields label {
+  min-width: 0;
+}
+
+.an-holiday-fields.an-note-fields input {
+  width: 100%;
+}
+
 .an-holiday-fields label {
   display: grid;
   gap: 4px;

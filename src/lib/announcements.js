@@ -1,4 +1,4 @@
-const TYPE_ORDER = { birthday: 0, anniversary: 1, holiday: 2, outing: 3 }
+const TYPE_ORDER = { birthday: 0, anniversary: 1, holiday: 2, outing: 3, note: 4 }
 
 export function losAngelesToday(now = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
@@ -235,7 +235,56 @@ export function holidayPreview(holiday, today) {
   return chosen.endDate >= today ? `Next: ${label}` : `Past: ${label}`
 }
 
-export function buildAnnouncements(today, { people = [], holidays = [], outings = [] } = {}) {
+function datedNoteDetail(note) {
+  const range = note.endDate > note.startDate ? `${weekdayDate(note.startDate)}–${weekdayDate(note.endDate)}` : ''
+  const text = String(note.details || '').trim()
+  if (text && range) return `${text} ${range}`
+  return text || range
+}
+
+function noteRange(note) {
+  const title = String(note.title || '').trim()
+  const start = String(note.startDate || note.start_date || '').slice(0, 10)
+  if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(start)) return null
+  const endRaw = String(note.endDate || note.end_date || '').slice(0, 10)
+  const end = /^\d{4}-\d{2}-\d{2}$/.test(endRaw) && endRaw >= start ? endRaw : start
+  return {
+    id: note.id || '',
+    title,
+    details: String(note.details || '').trim(),
+    startDate: start,
+    endDate: end,
+  }
+}
+
+export function expandNotes(notes, fromDate, toDate) {
+  const ranges = []
+  for (const note of notes) {
+    const range = noteRange(note)
+    if (!range) continue
+    if (range.endDate < fromDate || range.startDate > toDate) continue
+    ranges.push(range)
+  }
+  return ranges.sort((a, b) => a.startDate.localeCompare(b.startDate) || a.title.localeCompare(b.title))
+}
+
+function datedNoteItem(note, today) {
+  return {
+    type: 'note',
+    id: note.id,
+    date: note.startDate < today ? today : note.startDate,
+    rangeStart: note.startDate,
+    rangeEnd: note.endDate,
+    title: note.title,
+    detail: datedNoteDetail(note),
+  }
+}
+
+export function noteCalendarItems(notes, today, throughDate) {
+  return expandNotes(notes, today, throughDate).map((note) => datedNoteItem(note, today))
+}
+
+export function buildAnnouncements(today, { people = [], holidays = [], outings = [], notes = [] } = {}) {
   const end = addDays(today, 30)
   const items = []
 
@@ -271,6 +320,25 @@ export function buildAnnouncements(today, { people = [], holidays = [], outings 
       title: holiday.name,
       detail: holidayDetail({ ...holiday, endDate: holiday.endDate === holiday.startDate ? '' : holiday.endDate }),
     })
+  }
+
+  for (const note of notes) {
+    const title = String(note.title || '').trim()
+    if (!title) continue
+    const start = String(note.startDate || note.start_date || '').slice(0, 10)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(start)) continue
+    items.push({
+      type: 'note',
+      id: note.id || '',
+      date: today,
+      undated: true,
+      title,
+      detail: String(note.details || '').trim(),
+    })
+  }
+
+  for (const note of expandNotes(notes, today, end)) {
+    items.push(datedNoteItem(note, today))
   }
 
   for (const outing of outings) {
@@ -316,7 +384,8 @@ export function weekGroups(today, items) {
     groups.set(monday, list)
   }
   for (const item of items) {
-    if (item.type === 'holiday') {
+    if (item.type === 'note' && item.undated) continue
+    if (item.type === 'holiday' || item.type === 'note') {
       const start = item.rangeStart || item.date
       const end = item.rangeEnd && item.rangeEnd >= start ? item.rangeEnd : start
       for (const monday of weeksInRange(start, end)) add(monday, item)
