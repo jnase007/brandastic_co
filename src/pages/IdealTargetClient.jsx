@@ -17,6 +17,8 @@ const MARKETS = [
   {
     rank: 'Primary',
     title: 'Schools',
+    tone: 'border-sky-200 bg-sky-50',
+    rankClass: 'text-sky-700',
     note: 'Enrollment-led K–12. Private and public charter.',
     cases: [
       { name: 'CalOPS', href: 'https://brandastic.com/portfolio/california-online-public-schools/' },
@@ -27,6 +29,8 @@ const MARKETS = [
   {
     rank: 'Secondary',
     title: 'Medical, Dental',
+    tone: 'border-emerald-200 bg-emerald-50',
+    rankClass: 'text-emerald-700',
     note: 'Practices and device brands that need patients and referrals.',
     cases: [
       { name: 'Salvin', href: 'https://brandastic.com/portfolio/salvin-dental/' },
@@ -37,6 +41,8 @@ const MARKETS = [
   {
     rank: 'Third',
     title: 'Health & Wellness',
+    tone: 'border-orange-200 bg-orange-50',
+    rankClass: 'text-orange-700',
     note: 'Fitness and wellness brands that need members in the door.',
     cases: [
       { name: 'Health Mate', href: 'https://brandastic.com/portfolio/health-mate/' },
@@ -55,8 +61,8 @@ export default function IdealTargetClient() {
       />
       <div className="mt-8 grid gap-4 md:grid-cols-3">
         {MARKETS.map((market) => (
-          <div key={market.title} className="rounded-2xl border bg-white p-6 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#1644ED]">{market.rank}</p>
+          <div key={market.title} className={`rounded-2xl border p-6 shadow-sm ${market.tone}`}>
+            <p className={`text-xs font-semibold uppercase tracking-wide ${market.rankClass}`}>{market.rank}</p>
             <h2 className="mt-1 text-2xl font-bold">{market.title}</h2>
             <p className="mt-2 text-sm text-muted-foreground">{market.note}</p>
             <ul className="mt-4 space-y-1.5">
