@@ -7,6 +7,25 @@ import { Input } from './ui/input'
 import { cn } from '../lib/utils'
 
 const WEEKS_PER_MONTH = 52 / 12
+const TAX = {
+  socialSecurity: 0.062,
+  medicare: 0.0145,
+  futa: 0.006,
+  caSui: 0.034,
+  caEtt: 0.001,
+}
+
+function federalRate() {
+  return TAX.socialSecurity + TAX.medicare + TAX.futa
+}
+
+function caRate() {
+  return TAX.caSui + TAX.caEtt
+}
+
+function employerTaxRate(useCa) {
+  return federalRate() + (useCa ? caRate() : 0)
+}
 
 function money(value) {
   if (value == null || Number.isNaN(value)) return '—'
@@ -82,6 +101,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
   const [typeFilter, setTypeFilter] = useState('all')
+  const [useCaRates, setUseCaRates] = useState(true)
 
   const costs = useMemo(() => {
     let employeeTotal = 0
@@ -90,15 +110,28 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
       if (row.workerType === 'contractor') contractorTotal += plannedMonthly(row)
       else employeeTotal += plannedMonthly(row)
     }
+    const taxPct = employerTaxRate(useCaRates)
+    const fica = employeeTotal * (TAX.socialSecurity + TAX.medicare + TAX.futa)
+    const caTax = useCaRates ? employeeTotal * caRate() : 0
+    const payrollTax = fica + caTax
+    const employeeTrue = employeeTotal + payrollTax
     const overheadAmount = Number(String(overheadDraft).replace(/[$,]/g, '')) || 0
+    const peopleWages = employeeTotal + contractorTotal
+    const peopleTrue = employeeTrue + contractorTotal
     return {
       employeeTotal,
+      employeeTrue,
       contractorTotal,
-      peopleTotal: employeeTotal + contractorTotal,
+      peopleWages,
+      peopleTotal: peopleTrue,
+      payrollTax,
+      fica,
+      caTax,
+      taxPct,
       overheadAmount,
-      companyTotal: employeeTotal + contractorTotal + overheadAmount,
+      companyTotal: peopleTrue + overheadAmount,
     }
-  }, [draft, overheadDraft])
+  }, [draft, overheadDraft, useCaRates])
 
   function addPerson() {
     setSaved(false)
@@ -193,7 +226,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
     <section className="space-y-6">
       <PageHeader
         title="People"
-        description="Monthly updates as you type weekly hours. Hourly × weekly × 52 / 12. Then Save people."
+        description="Employee true cost includes employer payroll tax. Contractors stay wages only. Then Save people."
         actions={alwaysOpen ? null : (
           <Button variant="outline" type="button" onClick={() => setOpen((value) => !value)}>
             {open ? 'Hide' : 'Edit'}
@@ -201,11 +234,26 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
         )}
       />
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">What you pay the team</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">True team cost</p>
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+            Use CA rates
+            <button
+              type="button"
+              role="switch"
+              aria-checked={useCaRates}
+              onClick={() => setUseCaRates((value) => !value)}
+              className={cn('relative h-6 w-11 rounded-full transition', useCaRates ? 'bg-emerald-500' : 'bg-slate-300')}
+            >
+              <span className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition', useCaRates ? 'left-5' : 'left-0.5')} />
+            </button>
+          </label>
+        </div>
         <div className="mt-3 grid gap-6 sm:grid-cols-2">
           <div>
             <p className="text-sm text-slate-500">Monthly</p>
             <p className="text-3xl font-semibold tabular-nums">{money(costs.peopleTotal)}</p>
+            <p className="mt-1 text-xs text-slate-500">Wages {money(costs.peopleWages)} + tax {money(costs.payrollTax)}</p>
           </div>
           <div>
             <p className="text-sm text-slate-500">Annual</p>
@@ -215,6 +263,21 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
         <p className="mt-3 text-sm text-slate-500">
           With overhead: {money(costs.companyTotal)} / mo · {money(costs.companyTotal * 12)} / yr
         </p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-semibold">FICA (Federal)</p>
+            <p className="mt-2 flex justify-between text-sm"><span className="text-slate-500">Social Security (6.2%)</span><span className="tabular-nums">{money(costs.employeeTotal * TAX.socialSecurity)}</span></p>
+            <p className="mt-1 flex justify-between text-sm"><span className="text-slate-500">Medicare (1.45%)</span><span className="tabular-nums">{money(costs.employeeTotal * TAX.medicare)}</span></p>
+            <p className="mt-1 flex justify-between text-sm"><span className="text-slate-500">FUTA (0.6%)</span><span className="tabular-nums">{money(costs.employeeTotal * TAX.futa)}</span></p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-semibold">California State</p>
+            <p className="mt-2 flex justify-between text-sm"><span className="text-slate-500">CA SUI (3.4%)</span><span className="tabular-nums">{money(useCaRates ? costs.employeeTotal * TAX.caSui : 0)}</span></p>
+            <p className="mt-1 flex justify-between text-sm"><span className="text-slate-500">CA ETT (0.1%)</span><span className="tabular-nums">{money(useCaRates ? costs.employeeTotal * TAX.caEtt : 0)}</span></p>
+            <p className="mt-2 flex justify-between border-t border-slate-200 pt-2 text-sm font-semibold"><span>State total</span><span className="tabular-nums">{money(costs.caTax)}</span></p>
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-slate-400">Employer tax on employees only. No wage-base cap in this estimate.</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <button
@@ -226,8 +289,9 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
           )}
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Employees</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums text-blue-950">{money(costs.employeeTotal)} / mo</p>
-          <p className="text-sm tabular-nums text-blue-700">{money(costs.employeeTotal * 12)} / yr</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums text-blue-950">{money(costs.employeeTrue)} / mo</p>
+          <p className="text-sm tabular-nums text-blue-700">{money(costs.employeeTrue * 12)} / yr true cost</p>
+          <p className="mt-1 text-xs text-blue-600">Wages {money(costs.employeeTotal)}</p>
         </button>
         <button
           type="button"
@@ -380,13 +444,16 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                     <div className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Monthly
                       <p className="mt-2 text-sm font-semibold tabular-nums text-slate-900">
-                        {money(plannedMonthly(row))}
+                        {money(row.workerType === 'contractor' ? plannedMonthly(row) : plannedMonthly(row) * (1 + employerTaxRate(useCaRates)))}
                       </p>
+                      {row.workerType === 'contractor' ? null : (
+                        <p className="text-xs text-slate-400">Wages {money(plannedMonthly(row))}</p>
+                      )}
                     </div>
                     <div className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Annual
                       <p className="mt-2 text-sm font-semibold tabular-nums text-slate-900">
-                        {money(plannedAnnual(row))}
+                        {money(row.workerType === 'contractor' ? plannedAnnual(row) : plannedAnnual(row) * (1 + employerTaxRate(useCaRates)))}
                       </p>
                     </div>
                     {editable ? (
