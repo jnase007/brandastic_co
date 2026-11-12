@@ -71,6 +71,7 @@ function payloadOf(state) {
     raises: state.raises,
     extraClient: state.extraClient,
     otherMonthly: state.otherMonthly,
+    offBooks: state.offBooks,
     clientEnds: state.clientEnds,
     clientPlans: state.clientPlans,
     futureClients: state.futureClients,
@@ -145,6 +146,7 @@ export default function Scenarios() {
   const [raises, setRaises] = useState({})
   const [extraClient, setExtraClient] = useState('')
   const [otherMonthly, setOtherMonthly] = useState('')
+  const [offBooks, setOffBooks] = useState('')
   const [clientEnds, setClientEnds] = useState({})
   const [clientPlans, setClientPlans] = useState({})
   const [futureClients, setFutureClients] = useState([])
@@ -166,6 +168,7 @@ export default function Scenarios() {
       if (loaded.raises) setRaises(loaded.raises)
       if (loaded.extraClient != null) setExtraClient(loaded.extraClient)
       if (loaded.otherMonthly != null) setOtherMonthly(loaded.otherMonthly)
+      if (loaded.offBooks != null) setOffBooks(loaded.offBooks)
       if (loaded.clientEnds) setClientEnds(loaded.clientEnds)
       if (loaded.clientPlans) setClientPlans(loaded.clientPlans)
       if (loaded.futureClients) setFutureClients(loaded.futureClients)
@@ -206,7 +209,8 @@ export default function Scenarios() {
       }, 0)
       const later = futureClients.reduce((sum, row) => sum + futureInMonth(row, key), 0)
       const revenue = retainersMo + later + extra + other
-      const cost = staff + overhead
+      const off = num(offBooks)
+      const cost = staff + overhead + off
       const profit = revenue - cost
       months.push({
         key,
@@ -227,7 +231,7 @@ export default function Scenarios() {
     const avgMargin = avgRevenue > 0 ? avgProfit / avgRevenue : null
     const minProfit = Math.min(...months.map((row) => row.profit))
     return { months, avgProfit, avgMargin, minProfit, other }
-  }, [people, clients, clientEnds, clientPlans, futureClients, extraClient, otherMonthly, raiseFrom, raiseUntil, raises])
+  }, [people, clients, clientEnds, clientPlans, futureClients, extraClient, otherMonthly, offBooks, raiseFrom, raiseUntil, raises])
 
   function applyLoaded(row) {
     const data = row.data || {}
@@ -239,6 +243,7 @@ export default function Scenarios() {
     setRaises(data.raises || {})
     setExtraClient(data.extraClient || '')
     if (data.otherMonthly != null) setOtherMonthly(data.otherMonthly)
+    if (data.offBooks != null) setOffBooks(data.offBooks)
     setClientEnds(data.clientEnds || {})
     setClientPlans(data.clientPlans || {})
     setFutureClients(data.futureClients || [])
@@ -267,7 +272,7 @@ export default function Scenarios() {
     return vals.every((value) => value === vals[0]) ? vals[0] : null
   })()
 
-  const state = { raiseFrom, raiseUntil, raises, extraClient, otherMonthly, clientEnds, clientPlans, futureClients, scenarioId, scenarioName }
+  const state = { raiseFrom, raiseUntil, raises, extraClient, otherMonthly, offBooks, clientEnds, clientPlans, futureClients, scenarioId, scenarioName }
 
   if (!ready) return <div className="p-8 text-sm text-slate-500">Loading…</div>
 
@@ -307,16 +312,20 @@ export default function Scenarios() {
       {saved ? <p className="mt-3 text-sm text-emerald-700">{saved}</p> : null}
 
       <div className="mt-6 rounded-2xl border-2 border-[#1644ED] bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[#1644ED]">Room to pay people</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-[#1644ED]">Left after in and out</p>
         <p className={cn('mt-2 text-5xl font-bold tabular-nums', projection.avgProfit < 0 ? 'text-red-600' : 'text-slate-900')}>
           {money(projection.avgProfit)}
           <span className="ml-2 text-2xl font-semibold text-slate-500">/ mo</span>
         </p>
         <p className="mt-3 text-2xl font-semibold tabular-nums">Net margin {pct(projection.avgMargin)}</p>
         <p className="mt-2 text-sm text-slate-600">
-          Books this year: {money(BOOKS.noiAvg)} / mo and {pct(BOOKS.noiAvg / BOOKS.incomeAvg)} on {money(BOOKS.incomeAvg)} in.
-          Tightest month in this plan: {money(projection.minProfit)}.
+          Books net this year is {money(BOOKS.noiAvg)} / mo ({pct(BOOKS.noiAvg / BOOKS.incomeAvg)}). That is not cash to spend.
         </p>
+        <label className="mt-4 block max-w-xs text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Extra out / mo (private)
+          <Input className="mt-1 h-10" value={offBooks} onChange={(event) => setOffBooks(event.target.value)} placeholder="Loans and other, not on the P&L" />
+        </label>
+        <p className="mt-2 text-xs text-slate-400">Only on this page. Subtracts from leftover. Team does not see this field anywhere else.</p>
       </div>
 
       <BreakEvenChart months={projection.months} />

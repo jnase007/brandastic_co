@@ -21,6 +21,7 @@ function snapshot(payload) {
     extraClient: payload.extraClient || '',
     trendYear: payload.trendYear || '',
     otherMonthly: payload.otherMonthly || '',
+    offBooks: payload.offBooks || '',
     clientEnds: payload.clientEnds || {},
     clientPlans: payload.clientPlans || {},
     futureClients: payload.futureClients || [],
