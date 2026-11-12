@@ -180,25 +180,32 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
           </Button>
         )}
       />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">What you pay the team</p>
+        <div className="mt-3 grid gap-6 sm:grid-cols-2">
+          <div>
+            <p className="text-sm text-slate-500">Monthly</p>
+            <p className="text-3xl font-semibold tabular-nums">{money(costs.peopleTotal)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-500">Annual</p>
+            <p className="text-3xl font-semibold tabular-nums">{money(costs.peopleTotal * 12)}</p>
+          </div>
+        </div>
+        <p className="mt-3 text-sm text-slate-500">
+          With overhead: {money(costs.companyTotal)} / mo · {money(costs.companyTotal * 12)} / yr
+        </p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Employees / month</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{money(costs.employeeTotal)}</p>
-          <p className="mt-1 text-xs text-slate-500">Hourly × weekly hours × 52 / 12</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Employees</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums">{money(costs.employeeTotal)} / mo</p>
+          <p className="text-sm tabular-nums text-slate-500">{money(costs.employeeTotal * 12)} / yr</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Contractors / month</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{money(costs.contractorTotal)}</p>
-          <p className="mt-1 text-xs text-slate-500">Hourly × weekly hours × 52 / 12</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Team labor / month</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{money(costs.peopleTotal)}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Team + overhead</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{money(costs.companyTotal)}</p>
-          <p className="mt-1 text-xs text-slate-500">Includes {money(costs.overheadAmount)} overhead</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Contractors</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums">{money(costs.contractorTotal)} / mo</p>
+          <p className="text-sm tabular-nums text-slate-500">{money(costs.contractorTotal * 12)} / yr</p>
         </div>
       </div>
 
