@@ -141,6 +141,7 @@ export default function Announcements() {
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState('calendar')
   const [selectedDay, setSelectedDay] = useState(today)
+  const [hoveredDay, setHoveredDay] = useState(null)
   const [noteRows, setNoteRows] = useState([])
   const [notesMissing, setNotesMissing] = useState(false)
   const [noteError, setNoteError] = useState('')
@@ -402,7 +403,7 @@ export default function Announcements() {
                         <div className="mt-2 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-[#8b98a5]">
                           {WEEKDAYS.map((day) => <span key={day}>{day}</span>)}
                         </div>
-                        <div className="mt-1 grid grid-cols-7 gap-1">
+                        <div className="mt-1 grid grid-cols-7 gap-1" onMouseLeave={() => setHoveredDay(null)}>
                           {monthCells(month).map((day, index) => {
                             const dayItems = day ? byDay.get(day) || [] : []
                             const inWindow = day && day >= today && day <= windowEnd
@@ -414,13 +415,28 @@ export default function Announcements() {
                                 key={`${month}-${index}`}
                                 type="button"
                                 disabled={!open}
+                                onMouseEnter={() => {
+                                  if (day && open) {
+                                    setSelectedDay(day)
+                                    setHoveredDay(day)
+                                  }
+                                }}
                                 onClick={() => day && setSelectedDay(day)}
-                                className={`min-h-12 rounded-xl px-1 py-1 text-left text-xs ${selected ? 'bg-[#e8eeff] ring-1 ring-[#1644ED]' : ''} ${open ? '' : 'opacity-40'}`}
+                                className={`relative min-h-12 rounded-xl px-1 py-1 text-left text-xs ${selected ? 'bg-[#e8eeff] ring-1 ring-[#1644ED]' : ''} ${open ? '' : 'opacity-40'}`}
                               >
                                 <span className="font-semibold">{day ? Number(day.slice(8)) : ''}</span>
                                 <span className="mt-1 flex flex-wrap gap-1">
                                   {dayItems.map((item) => <span key={`${item.type}-${item.id || item.title}-${item.rangeStart || item.date}`} className={`h-1.5 w-1.5 rounded-full ${TYPES[item.type].dot}`} />)}
                                 </span>
+                                {hoveredDay === day && dayItems.length ? (
+                                  <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 w-44 -translate-x-1/2 rounded-xl bg-white px-2 py-1.5 text-left text-[11px] font-medium text-[#1b2838] shadow-lg ring-1 ring-black/10">
+                                    {dayItems.map((item) => (
+                                      <span key={`${item.type}-${item.id || item.title}-${item.rangeStart || item.date}`} className="block leading-snug">
+                                        {isCelebration(item) ? shownTitle(item) : `${TYPES[item.type].label}: ${shownTitle(item)}`}
+                                      </span>
+                                    ))}
+                                  </span>
+                                ) : null}
                               </button>
                             )
                           })}
