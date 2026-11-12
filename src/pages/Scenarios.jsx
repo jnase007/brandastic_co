@@ -36,7 +36,7 @@ export default function Scenarios() {
 
   const people = rows || []
   const clients = retainers.rows || []
-  const overheadAmount = Number(overhead) || 0
+  const overheadAmount = overhead == null || overhead === '' ? 40000 : Number(overhead) || 0
 
   const projection = useMemo(() => {
     const extra = Number(String(extraClient).replace(/[$,]/g, '')) || 0
@@ -107,6 +107,7 @@ export default function Scenarios() {
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Cost now</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">{money(projection.nowRow.cost)}</p>
+          <p className="text-xs text-slate-500">Includes {money(overheadAmount)} overhead</p>
         </div>
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">After planned raises</p>
