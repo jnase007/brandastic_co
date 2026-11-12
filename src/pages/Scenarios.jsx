@@ -16,6 +16,7 @@ function money(value) {
 
 function wages(row) {
   const hourly = Number(row.hourly) || 0
+  if (String(row.worker_type || '').toLowerCase() !== 'contractor') return hourly * 160
   const weekly = Number(row.weekly_capacity) > 0 ? Number(row.weekly_capacity) : 40
   return hourly * weekly * WEEKS
 }
@@ -35,7 +36,7 @@ export default function Scenarios() {
   const [clientEnds, setClientEnds] = useState({})
 
   const people = rows || []
-  const clients = retainers.rows || []
+  const clients = (retainers.rows || []).filter((row) => !row.internal)
   const overheadAmount = overhead == null || overhead === '' ? 40000 : Number(overhead) || 0
 
   const projection = useMemo(() => {

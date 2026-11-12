@@ -90,8 +90,9 @@ export async function fetchClientRetainers() {
 
 export async function saveClientRetainers(rows) {
   for (const row of rows) {
-    const monthly = Number(row.monthly) || 0
     const name = String(row.name || '').trim()
+    if (isInternalClient({ name })) continue
+    const monthly = Number(row.monthly) || 0
     const hours = monthly / RATE
     if (!row.id || String(row.id).startsWith('local-')) {
       const { error } = await supabase.from('clients').insert({ name, monthly_hours: hours, is_active: true, client_status: 'active' })

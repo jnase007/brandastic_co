@@ -38,8 +38,10 @@ function hourlyNumber(row) {
 
 function plannedMonthly(row) {
   const hourly = hourlyNumber(row)
+  if (!(hourly > 0)) return 0
+  if (row.workerType === 'employee') return hourly * 160
   const weekly = Number(row.weeklyCapacity) || 0
-  if (!(hourly > 0) || !(weekly > 0)) return 0
+  if (!(weekly > 0)) return 0
   return hourly * weekly * WEEKS_PER_MONTH
 }
 
