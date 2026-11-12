@@ -21,6 +21,7 @@ import { fetchProfitability } from '../lib/profitabilityCache'
 import { fetchHosting } from '../lib/hosting'
 import AnimatedCounter from '../components/AnimatedCounter'
 import { AreaChart } from '../components/Charts'
+import PageHeader from '../components/PageHeader'
 
 // Animation variants
 const containerVariants = {
@@ -253,33 +254,22 @@ export default function Mission() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0a1628]">
-      {/* Header */}
-      <div className="border-b border-slate-200 dark:border-white/10 bg-white/80 dark:bg-[#0d1d35]/50 backdrop-blur-xl sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold flex items-center gap-3 text-slate-900">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-orange to-brand-coral flex items-center justify-center">
-                <Target className="h-5 w-5 text-white" />
-              </div>
-              Mission & Vision
-            </h1>
-            <p className="text-slate-500 dark:text-white/50 text-sm mt-1">Our company vision and one-page strategic plan</p>
-          </div>
-          {profile?.role === 'admin' && (
-            <Button 
-              onClick={() => openEdit('main', mission)}
-              className="bg-brand-orange hover:bg-brand-coral text-white"
-            >
+    <div className="min-h-screen bg-slate-50">
+      <div className="max-w-7xl mx-auto px-6 pt-5">
+        <PageHeader
+          title="Mission"
+          description="Company vision and one-page plan."
+          actions={profile?.role === 'admin' ? (
+            <Button onClick={() => openEdit('main', mission)} variant="outline" size="sm">
               <Edit2 className="h-4 w-4 mr-2" />
               Edit
             </Button>
-          )}
-        </div>
+          ) : null}
+        />
       </div>
 
       <motion.div 
-        className="max-w-7xl mx-auto px-6 py-5 space-y-4"
+        className="max-w-7xl mx-auto px-6 pb-5 space-y-4"
         variants={containerVariants}
         initial="hidden"
         animate="visible"

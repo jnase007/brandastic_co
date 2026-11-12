@@ -7,6 +7,7 @@ import {
   sectionId,
 } from '../lib/featureList'
 import { useFeatureListNav } from '../lib/featureListNav'
+import PageHeader from '../components/PageHeader'
 
 const DIFFICULTY_STYLE = {
   Easy: 'bg-[#e8eeff] text-[#1644ED]',
@@ -179,25 +180,17 @@ export default function FeatureList() {
   return (
     <div ref={pageRef} className="min-h-screen bg-[#f4f7fa] px-4 py-6 text-[#15202b] sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
-        <section className="grid overflow-hidden rounded-3xl bg-[#10141c] text-white shadow-sm lg:grid-cols-2">
-          <div className="p-8 sm:p-12">
-            <p className="text-xs font-semibold tracking-[0.2em] text-[#8eb4ff]">BRANDASTIC · FEATURE LIST</p>
-            <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">What brandastic.co should do</h1>
-            <p className="mt-4 max-w-md text-lg leading-relaxed text-white/75">
-              Sorted by what to work on next
-            </p>
-            <p className="mt-10 text-sm font-semibold tracking-[0.22em]">BRANDASTIC</p>
-            <p className="mt-2 text-sm text-white/60">One list. <span className="text-[#8eb4ff]">One product.</span></p>
-          </div>
-          <div className="flex flex-col justify-center gap-3 bg-[#182033] p-8 sm:p-12">
-            <Stat value={status === 'ready' ? String(features.length) : '—'} label="Features on the list" />
-            <Stat value={status === 'ready' ? String(quickWins) : '—'} label="Quick wins" />
-            <Stat
-              value={status === 'ready' ? `${counts.easy} · ${counts.medium} · ${counts.hard}` : '—'}
-              label="Easy · Medium · Hard"
-            />
-          </div>
-        </section>
+        <PageHeader
+          title="Feature List"
+          description="What brandastic.co should do next."
+          actions={
+            status === 'ready' ? (
+              <p className="text-sm text-slate-500">
+                {features.length} features · {quickWins} quick wins · {counts.easy}/{counts.medium}/{counts.hard} easy/med/hard
+              </p>
+            ) : null
+          }
+        />
 
         {status === 'ready' ? (
           <p className="mt-6 text-sm text-[#5c6b7a]">{featureCountLabel(features.length, completedCount)}</p>
@@ -423,15 +416,6 @@ function FilterChip({ label, count, active, onClick }) {
     >
       {label} <span className={active ? 'text-white/70' : 'text-[#8b98a5]'}>{count}</span>
     </button>
-  )
-}
-
-function Stat({ value, label }) {
-  return (
-    <div className="rounded-2xl bg-white/10 px-5 py-4 ring-1 ring-white/10">
-      <p className="text-3xl font-semibold tracking-tight">{value}</p>
-      <p className="mt-1 text-sm text-white/60">{label}</p>
-    </div>
   )
 }
 

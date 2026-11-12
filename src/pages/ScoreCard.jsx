@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { cn } from '../lib/utils'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
+import PageHeader from '../components/PageHeader'
 
 const SHEET = 'https://docs.google.com/spreadsheets/d/1h-O3MynKwL9MhxO2Ytly5gtHd_udyqNJ6n4_OfXLCgY'
 
@@ -131,9 +132,8 @@ function FinancialsLive() {
 export default function ScoreCard() {
   return (
     <div className="min-h-screen">
-      <div className="px-4 pt-4">
-        <h1 className="text-xl font-bold">Score Card</h1>
-        <p className="text-sm text-muted-foreground">Contacts. Pipeline and Financials are in the left nav.</p>
+      <div className="px-4 pt-5">
+        <PageHeader title="Score Card" description="Contacts. Pipeline and Financials are in the left nav." />
       </div>
       <Leads embedded />
     </div>

@@ -17,6 +17,7 @@ import {
 import { deleteAnnouncementNote, fetchAnnouncementNotes, missingNotesTable, saveAnnouncementNote } from '../lib/announcementNotes'
 import { fetchCompanyHolidays, holidayRuleFromRow } from '../lib/companyHolidays'
 import { fetchAnnouncementPeople } from '../lib/laborRates'
+import PageHeader from '../components/PageHeader'
 import '../profitability.css'
 
 const TYPES = {
@@ -306,13 +307,7 @@ export default function Announcements() {
   return (
     <div className="min-h-screen bg-[#f4f7fa] px-4 py-6 text-[#15202b] sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
-        <section className="overflow-hidden rounded-3xl bg-[#10141c] text-white shadow-sm">
-          <div className="p-8 sm:p-12">
-            <p className="text-xs font-semibold tracking-[0.2em] text-[#8eb4ff]">BRANDASTIC · TEAM</p>
-            <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">Company Announcements</h1>
-            <p className="mt-4 max-w-md text-lg leading-relaxed text-white/75">What to share with the team this week.</p>
-          </div>
-        </section>
+        <PageHeader title="Announcements" description="What to share with the team this week." />
 
         {loading ? <p className="mt-8 text-sm text-[#5c6b7a]">Loading announcements…</p> : null}
         {peopleError ? <p className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">{peopleError}</p> : null}

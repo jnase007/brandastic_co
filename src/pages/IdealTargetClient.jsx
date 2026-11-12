@@ -1,3 +1,5 @@
+import PageHeader from '../components/PageHeader'
+
 const DAILY = [
   'Family sign-ups that depend on search',
   'Ad spend that doesn’t turn into applications',
@@ -13,12 +15,11 @@ const TITLES = [
 
 export default function IdealTargetClient() {
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
-      <p className="text-xs font-semibold tracking-[0.2em] text-[#8eb4ff]">BRANDASTIC · ICP</p>
-      <h1 className="mt-2 text-3xl font-bold">Ideal Target Client</h1>
-      <p className="mt-3 max-w-2xl text-muted-foreground">
-        Enrollment directors (and the directors around them) at private and public charter K–12 schools. Not district public schools. Not higher ed as the core bet.
-      </p>
+    <div className="mx-auto max-w-5xl px-6 py-6">
+      <PageHeader
+        title="Ideal Target Client"
+        description="Enrollment directors (and the directors around them) at private and public charter K–12 schools. Not district public schools. Not higher ed as the core bet."
+      />
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="rounded-2xl border bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">

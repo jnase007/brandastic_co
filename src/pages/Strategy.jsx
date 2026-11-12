@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Compass, ExternalLink, Target, TrendingUp } from 'lucide-react'
+import PageHeader from '../components/PageHeader'
 
 const PILLARS = [
   {
@@ -26,22 +27,21 @@ const MOVES = [
 
 export default function Strategy() {
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10">
-      <p className="text-xs font-semibold tracking-[0.2em] text-[#8eb4ff]">BRANDASTIC · STRATEGY</p>
-      <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-3xl font-bold">Strategy</h1>
-        <a
-          href="https://www.canva.com/design/DAHZ5LVC-QE/xPHtKLBkD24OUfGIlI_3UA/edit"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-orange hover:underline"
-        >
-          Strategy deck <ExternalLink className="h-3.5 w-3.5" />
-        </a>
-      </div>
-      <p className="mt-3 text-lg text-muted-foreground">
-        Rally cry: <span className="font-semibold text-foreground">Focused. Growth.</span> · 2027
-      </p>
+    <div className="mx-auto max-w-4xl px-6 py-6">
+      <PageHeader
+        title="Strategy"
+        description="Rally cry: Focused. Growth. · 2027"
+        actions={
+          <a
+            href="https://www.canva.com/design/DAHZ5LVC-QE/xPHtKLBkD24OUfGIlI_3UA/edit"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-orange hover:underline"
+          >
+            Strategy deck <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        }
+      />
       <p className="mt-3 max-w-2xl text-muted-foreground">
         Built around education clients. Overall we want to be at <span className="font-semibold text-foreground">$3.5 million by 2030</span>.
       </p>

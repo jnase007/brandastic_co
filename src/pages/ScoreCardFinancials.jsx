@@ -6,6 +6,7 @@ import { cn } from '../lib/utils'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 import { useToast } from '../hooks/useToast'
+import PageHeader from '../components/PageHeader'
 
 const SPEND_KEY = 'scorecard_monthly_spend_v1'
 const SHEET = 'https://docs.google.com/spreadsheets/d/1h-O3MynKwL9MhxO2Ytly5gtHd_udyqNJ6n4_OfXLCgY'
@@ -325,14 +326,10 @@ export default function ScoreCardFinancials() {
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold tracking-[0.2em] text-[#8eb4ff]">SCORE CARD</p>
-          <h1 className="text-2xl font-bold">Channel spend</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Marketing spend by channel by month. Not company financials. Closed deals use the lead date on Score Card. Pick a month or All.
-          </p>
-        </div>
+      <PageHeader
+        title="Score Card · Financials"
+        description="Marketing spend by channel by month. Not company financials. Closed deals use the lead date on Score Card."
+        actions={
         <div className="flex items-center gap-2">
           <select
             className="h-9 rounded-lg border bg-white px-3 text-sm"
@@ -349,7 +346,8 @@ export default function ScoreCardFinancials() {
             Old sheet <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>
-      </div>
+        }
+      />
 
       <h2 className="mb-2 text-lg font-semibold">Spend input — cost to run the channel</h2>
       <div className="mb-8 overflow-auto rounded-xl border bg-white shadow-sm">
