@@ -269,7 +269,7 @@ export default function Scenarios() {
       if (loaded.hireFrom != null) setHireFrom(loaded.hireFrom)
       if (loaded.otherMonthly != null) setOtherMonthly(loaded.otherMonthly)
       if (loaded.offBooks != null) setOffBooks(loaded.offBooks)
-      if (loaded.overhead != null) setOverhead(loaded.overhead)
+      if (loaded.overhead != null) setOverhead(withCommas(loaded.overhead))
       if (loaded.clientEnds) setClientEnds(loaded.clientEnds)
       if (loaded.clientPlans) setClientPlans(loaded.clientPlans)
       if (loaded.futureClients) setFutureClients(loaded.futureClients)
@@ -351,7 +351,7 @@ export default function Scenarios() {
     setHireFrom(data.hireFrom || '2027-01')
     if (data.otherMonthly != null) setOtherMonthly(data.otherMonthly)
     if (data.offBooks != null) setOffBooks(data.offBooks)
-    if (data.overhead != null) setOverhead(data.overhead)
+    if (data.overhead != null) setOverhead(withCommas(data.overhead))
     setClientEnds(data.clientEnds || {})
     setClientPlans(data.clientPlans || {})
     setFutureClients(data.futureClients || [])
@@ -371,11 +371,11 @@ export default function Scenarios() {
     }
     setClientPlans(plans)
     setClientEnds(ends)
-    setHireAmount('4200')
+    setHireAmount('4,200')
     setHireFrom('2027-01')
     setRaiseFrom('2027-02')
     setRaiseUntil('')
-    setOverhead('40000')
+    setOverhead('40,000')
     const next = {}
     for (const row of people) {
       if (String(row.worker_type || '').toLowerCase() !== 'contractor') next[row.id || row.name] = 4
@@ -459,11 +459,11 @@ export default function Scenarios() {
         <div className="mt-4 flex flex-wrap gap-4">
         <label className="block max-w-sm text-sm font-semibold text-slate-700">
           Overhead / mo
-          <Input className="mt-1 h-12 text-lg tabular-nums" value={overhead} onChange={(event) => setOverhead(withCommas(event.target.value))} placeholder="40000" />
+          <Input className="mt-1 h-12 text-lg tabular-nums" value={withCommas(overhead)} onChange={(event) => setOverhead(withCommas(event.target.value))} placeholder="40,000" />
         </label>
         <label className="block max-w-sm text-sm font-semibold text-slate-700">
           SBA loan / mo
-          <Input className="mt-1 h-12 text-lg tabular-nums" value={offBooks} onChange={(event) => setOffBooks(withCommas(event.target.value))} placeholder="20000" />
+          <Input className="mt-1 h-12 text-lg tabular-nums" value={withCommas(offBooks)} onChange={(event) => setOffBooks(withCommas(event.target.value))} placeholder="20,000" />
         </label>
         </div>
         <p className="mt-2 text-sm text-slate-500">Overhead and the SBA loan both come out. They lower what’s left.</p>
