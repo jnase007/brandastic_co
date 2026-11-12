@@ -173,7 +173,7 @@ export default function Scenarios() {
   const [hireAmount, setHireAmount] = useState('')
   const [hireFrom, setHireFrom] = useState('2027-01')
   const [otherMonthly, setOtherMonthly] = useState('')
-  const [offBooks, setOffBooks] = useState('')
+  const [offBooks, setOffBooks] = useState('20000')
   const [overhead, setOverhead] = useState('40000')
   const [clientEnds, setClientEnds] = useState({})
   const [clientPlans, setClientPlans] = useState({})
@@ -230,7 +230,9 @@ export default function Scenarios() {
       }, 0)
       const hire = (!hireFrom || key >= hireFrom) ? num(hireAmount) : 0
       const raisePctOn = raised ? Number(Object.values(raises).find((v) => Number(v) > 0) || 0) : 0
-      const staff = BOOKS.cogsAvg + Math.max(0, peopleRaised - peopleNow) + hire * (1 + raisePctOn / 100)
+      const raiseExtra = Math.max(0, peopleRaised - peopleNow)
+      const hireCost = hire * (1 + raisePctOn / 100)
+      const staff = BOOKS.cogsAvg + raiseExtra + hireCost
       const opex = num(overhead) || 40000
       const retainersMo = clients.reduce((sum, client) => {
         const plan = {
@@ -242,9 +244,9 @@ export default function Scenarios() {
       }, 0)
       const later = futureClients.reduce((sum, row) => sum + futureInMonth(row, key), 0)
       const revenue = retainersMo + later + extra + other
-      const off = num(offBooks)
-      const cost = staff + opex + off
-      const profit = revenue - cost
+      const sba = num(offBooks)
+      const profit = BOOKS.noiAvg + (revenue - BOOKS.incomeAvg) - raiseExtra - hireCost - (opex - 40000) - sba
+      const cost = revenue - profit
       months.push({
         key,
         label: date.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
@@ -382,7 +384,7 @@ export default function Scenarios() {
         </p>
         <p className="mt-3 text-2xl font-semibold tabular-nums">That is {pct(projection.avgMargin)} of money in</p>
         <p className="mt-2 text-sm text-slate-600">
-          Money in minus team minus overhead minus SBA loan. Overhead and the loan both reduce what’s left.
+          This year left about $20,500 a month on the P&L. SBA loan starts at $20,000. That puts you at about zero — not $50,000.
         </p>
         <div className="mt-4 flex flex-wrap gap-4">
         <label className="block max-w-sm text-sm font-semibold text-slate-700">
