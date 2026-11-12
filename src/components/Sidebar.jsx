@@ -86,14 +86,14 @@ const simpleNavItems = [
   { path: '/profitability/websites', icon: Globe, label: 'Websites' },
   { path: '/hosting', icon: Server, label: 'Hosting' },
   { path: '/announcements', icon: Megaphone, label: 'Announcements' },
-  { path: '/people', icon: Users, label: 'People' },
-  { path: '/scenarios', icon: BarChart3, label: 'Scenarios' },
-  { path: '/new_admin', icon: Shield, label: 'Admin' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
   { path: '/working', icon: CheckCircle, label: 'Working/Not' },
   { path: '/mission', icon: Target, label: 'Mission' },
   { path: '/strategy', icon: Compass, label: 'Strategy' },
   { path: '/ideal-target-client', icon: Crosshair, label: 'Ideal Target Client' },
+  { path: '/new_admin', icon: Shield, label: 'Admin' },
+  { path: '/people', icon: Users, label: 'People' },
+  { path: '/scenarios', icon: BarChart3, label: 'Scenarios' },
 ]
 
 const adminNavItems = [
