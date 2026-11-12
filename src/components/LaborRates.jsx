@@ -100,6 +100,25 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
     }
   }, [draft, overheadDraft])
 
+  function addPerson() {
+    setSaved(false)
+    const workerType = typeFilter === 'contractor' ? 'contractor' : 'employee'
+    setTypeFilter('all')
+    setDraft((current) => [
+      ...current,
+      {
+        clientKey: `new-${Date.now()}`,
+        name: '',
+        hourly: '',
+        workerType,
+        weeklyCapacity: '40',
+        birthday: '',
+        startDate: '',
+        showOnAnnouncements: true,
+      },
+    ])
+  }
+
   function update(index, field, value) {
     setSaved(false)
     setDraft((current) => current.map((row, rowIndex) => (
@@ -252,7 +271,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
               <div>
                 <h2 className="text-base font-semibold">People</h2>
@@ -286,16 +305,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                 ))}
               </div>
               {editable ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={saving}
-                  onClick={() => {
-                    setSaved(false)
-                    setDraft((current) => [...current, { name: '', hourly: '', workerType: 'employee', weeklyCapacity: '40', birthday: '', startDate: '', showOnAnnouncements: true }])
-                  }}
-                >
+                <Button type="button" variant="outline" size="sm" disabled={saving} onClick={addPerson}>
                   <Plus className="mr-1 h-4 w-4" />
                   Add person
                 </Button>
@@ -307,7 +317,7 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
                 const contractor = row.workerType === 'contractor'
                 return (
                 <div
-                  key={row.id || `new-${index}`}
+                  key={row.id || row.clientKey || `new-${index}`}
                   className={cn(
                     'space-y-3 border-t px-5 py-4',
                     contractor ? 'border-l-4 border-l-amber-400 bg-amber-50/40' : 'border-l-4 border-l-blue-400 bg-blue-50/30'
@@ -437,6 +447,10 @@ export default function LaborRates({ rows, fallback, overhead, fallbackOverhead,
 
           {editable ? (
             <div className="flex flex-wrap items-center gap-3">
+              <Button type="button" variant="outline" disabled={saving} onClick={addPerson}>
+                <Plus className="mr-1 h-4 w-4" />
+                Add person
+              </Button>
               <Button
                 type="button"
                 className="bg-[#FF6B00] text-white hover:bg-[#e05f00]"
