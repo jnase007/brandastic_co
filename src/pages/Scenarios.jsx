@@ -72,6 +72,8 @@ function payloadOf(state) {
     extraClient: state.extraClient,
     hireAmount: state.hireAmount,
     hireFrom: state.hireFrom,
+    hireAmount: state.hireAmount,
+    hireFrom: state.hireFrom,
     otherMonthly: state.otherMonthly,
     offBooks: state.offBooks,
     overhead: state.overhead,
@@ -168,6 +170,8 @@ export default function Scenarios() {
   const [raiseUntil, setRaiseUntil] = useState('')
   const [raises, setRaises] = useState({})
   const [extraClient, setExtraClient] = useState('')
+  const [hireAmount, setHireAmount] = useState('')
+  const [hireFrom, setHireFrom] = useState('2027-01')
   const [otherMonthly, setOtherMonthly] = useState('')
   const [offBooks, setOffBooks] = useState('')
   const [overhead, setOverhead] = useState('40000')
@@ -191,6 +195,8 @@ export default function Scenarios() {
       if (loaded.raiseUntil != null) setRaiseUntil(loaded.raiseUntil)
       if (loaded.raises) setRaises(loaded.raises)
       if (loaded.extraClient != null) setExtraClient(loaded.extraClient)
+      if (loaded.hireAmount != null) setHireAmount(loaded.hireAmount)
+      if (loaded.hireFrom != null) setHireFrom(loaded.hireFrom)
       if (loaded.otherMonthly != null) setOtherMonthly(loaded.otherMonthly)
       if (loaded.offBooks != null) setOffBooks(loaded.offBooks)
       if (loaded.overhead != null) setOverhead(loaded.overhead)
@@ -222,7 +228,9 @@ export default function Scenarios() {
         const raisePct = raised && String(row.worker_type || '').toLowerCase() !== 'contractor' ? Number(raises[row.id || row.name] || 0) : 0
         return sum + trueMonthly(row, raisePct)
       }, 0)
-      const staff = BOOKS.cogsAvg + Math.max(0, peopleRaised - peopleNow)
+      const hire = (!hireFrom || key >= hireFrom) ? num(hireAmount) : 0
+      const raisePctOn = raised ? Number(Object.values(raises).find((v) => Number(v) > 0) || 0) : 0
+      const staff = BOOKS.cogsAvg + Math.max(0, peopleRaised - peopleNow) + hire * (1 + raisePctOn / 100)
       const opex = num(overhead) || 40000
       const retainersMo = clients.reduce((sum, client) => {
         const plan = {
@@ -256,7 +264,7 @@ export default function Scenarios() {
     const avgMargin = avgRevenue > 0 ? avgProfit / avgRevenue : null
     const minProfit = Math.min(...months.map((row) => row.profit))
     return { months, avgProfit, avgMargin, minProfit, other }
-  }, [people, clients, clientEnds, clientPlans, futureClients, extraClient, otherMonthly, offBooks, overhead, raiseFrom, raiseUntil, raises])
+  }, [people, clients, clientEnds, clientPlans, futureClients, extraClient, hireAmount, hireFrom, otherMonthly, offBooks, overhead, raiseFrom, raiseUntil, raises])
 
   function applyLoaded(row) {
     const data = row.data || {}
@@ -267,6 +275,8 @@ export default function Scenarios() {
     setRaiseUntil(data.raiseUntil || '')
     setRaises(data.raises || {})
     setExtraClient(data.extraClient || '')
+    setHireAmount(data.hireAmount || '')
+    setHireFrom(data.hireFrom || '2027-01')
     if (data.otherMonthly != null) setOtherMonthly(data.otherMonthly)
     if (data.offBooks != null) setOffBooks(data.offBooks)
     if (data.overhead != null) setOverhead(data.overhead)
@@ -274,6 +284,33 @@ export default function Scenarios() {
     setClientPlans(data.clientPlans || {})
     setFutureClients(data.futureClients || [])
     setSaved(`Opened “${row.name}”.`)
+  }
+
+  function loadThisPlan() {
+    const drop = ['jb white', 'white dds', 'crummack', 'criummack', 'paragon']
+    const plans = { ...clientPlans }
+    const ends = { ...clientEnds }
+    for (const client of clients) {
+      const name = String(client.name || '').toLowerCase()
+      if (drop.some((bit) => name.includes(bit))) {
+        plans[client.id] = { ...plans[client.id], end: '2026-11' }
+        ends[client.id] = '2026-11'
+      }
+    }
+    setClientPlans(plans)
+    setClientEnds(ends)
+    setHireAmount('4200')
+    setHireFrom('2027-01')
+    setRaiseFrom('2027-02')
+    setRaiseUntil('')
+    setOverhead('40000')
+    const next = {}
+    for (const row of people) {
+      if (String(row.worker_type || '').toLowerCase() !== 'contractor') next[row.id || row.name] = 4
+    }
+    setRaises(next)
+    setScenarioName('3 leave Dec, hire Jan, 4% Feb')
+    setSaved('This plan is on the chart. Type the SBA loan if you want that out too.')
   }
 
   function setAllRaises(pctValue) {
@@ -298,7 +335,7 @@ export default function Scenarios() {
     return vals.every((value) => value === vals[0]) ? vals[0] : null
   })()
 
-  const state = { raiseFrom, raiseUntil, raises, extraClient, otherMonthly, offBooks, overhead, clientEnds, clientPlans, futureClients, scenarioId, scenarioName }
+  const state = { raiseFrom, raiseUntil, raises, extraClient, hireAmount, hireFrom, otherMonthly, offBooks, overhead, clientEnds, clientPlans, futureClients, scenarioId, scenarioName }
 
   if (!ready) return <div className="p-8 text-sm text-slate-500">Loading…</div>
 
@@ -364,6 +401,7 @@ export default function Scenarios() {
 
       <div className="mt-6 rounded-2xl border bg-white p-5 shadow-sm">
         <p className="text-sm font-semibold">Plans</p>
+        <Button type="button" className="mt-3 bg-[#1644ED] text-white hover:bg-[#1236c4]" onClick={loadThisPlan}>Load this plan: 3 leave Dec, hire Jan, 4% Feb</Button>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <Input className="h-10 w-56" value={scenarioName} onChange={(event) => setScenarioName(event.target.value)} placeholder="Name" />
           <Button
@@ -448,10 +486,16 @@ export default function Scenarios() {
           Other projects / mo
           <Input className="mt-1 h-10" value={otherMonthly} placeholder={String(Math.round(BOOKS.otherAvg))} onChange={(event) => setOtherMonthly(event.target.value)} />
         </label>
-        <label className="mt-3 block max-w-xs text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Extra / mo
-          <Input className="mt-1 h-10" value={extraClient} onChange={(event) => setExtraClient(event.target.value)} />
-        </label>
+        <div className="mt-3 flex flex-wrap gap-3">
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            New person / mo
+            <Input className="mt-1 h-10 w-36" value={hireAmount} onChange={(event) => setHireAmount(event.target.value)} placeholder="4200" />
+          </label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Starts
+            <Input className="mt-1 h-10" type="month" value={hireFrom} onChange={(event) => setHireFrom(event.target.value)} />
+          </label>
+        </div>
       </div>
 
       <div className="mt-6 overflow-hidden rounded-2xl border bg-white shadow-sm">

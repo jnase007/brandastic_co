@@ -19,6 +19,8 @@ function snapshot(payload) {
     raiseUntil: payload.raiseUntil || '',
     raises: payload.raises || {},
     extraClient: payload.extraClient || '',
+    hireAmount: payload.hireAmount || '',
+    hireFrom: payload.hireFrom || '',
     trendYear: payload.trendYear || '',
     otherMonthly: payload.otherMonthly || '',
     offBooks: payload.offBooks || '',
