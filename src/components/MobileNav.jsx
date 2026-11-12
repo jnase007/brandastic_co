@@ -34,7 +34,7 @@ const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/time', icon: Clock, label: 'Time Tracking' },
   { path: '/clients', icon: Building2, label: 'Clients' },
-  { path: '/pipeline', icon: Target, label: 'Sales Pipeline' },
+  { path: '/pipeline', icon: Target, label: 'Deal Pipeline' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
   { path: '/mission', icon: Target, label: 'Mission' },
   { path: '/strategy', icon: Compass, label: 'Strategy' },
@@ -77,7 +77,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         { action: 'more', icon: Menu, label: 'More' },
       ]
     : [
-        { path: '/deals', icon: Target, label: 'Sales Pipeline' },
+        { path: '/deals', icon: Target, label: 'Deal Pipeline' },
         { path: '/score-card', icon: ClipboardList, label: 'Score Card' },
         { path: '/profitability', icon: BarChart3, label: 'Marketing Retainers' },
         { path: '/profitability/team', icon: Users2, label: 'Team' },

@@ -64,7 +64,7 @@ const navItems = [
   { path: '/clients', icon: Building2, label: 'Clients', shortcut: 'G C' },
   { path: '/feature-list', icon: ListChecks, label: 'Feature List' },
   { path: '/hosting', icon: Server, label: 'Hosting' },
-  { path: '/pipeline', icon: Target, label: 'Sales Pipeline' },
+  { path: '/pipeline', icon: Target, label: 'Deal Pipeline' },
   { path: '/mission', icon: Target, label: 'Mission', shortcut: 'G M' },
   { path: '/strategy', icon: Compass, label: 'Strategy' },
   { path: '/ideal-target-client', icon: Crosshair, label: 'Ideal Target Client' },
@@ -79,7 +79,7 @@ const navItems = [
 ]
 
 const simpleNavItems = [
-  { path: '/deals', icon: Target, label: 'Sales Pipeline' },
+  { path: '/deals', icon: Target, label: 'Deal Pipeline' },
   { path: '/score-card', icon: ClipboardList, label: 'Score Card' },
   { path: '/profitability', icon: BarChart3, label: 'Marketing Retainers' },
   { path: '/profitability/team', icon: Users2, label: 'Team' },
