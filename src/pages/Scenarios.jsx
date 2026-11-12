@@ -243,7 +243,7 @@ export default function Scenarios() {
   const [hireAmount, setHireAmount] = useState('')
   const [hireFrom, setHireFrom] = useState('2027-01')
   const [otherMonthly, setOtherMonthly] = useState('')
-  const [offBooks, setOffBooks] = useState('20,000')
+  const [offBooks, setOffBooks] = useState('10,000')
   const [overhead, setOverhead] = useState('40,000')
   const [clientEnds, setClientEnds] = useState({})
   const [clientPlans, setClientPlans] = useState({})
@@ -454,7 +454,7 @@ export default function Scenarios() {
         </p>
         <p className="mt-3 text-2xl font-semibold tabular-nums">That is {pct(projection.avgMargin)} of money in</p>
         <p className="mt-2 text-sm text-slate-600">
-          This year left about $20,500 a month on the P&L. SBA loan starts at $20,000. That puts you at about zero — not $50,000.
+          This year left about $20,500 a month on the P&L. SBA loan starts at $10,000.
         </p>
         <div className="mt-4 flex flex-wrap gap-4">
         <label className="block max-w-sm text-sm font-semibold text-slate-700">
@@ -463,7 +463,7 @@ export default function Scenarios() {
         </label>
         <label className="block max-w-sm text-sm font-semibold text-slate-700">
           SBA loan / mo
-          <Input className="mt-1 h-12 text-lg tabular-nums" value={withCommas(offBooks)} onChange={(event) => setOffBooks(withCommas(event.target.value))} placeholder="20,000" />
+          <Input className="mt-1 h-12 text-lg tabular-nums" value={withCommas(offBooks)} onChange={(event) => setOffBooks(withCommas(event.target.value))} placeholder="10,000" />
         </label>
         </div>
         <p className="mt-2 text-sm text-slate-500">Overhead and the SBA loan both come out. They lower what’s left.</p>

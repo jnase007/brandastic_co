@@ -23,7 +23,7 @@ function snapshot(payload) {
     hireFrom: payload.hireFrom || '',
     trendYear: payload.trendYear || '',
     otherMonthly: payload.otherMonthly || '',
-    offBooks: payload.offBooks || '',
+    offBooks: payload.offBooks || '10,000',
     overhead: payload.overhead || '40000',
     clientEnds: payload.clientEnds || {},
     clientPlans: payload.clientPlans || {},
