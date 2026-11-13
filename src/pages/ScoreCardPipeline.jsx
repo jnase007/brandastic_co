@@ -16,8 +16,6 @@ const STAGES = [
   { id: 'won', title: 'Closed Won', quality: 'Closed', weight: 1, color: 'bg-green-500' },
   { id: 'lost', title: 'Closed Lost', quality: 'No response from emails & calls', weight: 0, color: 'bg-red-500' },
 ]
-const LIVE_STAGES = STAGES.filter((stage) => stage.id !== 'won' && stage.id !== 'lost')
-const ARCHIVE_STAGES = STAGES.filter((stage) => stage.id === 'won' || stage.id === 'lost')
 
 function stageFromLead(row) {
   const stage = String(row.pipeline_stage || '').toLowerCase()
@@ -56,7 +54,6 @@ export default function ScoreCardPipeline() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingLead, setEditingLead] = useState(null)
   const [selected, setSelected] = useState(() => new Set())
-  const [archiveOpen, setArchiveOpen] = useState(false)
   const selectedRef = useRef(selected)
   selectedRef.current = selected
   const lastAnchorRef = useRef(null)
@@ -101,7 +98,6 @@ export default function ScoreCardPipeline() {
     (sum, id) => sum + (stageStats.find((stage) => stage.id === id)?.amount || 0),
     0
   )
-  const liveCount = LIVE_STAGES.reduce((sum, stage) => sum + (byStage[stage.id]?.length || 0), 0)
   const closedWonYear = (byStage.won || []).filter(withinPastYear)
   const closedWonYearAmount = closedWonYear.reduce((sum, row) => sum + amountOf(row), 0)
 
@@ -207,7 +203,7 @@ export default function ScoreCardPipeline() {
         <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3">
           <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4">
             <p className="text-sm text-slate-500">Prospects</p>
-            <p className="text-2xl font-bold text-purple-500">{liveCount}</p>
+            <p className="text-2xl font-bold text-purple-500">{rows.length}</p>
           </div>
           <div className="rounded-xl border border-green-200 bg-green-50 p-4">
             <p className="text-sm text-slate-500">Pipeline</p>
@@ -243,7 +239,7 @@ export default function ScoreCardPipeline() {
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="flex gap-4 overflow-x-auto pb-4">
-              {LIVE_STAGES.map((stage) => {
+              {STAGES.map((stage) => {
                 const cards = byStage[stage.id]
                 return (
                   <div key={stage.id} className="flex w-[260px] min-w-[260px] shrink-0 flex-col">
@@ -347,61 +343,13 @@ export default function ScoreCardPipeline() {
                 )
               })}
             </div>
-            <div className="mt-6 rounded-xl border bg-slate-50 p-4">
-              <button type="button" className="flex w-full items-center justify-between text-left" onClick={() => setArchiveOpen((open) => !open)}>
-                <div>
-                  <p className="text-sm font-semibold">Archive · past 365 days</p>
-                  <p className="text-xs text-slate-500">{closedWonYear.length} closed won · {(byStage.lost || []).filter(withinPastYear).length} closed lost</p>
-                </div>
-                <span className="text-sm text-slate-500">{archiveOpen ? 'Hide' : 'Show'}</span>
-              </button>
-              {archiveOpen ? (
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {ARCHIVE_STAGES.map((stage) => {
-                    const cards = (byStage[stage.id] || []).filter(withinPastYear)
-                    return (
-                      <Droppable droppableId={stage.id} key={stage.id}>
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.droppableProps}
-                            className={cn('rounded-xl border p-3', snapshot.isDraggingOver ? 'border-purple-500 bg-purple-50' : 'border-slate-200 bg-white')}
-                          >
-                            <p className="mb-2 text-sm font-semibold">{stage.title}</p>
-                            {cards.map((row, index) => (
-                              <Draggable draggableId={String(row.id)} index={index} key={row.id}>
-                                {(drag) => (
-                                  <button
-                                    type="button"
-                                    ref={drag.innerRef}
-                                    {...drag.draggableProps}
-                                    {...drag.dragHandleProps}
-                                    className="mb-2 w-full rounded-lg border bg-white px-3 py-2 text-left text-sm"
-                                    onClick={() => { setEditingLead(row); setDialogOpen(true) }}
-                                  >
-                                    <span className="font-medium">{row.company || row.name}</span>
-                                    <span className="ml-2 text-slate-500">{formatMoney(amountOf(row)) || '$0'}</span>
-                                  </button>
-                                )}
-                              </Draggable>
-                            ))}
-                            {provided.placeholder}
-                            {!cards.length ? <p className="text-xs text-slate-400">None in the last 365 days.</p> : null}
-                          </div>
-                        )}
-                      </Droppable>
-                    )
-                  })}
-                </div>
-              ) : null}
-            </div>
           </DragDropContext>
         )}
       </div>
 
       <div className="sticky bottom-0 z-20 -mx-4 mt-4 overflow-x-auto border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur">
         <div className="flex gap-4">
-          {stageStats.filter((stage) => stage.id !== 'won' && stage.id !== 'lost').map((stage) => (
+          {stageStats.map((stage) => (
             <div key={stage.id} className="w-[260px] min-w-[260px] shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2">
               <div className="flex items-center gap-1.5">
                 <span className={cn('h-2 w-2 rounded-full', stage.color)} />
