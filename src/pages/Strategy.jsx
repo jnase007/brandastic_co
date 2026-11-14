@@ -140,11 +140,17 @@ export default function Strategy() {
           ))}
         </ul>
       </div>
-      <div className="mt-8 rounded-xl border bg-card p-6">
+      <div className="mt-8 rounded-2xl border-2 border-brand-orange bg-gradient-to-br from-orange-50 to-white p-6 shadow-sm sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-semibold">Brandastic top goals 2027</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Pick an owner. Use Update to change the list.</p>
+          <div className="flex items-start gap-3">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-orange text-white">
+              <Target className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-brand-orange">Strategy 2027</p>
+              <h2 className="mt-0.5 text-2xl font-bold tracking-tight sm:text-3xl">Brandastic top goals 2027</h2>
+              <p className="mt-1 text-sm text-muted-foreground">The important list. Pick an owner. Use Update to change it.</p>
+            </div>
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={() => setEditing((value) => !value)} className="rounded-lg border px-3 py-1.5 text-sm font-medium">
