@@ -100,6 +100,7 @@ const NAV = [
           { slug: 'course-mkt-position', label: 'Positioning' },
           { slug: 'course-mkt-brand', label: 'Branding' },
           { slug: 'course-mkt-channels', label: 'Channels' },
+          { slug: 'course-mkt-linkedin', label: 'LinkedIn GTM' },
           { slug: 'course-mkt-budget', label: 'Budget' },
         ],
       },
