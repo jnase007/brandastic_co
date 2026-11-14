@@ -43,10 +43,19 @@ export default function Strategy() {
   const addGoal = () => {
     setGoals((rows) => [
       ...rows,
-      { id: `goal-${Date.now()}`, title: '', body: '', owner: 'Unassigned', href: '' },
+      { id: `goal-${Date.now()}`, title: '', body: '', owner: 'Unassigned', href: '', done: false, doneAt: '' },
     ])
     setEditing(true)
   }
+
+  const markGoal = (id, done) => {
+    setGoals((rows) =>
+      rows.map((row) => (row.id === id ? { ...row, done, doneAt: done ? new Date().toISOString() : '' } : row))
+    )
+  }
+
+  const openGoals = goals.filter((goal) => !goal.done)
+  const doneGoals = goals.filter((goal) => goal.done)
 
   const removeGoal = (id) => {
     setGoals((rows) => rows.filter((row) => row.id !== id))
@@ -149,7 +158,8 @@ export default function Strategy() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-orange">Strategy 2027</p>
               <h2 className="mt-0.5 text-2xl font-bold tracking-tight sm:text-3xl">Brandastic top goals 2027</h2>
-              <p className="mt-1 text-sm text-muted-foreground">The important list. Pick an owner. Use Update to change it.</p>
+              <p className="mt-1 text-sm text-muted-foreground">The important list. Mark done when it’s finished. Completed stays on this page for the year.</p>
+              <p className="mt-2 text-sm font-semibold text-slate-800">{doneGoals.length} completed in 2027 · {openGoals.length} still open</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -162,7 +172,7 @@ export default function Strategy() {
           </div>
         </div>
         <ol className="mt-4 space-y-3">
-          {goals.map((goal, index) => (
+          {openGoals.map((goal, index) => (
             <li key={goal.id} className="rounded-lg border bg-background p-4">
               {editing ? (
                 <div className="space-y-2">
@@ -185,6 +195,7 @@ export default function Strategy() {
                         <option key={name} value={name}>{name}</option>
                       ))}
                     </select>
+                    <button type="button" onClick={() => markGoal(goal.id, true)} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white">Mark done</button>
                     <button type="button" onClick={() => removeGoal(goal.id)} className="ml-auto text-sm text-red-600">Remove</button>
                   </div>
                 </div>
@@ -195,9 +206,14 @@ export default function Strategy() {
                       <span className="mr-2 text-brand-orange">{index + 1}.</span>
                       {goal.title || 'Untitled'}
                     </p>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
-                      {goal.owner || 'Unassigned'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                        {goal.owner || 'Unassigned'}
+                      </span>
+                      <button type="button" onClick={() => markGoal(goal.id, true)} className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white">
+                        Mark done
+                      </button>
+                    </div>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{goal.body}</p>
                   {goal.href ? (
@@ -210,6 +226,27 @@ export default function Strategy() {
             </li>
           ))}
         </ol>
+        {!openGoals.length ? <p className="mt-4 text-sm text-muted-foreground">No open goals. Add one or reopen from Completed.</p> : null}
+        <div className="mt-8 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <h3 className="text-lg font-bold text-emerald-900">Completed · 2027</h3>
+          <p className="mt-1 text-sm text-emerald-800">{doneGoals.length} {doneGoals.length === 1 ? 'goal' : 'goals'} accomplished this year.</p>
+          {doneGoals.length ? (
+            <ol className="mt-3 space-y-2">
+              {doneGoals.map((goal) => (
+                <li key={goal.id} className="rounded-lg border border-emerald-100 bg-white p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <p className="text-sm font-semibold line-through decoration-emerald-600/50">{goal.title || 'Untitled'}</p>
+                    <button type="button" onClick={() => markGoal(goal.id, false)} className="text-xs font-medium text-slate-600 hover:underline">Reopen</button>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{goal.body}</p>
+                  {goal.doneAt ? <p className="mt-1 text-xs text-emerald-800">Done {new Date(goal.doneAt).toLocaleDateString()}</p> : null}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="mt-2 text-sm text-emerald-800">Nothing archived yet. Mark a goal done and it lands here.</p>
+          )}
+        </div>
       </div>
     </div>
   )

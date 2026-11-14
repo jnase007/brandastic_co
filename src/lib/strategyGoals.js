@@ -73,7 +73,11 @@ export function loadStrategyGoals() {
     if (!raw) return DEFAULT_GOALS
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed) || !parsed.length) return DEFAULT_GOALS
-    return parsed
+    return parsed.map((goal) => ({
+      ...goal,
+      done: Boolean(goal.done),
+      doneAt: goal.doneAt || '',
+    }))
   } catch {
     return DEFAULT_GOALS
   }
