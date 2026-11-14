@@ -1,4 +1,14 @@
+import { useEffect, useMemo, useState } from 'react'
 import PageHeader from '../components/PageHeader'
+
+const SHEET = 'https://docs.google.com/spreadsheets/d/1yYH9HL9553Hq-ZwqlHrtTp3VC-rXKKAPSRRx5OijdDA/edit?gid=608242340#gid=608242340'
+
+function siteHref(value) {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  if (/^https?:\/\//i.test(text)) return text
+  return `https://${text}`
+}
 
 const DAILY = [
   'Family sign-ups that depend on search',
@@ -54,6 +64,25 @@ const MARKETS = [
 ]
 
 export default function IdealTargetClient() {
+  const [schools, setSchools] = useState(null)
+  const [tab, setTab] = useState('examples')
+  const [query, setQuery] = useState('')
+
+  useEffect(() => {
+    fetch('/target-schools-2027.json')
+      .then((res) => (res.ok ? res.json() : null))
+      .then(setSchools)
+      .catch(() => setSchools(null))
+  }, [])
+
+  const rows = useMemo(() => {
+    if (!schools) return []
+    const list = tab === 'examples' ? schools.examples : tab === 'online' ? schools.onlineCharters : schools.brickAndMortar
+    const q = query.trim().toLowerCase()
+    if (!q) return list
+    return list.filter((row) => JSON.stringify(row).toLowerCase().includes(q))
+  }, [schools, tab, query])
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-6">
       <PageHeader
@@ -136,6 +165,99 @@ export default function IdealTargetClient() {
             <p className="text-sm text-muted-foreground">working review list (Apollo + NCES)</p>
           </div>
         </div>
+      </div>
+
+      <div className="mt-8 rounded-2xl border-2 border-sky-300 bg-sky-50 p-6 shadow-sm sm:p-8">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">2027 school list</p>
+            <h2 className="mt-1 text-2xl font-bold">Target schools</h2>
+            <p className="mt-1 text-sm text-muted-foreground">From the Brandastic 2027 School Target List. Search and open the sheet to edit.</p>
+          </div>
+          <a href={SHEET} target="_blank" rel="noreferrer" className="rounded-lg bg-[#1644ED] px-3 py-2 text-sm font-medium text-white hover:opacity-90">
+            Open Google Sheet
+          </a>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {[
+            { id: 'examples', label: 'Start here (12)' },
+            { id: 'online', label: `Online charters (${schools?.onlineCharters?.length || 85})` },
+            { id: 'brick', label: `Brick-and-mortar (${schools?.brickAndMortar?.length || 6812})` },
+          ].map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setTab(item.id)}
+              className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
+                tab === item.id ? 'border-[#1644ED] bg-[#1644ED] text-white' : 'border-sky-200 bg-white'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <input
+          className="mt-4 h-10 w-full rounded-lg border bg-white px-3 text-sm"
+          placeholder="Search name, city, state, website…"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <div className="mt-4 max-h-[520px] overflow-auto rounded-xl border bg-white">
+          <table className="min-w-full text-left text-sm">
+            <thead className="sticky top-0 bg-slate-50">
+              <tr>
+                {tab === 'examples' ? (
+                  <>
+                    <th className="px-3 py-2 font-semibold">School</th>
+                    <th className="px-3 py-2 font-semibold">Type</th>
+                    <th className="px-3 py-2 font-semibold">Place</th>
+                    <th className="px-3 py-2 font-semibold">Contact</th>
+                    <th className="px-3 py-2 font-semibold">Website</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="px-3 py-2 font-semibold">#</th>
+                    <th className="px-3 py-2 font-semibold">School</th>
+                    <th className="px-3 py-2 font-semibold">State</th>
+                    <th className="px-3 py-2 font-semibold">City</th>
+                    <th className="px-3 py-2 font-semibold">Enrollment</th>
+                    <th className="px-3 py-2 font-semibold">Website</th>
+                  </>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => {
+                const href = siteHref(row.website)
+                return (
+                  <tr key={`${row.name}-${index}`} className="border-t">
+                    {tab === 'examples' ? (
+                      <>
+                        <td className="px-3 py-2 font-medium">{row.name}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{row.type}</td>
+                        <td className="px-3 py-2">{row.place}</td>
+                        <td className="px-3 py-2">{row.role}</td>
+                        <td className="px-3 py-2">{href ? <a className="text-[#1644ED] hover:underline" href={href} target="_blank" rel="noreferrer">{row.website}</a> : '—'}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-3 py-2 text-muted-foreground">{row.rank}</td>
+                        <td className="px-3 py-2 font-medium">{row.name}</td>
+                        <td className="px-3 py-2">{row.state}</td>
+                        <td className="px-3 py-2">{row.city}</td>
+                        <td className="px-3 py-2">{row.enrollment || '—'}</td>
+                        <td className="px-3 py-2">{href ? <a className="text-[#1644ED] hover:underline" href={href} target="_blank" rel="noreferrer">{row.website}</a> : '—'}</td>
+                      </>
+                    )}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          {!schools ? <p className="p-4 text-sm text-muted-foreground">Loading school list…</p> : null}
+          {schools && !rows.length ? <p className="p-4 text-sm text-muted-foreground">No matches.</p> : null}
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">Showing {rows.length} of this tab. Full database stays in the Google Sheet (MASTER + national directory).</p>
       </div>
     </div>
   )
