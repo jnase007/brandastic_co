@@ -229,19 +229,19 @@ export default function BrandCare() {
         />
         <p className="text-sm text-muted-foreground">{visible.length} clients</p>
       </div>
-      <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-300 bg-white shadow-sm">
-        <table className="w-full min-w-[1200px] border-collapse text-sm">
-          <thead className="text-white">
+      <div className="mt-4 max-h-[calc(100vh-220px)] overflow-auto rounded-2xl border border-slate-300 bg-white shadow-sm">
+        <table className="w-full min-w-[1200px] border-separate border-spacing-0 text-sm">
+          <thead className="brand-care-sticky-head sticky top-0 z-30 text-white">
             <tr>
-              <th className="brand-care-sticky-gutter sticky left-0 z-20 w-10 border border-slate-300 bg-slate-600 px-2 py-3" />
-              <th className="sticky left-10 z-20 border border-slate-300 bg-slate-700 px-4 py-3 text-left font-medium shadow-[4px_0_8px_rgba(15,23,42,0.08)]">Client</th>
-              <th className="border border-slate-300 bg-sky-600 px-4 py-3 text-left font-medium">What we manage</th>
-              <th className="border border-slate-300 bg-orange-500 px-4 py-3 text-left font-medium">Hours by service</th>
+              <th className="brand-care-sticky-gutter sticky left-0 top-0 z-40 w-10 border border-slate-300 bg-slate-600 px-2 py-3" />
+              <th className="sticky left-10 top-0 z-40 border border-slate-300 bg-slate-700 px-4 py-3 text-left font-medium shadow-[4px_0_8px_rgba(15,23,42,0.08)]">Client</th>
+              <th className="sticky top-0 z-30 border border-slate-300 bg-sky-600 px-4 py-3 text-left font-medium">What we manage</th>
+              <th className="sticky top-0 z-30 border border-slate-300 bg-orange-500 px-4 py-3 text-left font-medium">Hours by service</th>
               {ROLES.map((role) => (
-                <th key={role.key} className={`border border-slate-300 px-3 py-3 text-left font-medium ${role.head}`}>{role.label}</th>
+                <th key={role.key} className={`sticky top-0 z-30 border border-slate-300 px-3 py-3 text-left font-medium ${role.head}`}>{role.label}</th>
               ))}
-              <th className="border border-slate-300 bg-fuchsia-600 px-3 py-3 text-left font-medium">Monday notes</th>
-              <th className="w-12 border border-slate-300 bg-slate-500 px-2 py-3" />
+              <th className="sticky top-0 z-30 border border-slate-300 bg-fuchsia-600 px-3 py-3 text-left font-medium">Monday notes</th>
+              <th className="sticky top-0 z-30 w-12 border border-slate-300 bg-slate-500 px-2 py-3" />
             </tr>
           </thead>
           <DragDropContext onDragEnd={onDragEnd}>
