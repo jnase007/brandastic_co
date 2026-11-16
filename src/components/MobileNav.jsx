@@ -14,9 +14,11 @@ import {
   Megaphone,
   GraduationCap,
   Heart,
+  Receipt,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
+import { useBillingAllowed } from '../hooks/useBillingAllowed'
 import { readFullNav } from '../lib/navMode'
 import { Button } from './ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
@@ -60,7 +62,9 @@ const adminNavItems = [
 export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
   const location = useLocation()
   const { user, isAdmin, profile, canSeePeople, canSeeScoreCard, canSeeProfitability, canManageUsers } = useAuth()
+  const billingAllowed = useBillingAllowed()
   const canSeePath = (path) => {
+    if (path === '/billing' || path === '/team/billing') return billingAllowed
     if (['/people', '/new_admin', '/admin', '/profitability/team', '/scenarios', '/working', '/org-structure'].includes(path)) return canManageUsers
     if (path === '/people') return canSeePeople
     if (path === '/score-card') return canSeeScoreCard
@@ -95,6 +99,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         { path: '/education/course-downloads', icon: BookOpen, label: 'Course downloads' },
         { path: '/new_admin', icon: Shield, label: 'Admin' },
         { path: '/profitability/team', icon: Users2, label: 'Team Hours' },
+        ...(billingAllowed ? [{ path: '/billing', icon: Receipt, label: 'Billing' }] : []),
         { path: '/people', icon: Users, label: 'People' },
         { path: '/scenarios', icon: BarChart3, label: 'Scenarios' },
         { path: '/working', icon: CheckCircle, label: 'Working/Not' },
@@ -326,6 +331,23 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
                       </Link>
                     )
                   })}
+
+                  {billingAllowed ? (
+                    <Link
+                      to="/billing"
+                      onClick={() => setShowMore(false)}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3 rounded-xl transition-colors",
+                        location.pathname === '/billing'
+                          ? "bg-brand-orange/10 text-brand-orange"
+                          : "text-foreground hover:bg-muted"
+                      )}
+                    >
+                      <Receipt className="h-5 w-5" />
+                      <span className="font-medium">Billing</span>
+                      <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
+                    </Link>
+                  ) : null}
                   
                   {isAdmin && adminNavItems.map((item) => {
                     const Icon = item.icon
