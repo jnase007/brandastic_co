@@ -177,6 +177,13 @@ export function validateNonRecurringUnpaid(input) {
   }
 }
 
+function optionalTimestamp(value) {
+  if (typeof value !== 'string' || !value.trim()) return null
+  const time = Date.parse(value)
+  if (Number.isNaN(time)) return null
+  return new Date(time).toISOString()
+}
+
 function listOf(value, validate) {
   const rows = value ?? []
   if (!Array.isArray(rows) || rows.length > MAX_ROWS) invalid()
@@ -195,6 +202,7 @@ export function parseBillingDataset(raw) {
       clients: parsed.map(validateBillingClient),
       alerts: [],
       non_recurring_unpaid: [],
+      updated_at: null,
     }
   }
   if (!parsed || typeof parsed !== 'object') invalid()
@@ -204,6 +212,7 @@ export function parseBillingDataset(raw) {
     clients: clients.map(validateBillingClient),
     alerts: listOf(parsed.alerts, validateBillingAlert),
     non_recurring_unpaid: listOf(parsed.non_recurring_unpaid, validateNonRecurringUnpaid),
+    updated_at: optionalTimestamp(parsed.updated_at),
   }
 }
 
@@ -234,7 +243,7 @@ export function loadBillingDataset(env) {
     return { source: 'env', ...parseBillingDataset(raw) }
   }
   if (String(env?.VERCEL_ENV || '') === 'production') {
-    return { source: 'missing', clients: null, alerts: null, non_recurring_unpaid: null }
+    return { source: 'missing', clients: null, alerts: null, non_recurring_unpaid: null, updated_at: null }
   }
   const sample = sampleBillingDataset()
   return {
@@ -242,5 +251,6 @@ export function loadBillingDataset(env) {
     clients: sample.clients.map(validateBillingClient),
     alerts: sample.alerts.map(validateBillingAlert),
     non_recurring_unpaid: sample.non_recurring_unpaid.map(validateNonRecurringUnpaid),
+    updated_at: optionalTimestamp(sample.updated_at),
   }
 }

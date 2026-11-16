@@ -48,6 +48,7 @@ export function sampleBillingDataset() {
     clients: sampleBillingClients(),
     alerts: sampleBillingAlerts(),
     non_recurring_unpaid: sampleNonRecurringUnpaid(),
+    updated_at: '2026-11-16T18:41:00.000Z',
   }
 }
 

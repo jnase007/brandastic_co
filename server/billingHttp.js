@@ -67,6 +67,7 @@ export async function handleBilling(env, token, kind, options = {}) {
         clients: [],
         alerts: [],
         non_recurring_unpaid: [],
+        updated_at: null,
         summary: emptyBillingSummary(),
       },
     }
@@ -80,6 +81,7 @@ export async function handleBilling(env, token, kind, options = {}) {
       clients: dataset.clients,
       alerts: dataset.alerts,
       non_recurring_unpaid: dataset.non_recurring_unpaid,
+      updated_at: dataset.updated_at || null,
       summary: summarizeBilling(dataset.clients),
     },
   }

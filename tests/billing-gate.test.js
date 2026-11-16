@@ -68,6 +68,7 @@ describe('billing data', () => {
     assert.equal(preview.source, 'sample')
     assert.ok(preview.clients.every((row) => row.client.includes('Fictional') && row.notes.includes('FICTIONAL SAMPLE')))
     assert.ok(preview.clients.some((row) => row.unpaid_90_days_flag))
+    assert.equal(preview.updated_at, '2026-11-16T18:41:00.000Z')
     assert.ok(preview.alerts.some((row) => row.type === 'overdue'))
     assert.ok(preview.alerts.some((row) => row.type === 'no_payment_90'))
     assert.ok(preview.alerts.some((row) => row.type === 'payment_not_applied'))

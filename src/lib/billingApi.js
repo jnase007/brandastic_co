@@ -122,6 +122,7 @@ export async function fetchBilling() {
     status: 'ready',
     report: {
       sample: body.sample === true,
+      updated_at: typeof body.updated_at === 'string' ? body.updated_at : null,
       clients,
       alerts,
       non_recurring_unpaid: nonRecurring,
