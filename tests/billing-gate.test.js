@@ -215,6 +215,7 @@ describe('client bundle sources', () => {
     const files = [
       'src/pages/Billing.jsx',
       'src/pages/BillingScreen.jsx',
+      'src/pages/BillingCharts.jsx',
       'src/lib/billingApi.js',
       'src/hooks/useBillingAllowed.js',
     ]

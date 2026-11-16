@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { BillingCharts } from './BillingCharts'
 
 function money(value) {
   return new Intl.NumberFormat('en-US', {
@@ -230,6 +231,8 @@ export function BillingScreen({ state, initialLateOnly = false }) {
           <small>Flagged clients</small>
         </article>
       </div>
+
+      <BillingCharts clients={report.clients || []} />
 
       <section className="pr-panel" aria-label="Recurring billing clients">
         <div className="pr-panel-head">
