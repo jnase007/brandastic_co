@@ -233,8 +233,8 @@ export default function BrandCare() {
         <table className="w-full min-w-[1200px] border-collapse text-sm">
           <thead className="text-white">
             <tr>
-              <th className="w-10 border border-slate-300 bg-slate-600 px-2 py-3" />
-              <th className="sticky left-10 z-10 border border-slate-300 bg-slate-700 px-4 py-3 text-left font-medium">Client</th>
+              <th className="brand-care-sticky-gutter sticky left-0 z-20 w-10 border border-slate-300 bg-slate-600 px-2 py-3" />
+              <th className="sticky left-10 z-20 border border-slate-300 bg-slate-700 px-4 py-3 text-left font-medium shadow-[4px_0_8px_rgba(15,23,42,0.08)]">Client</th>
               <th className="border border-slate-300 bg-sky-600 px-4 py-3 text-left font-medium">What we manage</th>
               <th className="border border-slate-300 bg-orange-500 px-4 py-3 text-left font-medium">Hours by service</th>
               {ROLES.map((role) => (
@@ -252,12 +252,12 @@ export default function BrandCare() {
                     <Draggable key={row.id} draggableId={String(row.id)} index={index} isDragDisabled={Boolean(q.trim())}>
                       {(drag) => (
                         <tr ref={drag.innerRef} {...drag.draggableProps}>
-                          <td className="border border-slate-300 bg-white px-1 py-2 text-center">
+                          <td className="brand-care-sticky-gutter sticky left-0 z-20 border border-slate-300 bg-white px-1 py-2 text-center">
                             <button type="button" {...drag.dragHandleProps} className="inline-flex cursor-grab rounded p-1 text-slate-400 hover:text-slate-700" title="Drag to reorder" aria-label="Drag to reorder">
                               <GripVertical className="h-4 w-4" />
                             </button>
                           </td>
-                          <td className="sticky left-10 z-10 min-w-[160px] border border-slate-300 bg-slate-50 px-2 py-2 font-semibold">
+                          <td className="sticky left-10 z-20 min-w-[160px] border border-slate-300 bg-slate-50 px-2 py-2 font-semibold shadow-[4px_0_8px_rgba(15,23,42,0.08)]">
                             <Cell value={row.client} onSave={(value) => update(row.id, { client: value })} placeholder="Client name" />
                           </td>
                           <td className="min-w-[220px] border border-slate-300 bg-sky-50 px-2 py-2">
