@@ -44,10 +44,12 @@ import {
   ClipboardList,
   Megaphone,
   Heart,
+  Receipt,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { prefetchRoute } from '../lib/routePrefetch'
 import { useAuth } from '../contexts/AuthContext'
+import { useBillingAllowed } from '../hooks/useBillingAllowed'
 import { readFullNav, setFullNav } from '../lib/navMode'
 import { useFeatureListNav } from '../lib/featureListNav'
 import { Button } from './ui/button'
@@ -97,6 +99,7 @@ const simpleNavItems = [
   { path: '/education/course-downloads', icon: BookOpen, label: 'Course downloads', group: 'Education' },
   { path: '/new_admin', icon: Shield, label: 'Admin', group: 'Team' },
   { path: '/profitability/team', icon: Users2, label: 'Team Hours', group: 'Team' },
+  { path: '/billing', icon: Receipt, label: 'Billing', group: 'Team', billingOnly: true },
   { path: '/people', icon: Users, label: 'People', group: 'Team' },
   { path: '/scenarios', icon: BarChart3, label: 'Scenarios', group: 'Team' },
   { path: '/working', icon: CheckCircle, label: 'Working/Not', group: 'Team' },
@@ -123,6 +126,7 @@ export default function Sidebar({
   const location = useLocation()
   const navigate = useNavigate()
   const { user, signOut, isAdmin, isActualAdmin, canSeePeople, canSeeScoreCard, canSeeProfitability, canManageUsers, viewMode, toggleViewMode, toggleClientPreview, clientPreviewMode } = useAuth()
+  const billingAllowed = useBillingAllowed()
   const canRevealNav = String(user?.email || '').toLowerCase() === 'justin@brandastic.com'
   const [fullNav, setFullNavState] = useState(false)
 
@@ -145,6 +149,7 @@ export default function Sidebar({
     ...simpleNavItems,
     ...(showFullNav ? navItems.filter((item) => !simplePaths.has(item.path)) : []),
   ].filter((item) => {
+    if (item.billingOnly) return billingAllowed
     if (item.group === 'Team') return canManageUsers
     if (item.path === '/people') return canSeePeople
     if (item.path === '/score-card') return canSeeScoreCard

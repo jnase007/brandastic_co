@@ -5,6 +5,7 @@ import fs from 'fs'
 import { writeFeaturePriority } from './server/featurePriority.js'
 import { assertTeam, loadHostingPortfolio } from './server/hostingData.js'
 import { loadWebsites } from './server/websitesData.js'
+import { billingResponseHeaders, runBillingRequest } from './server/billingHttp.js'
 
 // Generate a build version for cache busting
 const buildVersion = Date.now().toString(36)
@@ -103,6 +104,26 @@ function websitesPlugin(env) {
   }
 }
 
+function billingPlugin(env) {
+  return {
+    name: 'billing-api',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const pathname = req.url?.split('?')[0]
+        const kind = pathname === '/api/billing-data' ? 'data' : pathname === '/api/billing-access' ? 'access' : null
+        if (!kind) return next()
+        const headers = billingResponseHeaders()
+        for (const [key, value] of Object.entries(headers)) res.setHeader(key, value)
+        const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+        const result = await runBillingRequest(env, { method: req.method, token, kind })
+        res.statusCode = result.status
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify(result.body))
+      })
+    },
+  }
+}
+
 function featurePriorityPlugin(env) {
   return {
     name: 'feature-priority-api',
@@ -139,6 +160,7 @@ export default defineConfig(({ mode }) => {
     featurePriorityPlugin(env),
     hostingPlugin(env),
     websitesPlugin(env),
+    billingPlugin(env),
     // Generate version.json on build for detecting new deployments
     {
       name: 'generate-version',

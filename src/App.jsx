@@ -18,6 +18,7 @@ const ClientPortal = lazy(() => import('./pages/ClientPortal'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Admin = lazy(() => import('./pages/Admin'))
 const TeamHub = lazy(() => import('./pages/TeamHub'))
+const Billing = lazy(() => import('./pages/Billing'))
 const JiraImport = lazy(() => import('./pages/JiraImport'))
 const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'))
 const TimeTracking = lazy(() => import('./pages/TimeTracking'))
@@ -1018,6 +1019,22 @@ function App() {
                 element={
                   <TeamRoute>
                     <TeamHub />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/billing"
+                element={
+                  <TeamRoute>
+                    <Billing />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/team/billing"
+                element={
+                  <TeamRoute>
+                    <Billing />
                   </TeamRoute>
                 }
               />
