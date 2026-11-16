@@ -61,10 +61,10 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
   const location = useLocation()
   const { user, isAdmin, profile, canSeePeople, canSeeScoreCard, canSeeProfitability, canManageUsers } = useAuth()
   const canSeePath = (path) => {
+    if (['/people', '/new_admin', '/admin', '/profitability/team', '/scenarios', '/working', '/org-structure'].includes(path)) return canManageUsers
     if (path === '/people') return canSeePeople
     if (path === '/score-card') return canSeeScoreCard
     if (path === '/profitability') return canSeeProfitability
-    if (path === '/admin' || path === '/new_admin') return canManageUsers
     return true
   }
   const canRevealNav = String(user?.email || '').toLowerCase() === 'justin@brandastic.com'

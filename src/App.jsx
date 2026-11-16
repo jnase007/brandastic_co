@@ -326,7 +326,7 @@ function AdminRoute({ children }) {
 }
 
 function fallbackHome(canSeeProfitability) {
-  return canSeeProfitability ? '/profitability' : '/profitability/team'
+  return canSeeProfitability ? '/profitability' : '/mission'
 }
 
 function AreaRoute({ allowed, children }) {
@@ -1256,9 +1256,9 @@ function App() {
               <Route
                 path="/org-structure"
                 element={
-                  <TeamRoute>
+                  <UsersRoute>
                     <OrgStructure />
-                  </TeamRoute>
+                  </UsersRoute>
                 }
               />
               <Route
@@ -1280,9 +1280,9 @@ function App() {
               <Route
                 path="/profitability/team/:member"
                 element={
-                  <TeamRoute>
+                  <UsersRoute>
                     <ProfitabilityTeam />
-                  </TeamRoute>
+                  </UsersRoute>
                 }
               />
               <Route
@@ -1315,9 +1315,9 @@ function App() {
               <Route
                 path="/profitability/team"
                 element={
-                  <TeamRoute>
+                  <UsersRoute>
                     <ProfitabilityTeam />
-                  </TeamRoute>
+                  </UsersRoute>
                 }
               />
               <Route

@@ -145,6 +145,7 @@ export default function Sidebar({
     ...simpleNavItems,
     ...(showFullNav ? navItems.filter((item) => !simplePaths.has(item.path)) : []),
   ].filter((item) => {
+    if (item.group === 'Team') return canManageUsers
     if (item.path === '/people') return canSeePeople
     if (item.path === '/score-card') return canSeeScoreCard
     if (item.path === '/profitability') return canSeeProfitability
