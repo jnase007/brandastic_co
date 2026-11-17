@@ -57,6 +57,30 @@ function pickAlert(row) {
   }
 }
 
+function pickInvoices(value) {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((invoice) => invoice && typeof invoice.balance === 'number' && invoice.balance !== 0)
+    .map((invoice) => ({
+      due_date: typeof invoice.due_date === 'string' ? invoice.due_date : null,
+      balance: invoice.balance,
+      invoice_date: typeof invoice.invoice_date === 'string' ? invoice.invoice_date : null,
+      invoice_number: typeof invoice.invoice_number === 'string' ? invoice.invoice_number : '',
+    }))
+}
+
+function pickOtherOpen(row) {
+  if (!row || typeof row !== 'object') return null
+  const client = typeof row.client === 'string' ? row.client : ''
+  if (!client) return null
+  return {
+    client,
+    notes: typeof row.notes === 'string' ? row.notes : '',
+    open_balance: numberOrNull(row.open_balance) ?? 0,
+    open_invoices: pickInvoices(row.open_invoices),
+  }
+}
+
 function pickNonRecurring(row) {
   if (!row || typeof row !== 'object') return null
   const client = typeof row.client === 'string' ? row.client : ''
@@ -67,6 +91,7 @@ function pickNonRecurring(row) {
     last_payment_date: typeof row.last_payment_date === 'string' ? row.last_payment_date : null,
     days_since_payment: numberOrNull(row.days_since_payment),
     notes: typeof row.notes === 'string' ? row.notes : '',
+    open_invoices: pickInvoices(row.open_invoices),
   }
 }
 
@@ -86,6 +111,7 @@ function pickClient(row) {
     overdue_balance: numberOrNull(row.overdue_balance) ?? 0,
     unpaid_90_days_flag: row.unpaid_90_days_flag === true,
     notes: typeof row.notes === 'string' ? row.notes : '',
+    open_invoices: pickInvoices(row.open_invoices),
   }
 }
 
@@ -117,14 +143,19 @@ export async function fetchBilling() {
   const nonRecurring = Array.isArray(body.non_recurring_unpaid)
     ? body.non_recurring_unpaid.map(pickNonRecurring).filter(Boolean)
     : []
+  const otherOpen = Array.isArray(body.other_open)
+    ? body.other_open.map(pickOtherOpen).filter(Boolean)
+    : []
   const summary = body.summary && typeof body.summary === 'object' ? body.summary : {}
   return {
     status: 'ready',
     report: {
       sample: body.sample === true,
+      updated_at: typeof body.updated_at === 'string' ? body.updated_at : null,
       clients,
       alerts,
       non_recurring_unpaid: nonRecurring,
+      other_open: otherOpen,
       summary: {
         mrr: numberOrNull(summary.mrr) ?? 0,
         client_count: numberOrNull(summary.client_count) ?? clients.length,

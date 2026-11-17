@@ -4,6 +4,13 @@
  * Canonical value: a JSON object with `clients`, `alerts`, and `non_recurring_unpaid`.
  * A bare array is still accepted and treated as `clients` only.
  *
+ * Aging buckets need optional per-invoice lines. Each client (and each non-recurring
+ * customer) may include `open_invoices`. Omit the array on older files. Each invoice is
+ * `{ "due_date": "YYYY-MM-DD", "balance": number, "invoice_date"?: "YYYY-MM-DD", "invoice_number"?: string }`.
+ * `due_date` and `balance` are required when an invoice object is present. The report
+ * measures days past `due_date` against `updated_at` (Pacific date), or today if that
+ * timestamp is missing.
+ *
  * Vercel Blob and Global Config are not used. A blob URL or a client-readable config token
  * could expose the file; this variable stays inside the function environment.
  *
@@ -56,6 +63,11 @@ function parseJson(raw) {
 
 function money(value) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100_000_000) return undefined
+  return Math.round(value * 100) / 100
+}
+
+function signedMoney(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < -100_000_000 || value > 100_000_000) return undefined
   return Math.round(value * 100) / 100
 }
 
@@ -123,6 +135,7 @@ export function validateBillingClient(input) {
     overdue_balance: overdue,
     unpaid_90_days_flag: input.unpaid_90_days_flag,
     notes,
+    open_invoices: openInvoices(input.open_invoices),
   }
 }
 
@@ -174,7 +187,53 @@ export function validateNonRecurringUnpaid(input) {
     last_payment_date: lastPayment,
     days_since_payment: days,
     notes,
+    open_invoices: openInvoices(input.open_invoices),
   }
+}
+
+const MAX_INVOICES = 200
+
+export function validateOpenInvoice(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) invalid()
+  const due = dateOrNull(input.due_date)
+  const balance = signedMoney(input.balance)
+  const invoiceDate = dateOrNull(input.invoice_date)
+  const number = text(input.invoice_number, 40, false)
+  if (due === undefined || balance === undefined || balance === 0 || invoiceDate === undefined || number === undefined) invalid()
+  if (balance > 0 && !due) invalid()
+  return {
+    due_date: due,
+    balance,
+    invoice_date: invoiceDate,
+    invoice_number: number,
+  }
+}
+
+export function validateOtherOpen(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) invalid()
+  const client = text(input.client, 200, true)
+  const notes = text(input.notes, 500, false)
+  const open = input.open_balance == null || input.open_balance === '' ? 0 : money(input.open_balance)
+  if (client === undefined || notes === undefined || open === undefined) invalid()
+  return {
+    client,
+    notes,
+    open_balance: open,
+    open_invoices: openInvoices(input.open_invoices),
+  }
+}
+
+function openInvoices(value) {
+  if (value == null) return []
+  if (!Array.isArray(value) || value.length > MAX_INVOICES) invalid()
+  return value.map(validateOpenInvoice)
+}
+
+function optionalTimestamp(value) {
+  if (typeof value !== 'string' || !value.trim()) return null
+  const time = Date.parse(value)
+  if (Number.isNaN(time)) return null
+  return new Date(time).toISOString()
 }
 
 function listOf(value, validate) {
@@ -195,6 +254,8 @@ export function parseBillingDataset(raw) {
       clients: parsed.map(validateBillingClient),
       alerts: [],
       non_recurring_unpaid: [],
+      other_open: [],
+      updated_at: null,
     }
   }
   if (!parsed || typeof parsed !== 'object') invalid()
@@ -204,6 +265,8 @@ export function parseBillingDataset(raw) {
     clients: clients.map(validateBillingClient),
     alerts: listOf(parsed.alerts, validateBillingAlert),
     non_recurring_unpaid: listOf(parsed.non_recurring_unpaid, validateNonRecurringUnpaid),
+    other_open: listOf(parsed.other_open, validateOtherOpen),
+    updated_at: optionalTimestamp(parsed.updated_at),
   }
 }
 
@@ -234,7 +297,7 @@ export function loadBillingDataset(env) {
     return { source: 'env', ...parseBillingDataset(raw) }
   }
   if (String(env?.VERCEL_ENV || '') === 'production') {
-    return { source: 'missing', clients: null, alerts: null, non_recurring_unpaid: null }
+    return { source: 'missing', clients: null, alerts: null, non_recurring_unpaid: null, other_open: null, updated_at: null }
   }
   const sample = sampleBillingDataset()
   return {
@@ -242,5 +305,7 @@ export function loadBillingDataset(env) {
     clients: sample.clients.map(validateBillingClient),
     alerts: sample.alerts.map(validateBillingAlert),
     non_recurring_unpaid: sample.non_recurring_unpaid.map(validateNonRecurringUnpaid),
+    other_open: (sample.other_open || []).map(validateOtherOpen),
+    updated_at: optionalTimestamp(sample.updated_at),
   }
 }

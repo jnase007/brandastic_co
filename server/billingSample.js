@@ -33,13 +33,22 @@ function alert(type, client, amount, detail, sinceDate) {
   return { type, client, amount, detail, since_date: sinceDate }
 }
 
-function oneTime(client, overdue, lastPayment, notes) {
+function invoice(dueDate, balance, invoiceNumber) {
+  return { due_date: dueDate, balance, invoice_number: invoiceNumber, invoice_date: null }
+}
+
+function credit(balance, invoiceNumber, dueDate = null) {
+  return { due_date: dueDate, balance, invoice_number: invoiceNumber, invoice_date: null }
+}
+
+function oneTime(client, overdue, lastPayment, notes, openInvoices) {
   return {
     client,
     overdue_amount: overdue,
     last_payment_date: lastPayment,
     days_since_payment: daysSince(lastPayment),
     notes,
+    open_invoices: openInvoices,
   }
 }
 
@@ -48,6 +57,8 @@ export function sampleBillingDataset() {
     clients: sampleBillingClients(),
     alerts: sampleBillingAlerts(),
     non_recurring_unpaid: sampleNonRecurringUnpaid(),
+    other_open: sampleOtherOpen(),
+    updated_at: '2026-11-16T18:41:00.000Z',
   }
 }
 
@@ -105,6 +116,20 @@ export function sampleBillingAlerts() {
   ]
 }
 
+export function sampleOtherOpen() {
+  return [
+    {
+      client: 'Fictional Meadow Sample',
+      notes: 'FICTIONAL SAMPLE — one-off invoice that is not yet due, plus an unapplied credit.',
+      open_balance: 400,
+      open_invoices: [
+        invoice('2026-12-15', 480, 'SAMPLE-INV-300'),
+        credit(-80, 'SAMPLE-CR-301'),
+      ],
+    },
+  ]
+}
+
 export function sampleNonRecurringUnpaid() {
   return [
     oneTime(
@@ -112,14 +137,30 @@ export function sampleNonRecurringUnpaid() {
       2200,
       '2026-06-15',
       'FICTIONAL SAMPLE — not a retainer. One-time project invoice, unpaid.',
+      [invoice('2026-06-30', 2200, 'SAMPLE-INV-200')],
     ),
     oneTime(
       'Fictional Quartz Sample',
       640,
       '2026-10-28',
       'FICTIONAL SAMPLE — not a retainer. Recent one-time invoice, not 90 days yet.',
+      [invoice('2026-11-01', 640, 'SAMPLE-INV-201')],
     ),
   ]
+}
+
+const SAMPLE_INVOICES = {
+  'Fictional Cedar Sample': [credit(-125, 'SAMPLE-CR-100')],
+  'Fictional Harbor Sample': [
+    invoice('2026-11-20', 1800, 'SAMPLE-INV-110'),
+    invoice('2026-07-01', 3600, 'SAMPLE-INV-111'),
+  ],
+  'Fictional Northwind Sample': [invoice('2026-11-25', 750, 'SAMPLE-INV-120')],
+  'Fictional Pinecone Sample': [
+    invoice('2026-06-01', 5000, 'SAMPLE-INV-130'),
+    invoice('2026-09-01', 2500, 'SAMPLE-INV-131'),
+    invoice('2026-10-01', 1800, 'SAMPLE-INV-132'),
+  ],
 }
 
 export function sampleBillingClients() {
@@ -179,5 +220,5 @@ export function sampleBillingClients() {
       0,
       'FICTIONAL SAMPLE — not a real client. New sample retainer.',
     ),
-  ]
+  ].map((client) => ({ ...client, open_invoices: SAMPLE_INVOICES[client.client] || [] }))
 }
