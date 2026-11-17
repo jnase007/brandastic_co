@@ -66,6 +66,11 @@ function money(value) {
   return Math.round(value * 100) / 100
 }
 
+function signedMoney(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < -100_000_000 || value > 100_000_000) return undefined
+  return Math.round(value * 100) / 100
+}
+
 function whole(value, max) {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > max) return undefined
   return value
@@ -191,15 +196,30 @@ const MAX_INVOICES = 200
 export function validateOpenInvoice(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) invalid()
   const due = dateOrNull(input.due_date)
-  const balance = money(input.balance)
+  const balance = signedMoney(input.balance)
   const invoiceDate = dateOrNull(input.invoice_date)
   const number = text(input.invoice_number, 40, false)
-  if (!due || balance === undefined || invoiceDate === undefined || number === undefined) invalid()
+  if (due === undefined || balance === undefined || balance === 0 || invoiceDate === undefined || number === undefined) invalid()
+  if (balance > 0 && !due) invalid()
   return {
     due_date: due,
     balance,
     invoice_date: invoiceDate,
     invoice_number: number,
+  }
+}
+
+export function validateOtherOpen(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) invalid()
+  const client = text(input.client, 200, true)
+  const notes = text(input.notes, 500, false)
+  const open = input.open_balance == null || input.open_balance === '' ? 0 : money(input.open_balance)
+  if (client === undefined || notes === undefined || open === undefined) invalid()
+  return {
+    client,
+    notes,
+    open_balance: open,
+    open_invoices: openInvoices(input.open_invoices),
   }
 }
 
@@ -234,6 +254,7 @@ export function parseBillingDataset(raw) {
       clients: parsed.map(validateBillingClient),
       alerts: [],
       non_recurring_unpaid: [],
+      other_open: [],
       updated_at: null,
     }
   }
@@ -244,6 +265,7 @@ export function parseBillingDataset(raw) {
     clients: clients.map(validateBillingClient),
     alerts: listOf(parsed.alerts, validateBillingAlert),
     non_recurring_unpaid: listOf(parsed.non_recurring_unpaid, validateNonRecurringUnpaid),
+    other_open: listOf(parsed.other_open, validateOtherOpen),
     updated_at: optionalTimestamp(parsed.updated_at),
   }
 }
@@ -275,7 +297,7 @@ export function loadBillingDataset(env) {
     return { source: 'env', ...parseBillingDataset(raw) }
   }
   if (String(env?.VERCEL_ENV || '') === 'production') {
-    return { source: 'missing', clients: null, alerts: null, non_recurring_unpaid: null, updated_at: null }
+    return { source: 'missing', clients: null, alerts: null, non_recurring_unpaid: null, other_open: null, updated_at: null }
   }
   const sample = sampleBillingDataset()
   return {
@@ -283,6 +305,7 @@ export function loadBillingDataset(env) {
     clients: sample.clients.map(validateBillingClient),
     alerts: sample.alerts.map(validateBillingAlert),
     non_recurring_unpaid: sample.non_recurring_unpaid.map(validateNonRecurringUnpaid),
+    other_open: (sample.other_open || []).map(validateOtherOpen),
     updated_at: optionalTimestamp(sample.updated_at),
   }
 }

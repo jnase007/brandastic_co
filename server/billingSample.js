@@ -37,6 +37,10 @@ function invoice(dueDate, balance, invoiceNumber) {
   return { due_date: dueDate, balance, invoice_number: invoiceNumber, invoice_date: null }
 }
 
+function credit(balance, invoiceNumber, dueDate = null) {
+  return { due_date: dueDate, balance, invoice_number: invoiceNumber, invoice_date: null }
+}
+
 function oneTime(client, overdue, lastPayment, notes, openInvoices) {
   return {
     client,
@@ -53,6 +57,7 @@ export function sampleBillingDataset() {
     clients: sampleBillingClients(),
     alerts: sampleBillingAlerts(),
     non_recurring_unpaid: sampleNonRecurringUnpaid(),
+    other_open: sampleOtherOpen(),
     updated_at: '2026-11-16T18:41:00.000Z',
   }
 }
@@ -111,6 +116,20 @@ export function sampleBillingAlerts() {
   ]
 }
 
+export function sampleOtherOpen() {
+  return [
+    {
+      client: 'Fictional Meadow Sample',
+      notes: 'FICTIONAL SAMPLE — one-off invoice that is not yet due, plus an unapplied credit.',
+      open_balance: 400,
+      open_invoices: [
+        invoice('2026-12-15', 480, 'SAMPLE-INV-300'),
+        credit(-80, 'SAMPLE-CR-301'),
+      ],
+    },
+  ]
+}
+
 export function sampleNonRecurringUnpaid() {
   return [
     oneTime(
@@ -131,6 +150,7 @@ export function sampleNonRecurringUnpaid() {
 }
 
 const SAMPLE_INVOICES = {
+  'Fictional Cedar Sample': [credit(-125, 'SAMPLE-CR-100')],
   'Fictional Harbor Sample': [
     invoice('2026-11-20', 1800, 'SAMPLE-INV-110'),
     invoice('2026-07-01', 3600, 'SAMPLE-INV-111'),

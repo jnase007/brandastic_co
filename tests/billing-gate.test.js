@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 import { isAllowedEmail, parseAllowlist } from '../server/billingGate.js'
-import { loadBillingDataset, parseBillingClients, parseBillingDataset, validateBillingClient } from '../server/billingData.js'
+import { loadBillingDataset, parseBillingClients, parseBillingDataset, validateBillingClient, validateOpenInvoice } from '../server/billingData.js'
 import { handleBilling } from '../server/billingHttp.js'
 import { sampleBillingClients, sampleBillingDataset } from '../server/billingSample.js'
 import { buildAgingReport } from '../src/lib/billingAging.js'
@@ -195,6 +195,7 @@ describe('billing HTTP gate', () => {
     assert.deepEqual(result.body.clients, [])
     assert.deepEqual(result.body.alerts, [])
     assert.deepEqual(result.body.non_recurring_unpaid, [])
+    assert.deepEqual(result.body.other_open, [])
     assert.equal(result.body.summary.mrr, 0)
   })
 
@@ -226,7 +227,7 @@ describe('aging report', () => {
     const northwind = report.rows.find((row) => row.client.includes('Northwind'))
     assert.equal(northwind.current, 750)
     assert.equal(northwind.late, 0)
-    assert.equal(report.rows.at(-1).client.includes('Northwind'), true)
+    assert.ok(report.rows.some((row) => row.current < 0))
     assert.equal(report.totals.total, report.rows.reduce((sum, row) => sum + row.total, 0))
   })
 
@@ -238,6 +239,46 @@ describe('aging report', () => {
     assert.equal(report.rows[0].total, 80)
     assert.equal(report.rows[0].current, 0)
     assert.equal(report.rows[0].late, 0)
+  })
+
+  it('nets an undated credit into Current and a dated credit into its bucket', () => {
+    const report = buildAgingReport([
+      {
+        client: 'Fictional Credit Sample',
+        open_balance: 0,
+        open_invoices: [
+          { due_date: '2026-08-01', balance: 300 },
+          { due_date: null, balance: -50 },
+          { due_date: '2026-10-01', balance: -40 },
+        ],
+      },
+    ], '2026-11-16')
+    assert.equal(report.rows[0].current, -50)
+    assert.equal(report.rows[0].d60, -40)
+    assert.equal(report.rows[0].late, 300)
+    assert.equal(report.rows[0].total, 210)
+    assert.equal(report.totals.current, -50)
+    assert.equal(report.totals.total, 210)
+  })
+
+  it('accepts a credit without a due date and rejects a charge without one', () => {
+    const credit = validateOpenInvoice({ balance: -10, invoice_number: 'SAMPLE-CR' })
+    assert.equal(credit.due_date, null)
+    assert.equal(credit.balance, -10)
+    assert.throws(() => validateOpenInvoice({ balance: 10 }), /invalid billing data/)
+  })
+
+  it('includes not-yet-due one-off invoices from other_open', () => {
+    const data = sampleBillingDataset()
+    assert.equal(data.non_recurring_unpaid.length, 2)
+    const report = buildAgingReport(
+      data.other_open.map((row) => ({ client: row.client, open_balance: row.open_balance, open_invoices: row.open_invoices })),
+      '2026-11-16',
+    )
+    assert.equal(report.rows.length, 1)
+    assert.equal(report.rows[0].current, 400)
+    assert.equal(report.rows[0].late, 0)
+    assert.equal(report.totals.total, 400)
   })
 
   it('still accepts clients that omit open_invoices', () => {

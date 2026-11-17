@@ -60,13 +60,25 @@ function pickAlert(row) {
 function pickInvoices(value) {
   if (!Array.isArray(value)) return []
   return value
-    .filter((invoice) => invoice && typeof invoice.due_date === 'string' && typeof invoice.balance === 'number')
+    .filter((invoice) => invoice && typeof invoice.balance === 'number' && invoice.balance !== 0)
     .map((invoice) => ({
-      due_date: invoice.due_date,
+      due_date: typeof invoice.due_date === 'string' ? invoice.due_date : null,
       balance: invoice.balance,
       invoice_date: typeof invoice.invoice_date === 'string' ? invoice.invoice_date : null,
       invoice_number: typeof invoice.invoice_number === 'string' ? invoice.invoice_number : '',
     }))
+}
+
+function pickOtherOpen(row) {
+  if (!row || typeof row !== 'object') return null
+  const client = typeof row.client === 'string' ? row.client : ''
+  if (!client) return null
+  return {
+    client,
+    notes: typeof row.notes === 'string' ? row.notes : '',
+    open_balance: numberOrNull(row.open_balance) ?? 0,
+    open_invoices: pickInvoices(row.open_invoices),
+  }
 }
 
 function pickNonRecurring(row) {
@@ -131,6 +143,9 @@ export async function fetchBilling() {
   const nonRecurring = Array.isArray(body.non_recurring_unpaid)
     ? body.non_recurring_unpaid.map(pickNonRecurring).filter(Boolean)
     : []
+  const otherOpen = Array.isArray(body.other_open)
+    ? body.other_open.map(pickOtherOpen).filter(Boolean)
+    : []
   const summary = body.summary && typeof body.summary === 'object' ? body.summary : {}
   return {
     status: 'ready',
@@ -140,6 +155,7 @@ export async function fetchBilling() {
       clients,
       alerts,
       non_recurring_unpaid: nonRecurring,
+      other_open: otherOpen,
       summary: {
         mrr: numberOrNull(summary.mrr) ?? 0,
         client_count: numberOrNull(summary.client_count) ?? clients.length,

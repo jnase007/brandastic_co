@@ -53,13 +53,18 @@ export function buildAgingReport(parties, asOf) {
     const buckets = emptyBuckets()
     for (const invoice of invoices) {
       const balance = invoice.balance || 0
-      if (balance <= 0 || !invoice.due_date) continue
+      if (!balance) continue
+      if (!invoice.due_date) {
+        if (balance < 0) buckets.current += balance
+        continue
+      }
       const days = daysPastDue(invoice.due_date, asOf)
       if (days == null) continue
       buckets[bucketKey(days)] += balance
     }
-    const total = roundMoney(Object.values(buckets).reduce((sum, value) => sum + value, 0))
-    if (total <= 0) continue
+    const parts = [buckets.current, buckets.d30, buckets.d60, buckets.d90, buckets.late]
+    if (!parts.some((value) => value !== 0)) continue
+    const total = roundMoney(parts.reduce((sum, value) => sum + value, 0))
     rows.push({
       client: party.client,
       current: roundMoney(buckets.current),

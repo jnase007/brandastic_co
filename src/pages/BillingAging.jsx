@@ -10,14 +10,22 @@ const COLUMNS = [
 ]
 
 function money(value) {
-  return new Intl.NumberFormat('en-US', {
+  const formatted = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-  }).format(value || 0)
+  }).format(Math.abs(value || 0))
+  return value < 0 ? `(${formatted})` : formatted
 }
 
 function cellStyle(amount, tone, emphasize) {
   if (!amount) return { fontWeight: emphasize ? 800 : 500, color: '#0f172a' }
+  if (amount < 0) {
+    return {
+      background: '#f8fafc',
+      color: '#64748b',
+      fontWeight: emphasize ? 800 : 500,
+    }
+  }
   return {
     background: tone.wash,
     color: tone.text,
@@ -34,11 +42,12 @@ function Amount({ value, tone, emphasize = false }) {
   )
 }
 
-export function AgingReport({ clients = [], nonRecurring = [], updatedAt }) {
+export function AgingReport({ clients = [], nonRecurring = [], otherOpen = [], updatedAt }) {
   const asOf = asOfDate(updatedAt)
   const parties = [
     ...clients.map((row) => ({ client: row.client, open_balance: row.open_balance, open_invoices: row.open_invoices })),
     ...nonRecurring.map((row) => ({ client: row.client, open_balance: row.overdue_amount, open_invoices: row.open_invoices })),
+    ...otherOpen.map((row) => ({ client: row.client, open_balance: row.open_balance, open_invoices: row.open_invoices })),
   ]
   const report = buildAgingReport(parties, asOf)
   return (
@@ -77,7 +86,7 @@ export function AgingReport({ clients = [], nonRecurring = [], updatedAt }) {
                   {COLUMNS.map((column) => (
                     <Amount key={column.key} value={row[column.key]} tone={column.tone} />
                   ))}
-                  <td className="border border-slate-300 text-right font-semibold tabular-nums text-slate-900">{money(row.total)}</td>
+                  <td className="border border-slate-300 text-right font-semibold tabular-nums" style={{ color: row.total < 0 ? '#64748b' : '#0f172a' }}>{money(row.total)}</td>
                 </tr>
               ))}
             </tbody>
@@ -87,7 +96,7 @@ export function AgingReport({ clients = [], nonRecurring = [], updatedAt }) {
                 {COLUMNS.map((column) => (
                   <Amount key={column.key} value={report.totals[column.key]} tone={column.tone} emphasize />
                 ))}
-                <td className="border border-slate-300 text-right font-extrabold tabular-nums text-slate-900">{money(report.totals.total)}</td>
+                <td className="border border-slate-300 text-right font-extrabold tabular-nums" style={{ color: report.totals.total < 0 ? '#64748b' : '#0f172a' }}>{money(report.totals.total)}</td>
               </tr>
             </tfoot>
           </table>

@@ -309,6 +309,7 @@ export function BillingScreen({ state, initialLateOnly = false, initialClientNam
       <AgingReport
         clients={report.clients || []}
         nonRecurring={report.non_recurring_unpaid || []}
+        otherOpen={report.other_open || []}
         updatedAt={report.updated_at}
       />
 
