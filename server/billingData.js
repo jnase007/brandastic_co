@@ -4,6 +4,13 @@
  * Canonical value: a JSON object with `clients`, `alerts`, and `non_recurring_unpaid`.
  * A bare array is still accepted and treated as `clients` only.
  *
+ * Aging buckets need optional per-invoice lines. Each client (and each non-recurring
+ * customer) may include `open_invoices`. Omit the array on older files. Each invoice is
+ * `{ "due_date": "YYYY-MM-DD", "balance": number, "invoice_date"?: "YYYY-MM-DD", "invoice_number"?: string }`.
+ * `due_date` and `balance` are required when an invoice object is present. The report
+ * measures days past `due_date` against `updated_at` (Pacific date), or today if that
+ * timestamp is missing.
+ *
  * Vercel Blob and Global Config are not used. A blob URL or a client-readable config token
  * could expose the file; this variable stays inside the function environment.
  *
@@ -123,6 +130,7 @@ export function validateBillingClient(input) {
     overdue_balance: overdue,
     unpaid_90_days_flag: input.unpaid_90_days_flag,
     notes,
+    open_invoices: openInvoices(input.open_invoices),
   }
 }
 
@@ -174,7 +182,31 @@ export function validateNonRecurringUnpaid(input) {
     last_payment_date: lastPayment,
     days_since_payment: days,
     notes,
+    open_invoices: openInvoices(input.open_invoices),
   }
+}
+
+const MAX_INVOICES = 200
+
+export function validateOpenInvoice(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) invalid()
+  const due = dateOrNull(input.due_date)
+  const balance = money(input.balance)
+  const invoiceDate = dateOrNull(input.invoice_date)
+  const number = text(input.invoice_number, 40, false)
+  if (!due || balance === undefined || invoiceDate === undefined || number === undefined) invalid()
+  return {
+    due_date: due,
+    balance,
+    invoice_date: invoiceDate,
+    invoice_number: number,
+  }
+}
+
+function openInvoices(value) {
+  if (value == null) return []
+  if (!Array.isArray(value) || value.length > MAX_INVOICES) invalid()
+  return value.map(validateOpenInvoice)
 }
 
 function optionalTimestamp(value) {

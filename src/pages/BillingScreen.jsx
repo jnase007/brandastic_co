@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { AGING, BillingCharts, ColorLegend, ageStatus } from './BillingCharts'
+import { AgingReport } from './BillingAging'
 
 export const BILLING_DATA_SOURCE_LABEL = 'Data pulled via QuickBooks Online'
 
@@ -56,7 +57,7 @@ function Pill({ status }) {
 
 function Section({ id, title, subtitle, children }) {
   return (
-    <section id={id} className="grid gap-3" aria-labelledby={`${id}-title`}>
+    <section id={id} className="grid h-auto min-h-0 content-start items-start gap-3" aria-labelledby={`${id}-title`}>
       <header className="border-b border-slate-200 pb-2">
         <h2 id={`${id}-title`} className="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">{title}</h2>
         <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>
@@ -70,9 +71,15 @@ function Shell({ children }) {
   return (
     <div className="billing-page">
       <style>{`
-        .billing-page { display: grid; gap: 20px; width: min(1180px, 100%); margin: 0 auto; padding: 16px 16px 32px; }
-        @media (min-width: 1024px) { .billing-page { gap: 24px; padding: 20px 28px 40px; } }
-        .billing-table th { position: sticky; top: 0; z-index: 2; background: #fff; padding: 8px 12px; text-align: left; }
+        .billing-page { display: block; height: auto; min-height: 0; width: min(1180px, 100%); max-width: 100%; margin: 0 auto; padding: 16px 16px 32px; }
+        .billing-page > * + * { margin-top: 20px; }
+        @media (min-width: 1024px) { .billing-page { padding: 20px 28px 40px; } .billing-page > * + * { margin-top: 24px; } }
+        .billing-scroll { width: 100%; max-width: 100%; height: auto; min-height: 0; overflow-x: auto; }
+        .billing-table { width: 100%; height: auto; table-layout: fixed; border-collapse: collapse; }
+        .billing-table tr { height: 44px; }
+        .billing-table th, .billing-table td { height: 44px; padding: 4px 8px; vertical-align: middle; white-space: nowrap; line-height: 1.2; }
+        .billing-table th { position: sticky; top: 0; z-index: 2; background: #fff; text-align: left; font-size: 11px; }
+        .billing-table td.clip { overflow: hidden; text-overflow: ellipsis; }
         .billing-table tbody tr { cursor: pointer; }
         .billing-table tbody tr:hover td { background: #f8fafc; }
       `}</style>
@@ -299,6 +306,12 @@ export function BillingScreen({ state, initialLateOnly = false, initialClientNam
         </p>
       ) : null}
 
+      <AgingReport
+        clients={report.clients || []}
+        nonRecurring={report.non_recurring_unpaid || []}
+        updatedAt={report.updated_at}
+      />
+
       <Section id="billing-attention" title="Needs attention" subtitle="What to look at before anything else.">
         <div
           className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-3"
@@ -381,8 +394,18 @@ export function BillingScreen({ state, initialLateOnly = false, initialClientNam
         {recurringRows.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-sm text-slate-500">No recurring clients match this search or filter.</p>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <table className="billing-table w-full min-w-[760px] text-left text-sm" data-testid="billing-table">
+          <div className="billing-scroll rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <table className="billing-table text-left text-xs sm:text-sm" data-testid="billing-table">
+              <colgroup>
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '14%' }} />
+              </colgroup>
               <thead className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
                 <tr>
                   <SortHeader label="Client" column="client" current={sort} onSort={(key) => toggleSort(key, sort, setSort)} />
@@ -400,17 +423,14 @@ export function BillingScreen({ state, initialLateOnly = false, initialClientNam
                   const status = ageStatus(row.days_since_last_payment, { overdue: row.overdue_balance, open: row.open_balance })
                   return (
                     <tr key={`${row.qb_customer_id}-${row.client}`} onClick={() => setSelected({ kind: 'recurring', row })}>
-                      <td className="border-t border-slate-100 px-3 py-2.5" style={{ boxShadow: `inset 3px 0 0 ${status.dot}` }}>
-                        <div className="font-semibold text-slate-900">{row.client}</div>
-                        <div className="text-xs text-slate-500">{row.qb_customer_id || '—'}</div>
-                      </td>
-                      <td className="border-t border-slate-100 px-3 py-2.5">{money(row.monthly_recurring_amount)}</td>
-                      <td className="border-t border-slate-100 px-3 py-2.5">{formatDate(row.last_invoice_date)}</td>
-                      <td className="border-t border-slate-100 px-3 py-2.5">{formatDate(row.last_payment_date)}</td>
-                      <td className="border-t border-slate-100 px-3 py-2.5">{row.days_since_last_payment == null ? '—' : row.days_since_last_payment}</td>
-                      <td className="border-t border-slate-100 px-3 py-2.5">{money(row.open_balance)}</td>
-                      <td className="border-t border-slate-100 px-3 py-2.5">{money(row.overdue_balance)}</td>
-                      <td className="border-t border-slate-100 px-3 py-2.5"><Pill status={status} /></td>
+                      <td className="clip border-t border-slate-100 font-semibold text-slate-900" style={{ boxShadow: `inset 3px 0 0 ${status.dot}` }} title={row.qb_customer_id || row.client}>{row.client}</td>
+                      <td className="border-t border-slate-100 text-right tabular-nums">{money(row.monthly_recurring_amount)}</td>
+                      <td className="border-t border-slate-100">{formatDate(row.last_invoice_date)}</td>
+                      <td className="border-t border-slate-100">{formatDate(row.last_payment_date)}</td>
+                      <td className="border-t border-slate-100 text-right tabular-nums">{row.days_since_last_payment == null ? '—' : row.days_since_last_payment}</td>
+                      <td className="border-t border-slate-100 text-right tabular-nums">{money(row.open_balance)}</td>
+                      <td className="border-t border-slate-100 text-right tabular-nums">{money(row.overdue_balance)}</td>
+                      <td className="border-t border-slate-100"><Pill status={status} /></td>
                     </tr>
                   )
                 })}
@@ -431,8 +451,15 @@ export function BillingScreen({ state, initialLateOnly = false, initialClientNam
         {nonRecurringRows.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-sm text-slate-500">No non-recurring unpaid customers match this search.</p>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm" data-testid="billing-non-recurring">
-            <table className="billing-table w-full min-w-[640px] text-left text-sm">
+          <div className="billing-scroll rounded-2xl border border-slate-200 bg-white shadow-sm" data-testid="billing-non-recurring">
+            <table className="billing-table text-left text-xs sm:text-sm">
+              <colgroup>
+                <col style={{ width: '34%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '20%' }} />
+              </colgroup>
               <thead className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
                 <tr>
                   <SortHeader label="Client" column="client" current={nonSort} onSort={(key) => toggleSort(key, nonSort, setNonSort)} />
@@ -447,11 +474,11 @@ export function BillingScreen({ state, initialLateOnly = false, initialClientNam
                   const status = ageStatus(row.days_since_payment, { overdue: row.overdue_amount, open: row.overdue_amount })
                   return (
                     <tr key={row.client} onClick={() => setSelected({ kind: 'nonrecurring', row })}>
-                      <td className="border-t border-slate-100 px-3 py-2.5 font-semibold text-slate-900" style={{ boxShadow: `inset 3px 0 0 ${status.dot}` }}>{row.client}</td>
-                      <td className="border-t border-slate-100 px-3 py-2.5">{money(row.overdue_amount)}</td>
-                      <td className="border-t border-slate-100 px-3 py-2.5">{formatDate(row.last_payment_date)}</td>
-                      <td className="border-t border-slate-100 px-3 py-2.5">{row.days_since_payment == null ? '—' : row.days_since_payment}</td>
-                      <td className="border-t border-slate-100 px-3 py-2.5"><Pill status={status} /></td>
+                      <td className="clip border-t border-slate-100 font-semibold text-slate-900" style={{ boxShadow: `inset 3px 0 0 ${status.dot}` }}>{row.client}</td>
+                      <td className="border-t border-slate-100 text-right tabular-nums">{money(row.overdue_amount)}</td>
+                      <td className="border-t border-slate-100">{formatDate(row.last_payment_date)}</td>
+                      <td className="border-t border-slate-100 text-right tabular-nums">{row.days_since_payment == null ? '—' : row.days_since_payment}</td>
+                      <td className="border-t border-slate-100"><Pill status={status} /></td>
                     </tr>
                   )
                 })}

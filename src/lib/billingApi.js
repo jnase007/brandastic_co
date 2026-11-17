@@ -57,6 +57,18 @@ function pickAlert(row) {
   }
 }
 
+function pickInvoices(value) {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((invoice) => invoice && typeof invoice.due_date === 'string' && typeof invoice.balance === 'number')
+    .map((invoice) => ({
+      due_date: invoice.due_date,
+      balance: invoice.balance,
+      invoice_date: typeof invoice.invoice_date === 'string' ? invoice.invoice_date : null,
+      invoice_number: typeof invoice.invoice_number === 'string' ? invoice.invoice_number : '',
+    }))
+}
+
 function pickNonRecurring(row) {
   if (!row || typeof row !== 'object') return null
   const client = typeof row.client === 'string' ? row.client : ''
@@ -67,6 +79,7 @@ function pickNonRecurring(row) {
     last_payment_date: typeof row.last_payment_date === 'string' ? row.last_payment_date : null,
     days_since_payment: numberOrNull(row.days_since_payment),
     notes: typeof row.notes === 'string' ? row.notes : '',
+    open_invoices: pickInvoices(row.open_invoices),
   }
 }
 
@@ -86,6 +99,7 @@ function pickClient(row) {
     overdue_balance: numberOrNull(row.overdue_balance) ?? 0,
     unpaid_90_days_flag: row.unpaid_90_days_flag === true,
     notes: typeof row.notes === 'string' ? row.notes : '',
+    open_invoices: pickInvoices(row.open_invoices),
   }
 }
 

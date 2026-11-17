@@ -4,7 +4,8 @@ import { describe, it } from 'node:test'
 import { isAllowedEmail, parseAllowlist } from '../server/billingGate.js'
 import { loadBillingDataset, parseBillingClients, parseBillingDataset, validateBillingClient } from '../server/billingData.js'
 import { handleBilling } from '../server/billingHttp.js'
-import { sampleBillingClients } from '../server/billingSample.js'
+import { sampleBillingClients, sampleBillingDataset } from '../server/billingSample.js'
+import { buildAgingReport } from '../src/lib/billingAging.js'
 
 const JUSTIN = 'justin.sample@example.test'
 const SANDY = 'sandy.sample@example.test'
@@ -211,12 +212,48 @@ describe('billing HTTP gate', () => {
   })
 })
 
+describe('aging report', () => {
+  it('buckets fictional invoices by days past due and sorts the oldest first', () => {
+    const data = sampleBillingDataset()
+    const parties = [
+      ...data.clients.map((row) => ({ client: row.client, open_balance: row.open_balance, open_invoices: row.open_invoices })),
+      ...data.non_recurring_unpaid.map((row) => ({ client: row.client, open_balance: row.overdue_amount, open_invoices: row.open_invoices })),
+    ]
+    const report = buildAgingReport(parties, '2026-11-16')
+    assert.equal(report.missingInvoices, false)
+    assert.equal(report.rows[0].late > 0, true)
+    assert.ok(report.rows[0].total >= report.rows[1].total)
+    const northwind = report.rows.find((row) => row.client.includes('Northwind'))
+    assert.equal(northwind.current, 750)
+    assert.equal(northwind.late, 0)
+    assert.equal(report.rows.at(-1).client.includes('Northwind'), true)
+    assert.equal(report.totals.total, report.rows.reduce((sum, row) => sum + row.total, 0))
+  })
+
+  it('keeps a client without invoice lines as a total only', () => {
+    const report = buildAgingReport([
+      { client: 'Fictional Missing Invoice Sample', open_balance: 80, open_invoices: [] },
+    ], '2026-11-16')
+    assert.equal(report.missingInvoices, true)
+    assert.equal(report.rows[0].total, 80)
+    assert.equal(report.rows[0].current, 0)
+    assert.equal(report.rows[0].late, 0)
+  })
+
+  it('still accepts clients that omit open_invoices', () => {
+    const [row] = parseBillingClients(JSON.stringify([{ ...sampleBillingClients()[0], open_invoices: undefined }]))
+    assert.deepEqual(row.open_invoices, [])
+  })
+})
+
 describe('client bundle sources', () => {
   it('does not embed sample clients in the pages that ship to the browser', () => {
     const files = [
       'src/pages/Billing.jsx',
       'src/pages/BillingScreen.jsx',
       'src/pages/BillingCharts.jsx',
+      'src/pages/BillingAging.jsx',
+      'src/lib/billingAging.js',
       'src/lib/billingApi.js',
       'src/hooks/useBillingAllowed.js',
     ]
