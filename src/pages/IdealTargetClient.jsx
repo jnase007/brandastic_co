@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import PageHeader from '../components/PageHeader'
+import HeartChristianCaseStudy from '../components/HeartChristianCaseStudy'
 
 const SHEET = 'https://docs.google.com/spreadsheets/d/1yYH9HL9553Hq-ZwqlHrtTp3VC-rXKKAPSRRx5OijdDA/edit?gid=608242340#gid=608242340'
 
@@ -114,6 +115,7 @@ export default function IdealTargetClient() {
           </div>
         ))}
       </div>
+      <HeartChristianCaseStudy />
       <div className="mt-10 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="rounded-2xl border bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
