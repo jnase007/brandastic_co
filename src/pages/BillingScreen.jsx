@@ -68,7 +68,7 @@ function Section({ id, title, subtitle, children }) {
   )
 }
 
-function Shell({ children, sectionNav = false }) {
+function Shell({ children, title = 'Billing' }) {
   return (
     <div className="billing-page">
       <style>{`
@@ -87,14 +87,8 @@ function Shell({ children, sectionNav = false }) {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6d28d9]">Team</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Billing</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
         </div>
-        {sectionNav ? (
-          <nav aria-label="On this page" className="flex flex-wrap gap-1.5" data-testid="billing-section-nav">
-            <a href="#billing-aging" className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">Aging report</a>
-            <a href="#billing-subscriptions" className="rounded-full bg-[#5b21b6] px-3 py-1 text-xs font-bold text-white">Subscriptions</a>
-          </nav>
-        ) : null}
       </header>
       {children}
     </div>
@@ -217,7 +211,7 @@ function ClientDrawer({ item, alerts, onClose }) {
   )
 }
 
-export function BillingScreen({ state, initialLateOnly = false, initialClientName = '' }) {
+export function BillingScreen({ state, initialLateOnly = false, initialClientName = '', view = 'billing' }) {
   const [filter, setFilter] = useState(initialLateOnly ? 'late' : 'all')
   const [query, setQuery] = useState('')
   const [nonQuery, setNonQuery] = useState('')
@@ -267,6 +261,13 @@ export function BillingScreen({ state, initialLateOnly = false, initialClientNam
   }
 
   if (state.status === 'unconfigured_data') {
+    if (view === 'subscriptions') {
+      return (
+        <Shell title="Subscriptions">
+          <BillingSubscriptions data={state.report?.subscriptions} />
+        </Shell>
+      )
+    }
     return (
       <Message title="Billing data is not configured.">
         Set BILLING_CLIENTS_JSON on the server. Client and payment rows are not stored in the repository.
@@ -279,6 +280,14 @@ export function BillingScreen({ state, initialLateOnly = false, initialClientNam
       <Message title="Billing could not be loaded.">
         Try again in a moment. Nothing from the billing file is shown on this screen.
       </Message>
+    )
+  }
+
+  if (view === 'subscriptions') {
+    return (
+      <Shell title="Subscriptions">
+        <BillingSubscriptions data={report.subscriptions} />
+      </Shell>
     )
   }
 
@@ -305,7 +314,7 @@ export function BillingScreen({ state, initialLateOnly = false, initialClientNam
   }
 
   return (
-    <Shell sectionNav>
+    <Shell>
       <SourceLine updatedAt={report.updated_at} />
       {report.sample ? (
         <p className="text-sm text-slate-500" data-testid="billing-sample-banner">
@@ -495,8 +504,6 @@ export function BillingScreen({ state, initialLateOnly = false, initialClientNam
           </div>
         )}
       </Section>
-
-      <BillingSubscriptions data={report.subscriptions} />
 
       <ClientDrawer item={selected} alerts={alerts} onClose={() => setSelected(null)} />
     </Shell>

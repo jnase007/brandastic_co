@@ -67,5 +67,5 @@ export default function BillingSubscriptionsPreview() {
     }
   }, [])
 
-  return <BillingScreen state={state} />
+  return <BillingScreen state={state} view="subscriptions" />
 }

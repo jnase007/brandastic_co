@@ -4,12 +4,12 @@ import '../profitability.css'
 import { fetchBilling } from '../lib/billingApi'
 import { BillingScreen } from './BillingScreen'
 
-export default function Billing() {
+export default function Billing({ view = 'billing' }) {
   const [state, setState] = useState({ status: 'loading' })
 
   useEffect(() => {
     const previousTitle = document.title
-    document.title = 'Billing · Team'
+    document.title = view === 'subscriptions' ? 'Subscriptions · Billing' : 'Billing · Team'
     let robots = document.querySelector('meta[name="robots"]')
     const createdRobots = !robots
     if (!robots) {
@@ -39,7 +39,7 @@ export default function Billing() {
       else if (previousReferrer == null) referrer.removeAttribute('content')
       else referrer.setAttribute('content', previousReferrer)
     }
-  }, [])
+  }, [view])
 
   useEffect(() => {
     let cancelled = false
@@ -56,5 +56,5 @@ export default function Billing() {
   }, [])
 
   if (state.status === 'unauthorized') return <Navigate to="/login" replace />
-  return <BillingScreen state={state} />
+  return <BillingScreen state={state} view={view} />
 }

@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import {
   GROUP_COLORS,
   SUBSCRIPTION_FILTERS,
@@ -14,11 +14,17 @@ import {
   monthlyCostByGroup,
   overallMonthlyTrend,
   sortSubscriptionItems,
+  subscriptionKey,
   subscriptionMonthly,
+  subscriptionSavings,
+  subscriptionSelectable,
   subscriptionsEmptyState,
+  summarizeSavings,
   sumMonthly,
   topSubscriptionsByMonthly,
 } from '../lib/billingSubscriptionsView'
+
+const SELECTION_STORAGE_KEY = 'brandastic.billing.subscriptionCuts'
 
 const STATUS_STYLE = {
   active: { label: 'Active', wash: '#dcfce7', text: '#166534', dot: '#15803d' },
@@ -189,12 +195,44 @@ function rowKey(item, index) {
   return item.id || `${item.status || 'row'}-${item.vendor || 'vendor'}-${index}`
 }
 
+function readSelection() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SELECTION_STORAGE_KEY) || '[]')
+    return new Set(Array.isArray(parsed) ? parsed.filter((entry) => typeof entry === 'string') : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function CutCompare({ current, after }) {
+  const max = Math.max(current || 0, after || 0, 1)
+  const rows = [
+    ['Current', current, '#5b21b6'],
+    ['After cuts', after, '#0f766e'],
+  ]
+  return (
+    <div className="grid min-w-[180px] gap-1.5" data-testid="billing-savings-compare">
+      {rows.map(([label, value, color]) => (
+        <span key={label} className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</span>
+          <span className="block h-2 overflow-hidden rounded-full bg-slate-100">
+            <span className="block h-full rounded-full" style={{ width: `${Math.max(((value || 0) / max) * 100, value > 0 ? 4 : 0)}%`, background: color }} />
+          </span>
+          <span className="text-xs font-semibold tabular-nums text-slate-700">{money(value)}</span>
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export function BillingSubscriptions({ data }) {
   const view = subscriptionsEmptyState(data)
   const items = view.loaded ? data.items : []
   const [filter, setFilter] = useState('all')
   const [sort, setSort] = useState({ key: 'monthly', dir: 'desc' })
   const [open, setOpen] = useState(() => new Set())
+  const [selected, setSelected] = useState(readSelection)
+  const selectAllRef = useRef(null)
 
   const filtered = useMemo(
     () => sortSubscriptionItems(filterSubscriptionItems(items, filter), sort.key, sort.dir),
@@ -203,11 +241,52 @@ export function BillingSubscriptions({ data }) {
   const trend = useMemo(() => overallMonthlyTrend(items), [items])
   const totalShown = sumMonthly(filtered)
   const totals = data?.totals || {}
+  const savings = useMemo(
+    () => summarizeSavings(items, selected, totals.monthly_run_rate),
+    [items, selected, totals.monthly_run_rate],
+  )
+  const selectableFiltered = filtered.filter(subscriptionSelectable)
+  const selectedShown = selectableFiltered.filter((item) => selected.has(subscriptionKey(item))).length
+  const allShownSelected = selectableFiltered.length > 0 && selectedShown === selectableFiltered.length
+
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = selectedShown > 0 && !allShownSelected
+  }, [selectedShown, allShownSelected])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify([...selected]))
+    } catch {
+      // Selection still works for this visit if storage is blocked.
+    }
+  }, [selected])
   const windowLabel = formatSourceWindow(data?.source_window)
   const updatedLabel = formatSubscriptionUpdated(data?.updated_at)
 
   function toggleSort(key) {
     setSort((current) => ({ key, dir: current.key === key && current.dir === 'desc' ? 'asc' : 'desc' }))
+  }
+
+  function toggleShown(checked) {
+    setSelected((current) => {
+      const next = new Set(current)
+      for (const item of selectableFiltered) {
+        const key = subscriptionKey(item)
+        if (checked) next.add(key)
+        else next.delete(key)
+      }
+      return next
+    })
+  }
+
+  function toggleSelected(item) {
+    const key = subscriptionKey(item)
+    setSelected((current) => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
   }
 
   function toggleRow(key) {
@@ -288,6 +367,7 @@ export function BillingSubscriptions({ data }) {
             ) : null}
           </div>
 
+          <p className="text-xs text-slate-500">Stopped subscriptions stay out of the savings. They cannot be selected.</p>
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Subscription filters">
             {SUBSCRIPTION_FILTERS.map((item) => {
               const active = filter === item.id
@@ -315,9 +395,19 @@ export function BillingSubscriptions({ data }) {
           ) : (
             <div className="billing-scroll rounded-2xl border border-slate-200 bg-white shadow-sm">
               <table className="billing-table text-left text-xs sm:text-sm" data-testid="billing-subscriptions-table">
-                <caption className="sr-only">Recurring charges. Choose a row to read notes and charge history. This table does not change any subscription.</caption>
+                <caption className="sr-only">Recurring charges. Check a row to estimate savings in this browser. Nothing is changed on the server.</caption>
                 <thead className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
                   <tr>
+                    <th scope="col">
+                      <input
+                        ref={selectAllRef}
+                        type="checkbox"
+                        aria-label="Select all shown subscriptions"
+                        checked={allShownSelected}
+                        disabled={selectableFiltered.length === 0}
+                        onChange={(event) => toggleShown(event.target.checked)}
+                      />
+                    </th>
                     {[
                       ['vendor', 'Vendor'],
                       ['group', 'Group'],
@@ -344,7 +434,10 @@ export function BillingSubscriptions({ data }) {
                     const key = rowKey(item, index)
                     const expanded = open.has(key)
                     const series = monthlyChargeSeries(item.charges)
-                    const monthly = subscriptionMonthly(item)
+                    const cost = subscriptionSavings(item)
+                    const monthly = item.status === 'annual' ? (cost.included ? cost.monthly : null) : subscriptionMonthly(item)
+                    const selectable = subscriptionSelectable(item)
+                    const checked = selectable && selected.has(subscriptionKey(item))
                     return (
                       <Fragment key={key}>
                         <tr
@@ -353,12 +446,23 @@ export function BillingSubscriptions({ data }) {
                           aria-expanded={expanded}
                           onClick={() => toggleRow(key)}
                           onKeyDown={(event) => {
+                            if (event.target !== event.currentTarget) return
                             if (event.key === 'Enter' || event.key === ' ') {
                               event.preventDefault()
                               toggleRow(key)
                             }
                           }}
                         >
+                          <td className="border-t border-slate-100" onClick={(event) => event.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              aria-label={`Select ${item.vendor || 'subscription'}`}
+                              checked={checked}
+                              disabled={!selectable}
+                              title={selectable ? 'Include in the savings estimate' : 'Stopped subscriptions are not counted'}
+                              onChange={() => toggleSelected(item)}
+                            />
+                          </td>
                           <td className="border-t border-slate-100 font-semibold text-slate-900">
                             <span className="block">{item.vendor || '—'}</span>
                             <span className="mt-1 flex flex-wrap gap-1">
@@ -376,6 +480,7 @@ export function BillingSubscriptions({ data }) {
                           <td className="border-t border-slate-100 text-slate-700">{groupLabel(item.group)}</td>
                           <td className="border-t border-slate-100 text-right tabular-nums">
                             <span className="block">{money(monthly)}</span>
+                            {item.status === 'annual' && cost.included ? <span className="block text-[10px] font-medium text-slate-500">{money(cost.annual)}/yr</span> : null}
                             <Sparkline series={series} label={item.vendor ? `${item.vendor} monthly charges` : 'Monthly charges'} />
                           </td>
                           <td className="border-t border-slate-100">{formatDay(item.last_charged_date)}</td>
@@ -385,7 +490,7 @@ export function BillingSubscriptions({ data }) {
                         </tr>
                         {expanded ? (
                           <tr className="sub-detail">
-                            <td colSpan={7} className="border-t border-slate-100 text-sm text-slate-600">
+                            <td colSpan={8} className="border-t border-slate-100 text-sm text-slate-600">
                               <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                                 <div><dt className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Latest charge</dt><dd>{money(item.latest_charge)}</dd></div>
                                 <div><dt className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Average</dt><dd>{money(item.average_monthly_amount)}</dd></div>
@@ -436,6 +541,7 @@ export function BillingSubscriptions({ data }) {
                 </tbody>
                 <tfoot>
                   <tr>
+                    <td className="border-t border-slate-200" />
                     <td className="border-t border-slate-200 font-extrabold text-slate-900">Totals</td>
                     <td className="border-t border-slate-200 text-slate-500">{filtered.length} shown</td>
                     <td className="border-t border-slate-200 text-right font-extrabold tabular-nums">{money(totalShown)}</td>
@@ -445,6 +551,33 @@ export function BillingSubscriptions({ data }) {
               </table>
             </div>
           )}
+
+          <div className="sticky bottom-3 z-20 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur" data-testid="billing-savings">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Savings if these are cut</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  <span data-testid="billing-savings-count">{savings.count}</span> selected
+                  {' · '}
+                  <span data-testid="billing-savings-monthly">{money(savings.monthly)}</span>/mo
+                  {' · '}
+                  <span data-testid="billing-savings-annual">{money(savings.annual)}</span>/yr
+                  {' · '}
+                  <span data-testid="billing-savings-percent">{savings.percent == null ? '—' : `${Number.isInteger(savings.percent) ? savings.percent : savings.percent.toFixed(1)}%`}</span>
+                  {' of monthly run rate'}
+                </p>
+              </div>
+              {savings.runRate != null ? <CutCompare current={savings.runRate} after={savings.after} /> : null}
+              <button
+                type="button"
+                className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 disabled:opacity-40"
+                disabled={selected.size === 0}
+                onClick={() => setSelected(new Set())}
+              >
+                Clear selection
+              </button>
+            </div>
+          </div>
         </>
       )}
     </section>

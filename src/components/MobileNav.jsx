@@ -64,7 +64,7 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
   const { user, isAdmin, profile, canSeePeople, canSeeScoreCard, canSeeProfitability, canManageUsers } = useAuth()
   const billingAllowed = useBillingAllowed()
   const canSeePath = (path) => {
-    if (path === '/billing' || path === '/team/billing') return billingAllowed
+    if (path === '/billing' || path === '/team/billing' || path === '/billing/subscriptions' || path === '/team/billing/subscriptions') return billingAllowed
     if (['/people', '/new_admin', '/admin', '/profitability/team', '/scenarios', '/working', '/org-structure'].includes(path)) return canManageUsers
     if (path === '/people') return canSeePeople
     if (path === '/score-card') return canSeeScoreCard
@@ -333,20 +333,34 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
                   })}
 
                   {billingAllowed ? (
-                    <Link
-                      to="/billing"
-                      onClick={() => setShowMore(false)}
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-3 rounded-xl transition-colors",
-                        location.pathname === '/billing'
-                          ? "bg-brand-orange/10 text-brand-orange"
-                          : "text-foreground hover:bg-muted"
-                      )}
-                    >
-                      <Receipt className="h-5 w-5" />
-                      <span className="font-medium">Billing</span>
-                      <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
-                    </Link>
+                    <>
+                      <Link
+                        to="/billing"
+                        onClick={() => setShowMore(false)}
+                        className={cn(
+                          "flex items-center gap-3 px-4 py-3 rounded-xl transition-colors",
+                          location.pathname === '/billing'
+                            ? "bg-brand-orange/10 text-brand-orange"
+                            : "text-foreground hover:bg-muted"
+                        )}
+                      >
+                        <Receipt className="h-5 w-5" />
+                        <span className="font-medium">Billing</span>
+                        <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
+                      </Link>
+                      <Link
+                        to="/billing/subscriptions"
+                        onClick={() => setShowMore(false)}
+                        className={cn(
+                          "ml-6 flex items-center gap-3 rounded-lg border-l border-border px-3 py-2 text-sm",
+                          location.pathname === '/billing/subscriptions'
+                            ? "bg-[#e8eeff] font-medium text-[#1644ED]"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                      >
+                        Subscriptions
+                      </Link>
+                    </>
                   ) : null}
                   
                   {isAdmin && adminNavItems.map((item) => {

@@ -214,3 +214,71 @@ export function formatSourceWindow(sourceWindow) {
   if (hasEnd) return `Source window through ${end}`
   return ''
 }
+
+function round2(value) {
+  return Math.round(value * 100) / 100
+}
+
+export function subscriptionKey(item) {
+  return [
+    item?.status || '',
+    item?.vendor || '',
+    item?.payment_account_last4 || '',
+    item?.last_charged_date || '',
+    item?.typical_monthly_amount ?? '',
+    item?.latest_charge ?? '',
+  ].join('|')
+}
+
+export function subscriptionSelectable(item) {
+  return Boolean(item) && item.status !== 'stopped'
+}
+
+export function subscriptionSavings(item) {
+  if (!subscriptionSelectable(item)) return { monthly: 0, annual: 0, included: false }
+  if (item.status === 'annual') {
+    const typical = typeof item.typical_monthly_amount === 'number' ? item.typical_monthly_amount : null
+    const latest = typeof item.latest_charge === 'number' ? item.latest_charge : null
+    const average = typeof item.average_monthly_amount === 'number' ? item.average_monthly_amount : null
+    let annual = null
+    let monthly = null
+    if (typical != null && latest != null && typical > 0 && latest > typical * 6 && latest < typical * 18) {
+      monthly = typical
+      annual = latest
+    } else {
+      annual = latest ?? typical ?? average
+      monthly = annual == null ? null : round2(annual / 12)
+    }
+    if (monthly == null) return { monthly: 0, annual: 0, included: false }
+    return { monthly, annual: annual == null ? round2(monthly * 12) : annual, included: true }
+  }
+  const monthly = subscriptionMonthly(item)
+  if (monthly == null) return { monthly: 0, annual: 0, included: false }
+  return { monthly, annual: round2(monthly * 12), included: true }
+}
+
+export function summarizeSavings(items, selectedKeys, runRate) {
+  const keys = selectedKeys instanceof Set ? selectedKeys : new Set(selectedKeys || [])
+  let monthly = 0
+  let annual = 0
+  let count = 0
+  for (const item of items || []) {
+    if (!keys.has(subscriptionKey(item)) || !subscriptionSelectable(item)) continue
+    const cost = subscriptionSavings(item)
+    if (!cost.included) continue
+    count += 1
+    monthly += cost.monthly
+    annual += cost.annual
+  }
+  monthly = round2(monthly)
+  annual = round2(annual)
+  const rate = typeof runRate === 'number' && Number.isFinite(runRate) && runRate > 0 ? runRate : null
+  return {
+    count,
+    monthly,
+    annual,
+    percent: rate == null ? null : round2((monthly / rate) * 100),
+    runRate: rate,
+    after: rate == null ? null : round2(Math.max(0, rate - monthly)),
+  }
+}

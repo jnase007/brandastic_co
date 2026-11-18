@@ -14,6 +14,9 @@ import {
   SUBSCRIPTIONS_EMPTY_MESSAGE,
   filterSubscriptionItems,
   sortSubscriptionItems,
+  subscriptionKey,
+  subscriptionSavings,
+  summarizeSavings,
   subscriptionsEmptyState,
   topSubscriptionsByMonthly,
 } from '../src/lib/billingSubscriptionsView.js'
@@ -176,6 +179,42 @@ describe('subscription empty state', () => {
     assert.equal(sorted[0].vendor, 'Example Ads Network')
     assert.equal(sorted.at(-1).vendor, 'Example Blank Fields')
     assert.equal(topSubscriptionsByMonthly(items, 15).some((item) => item.vendor === 'Example Stopped Tool'), false)
+  })
+})
+
+describe('subscription savings', () => {
+  const rows = [
+    { vendor: 'Example SaaS A', status: 'active', group: 'software_saas', typical_monthly_amount: 49, latest_charge: 49, payment_account_last4: '4242', last_charged_date: '2026-10-04' },
+    { vendor: 'Example Annual Tool', status: 'annual', group: 'software_saas', typical_monthly_amount: 20, latest_charge: 240, payment_account_last4: '4242', last_charged_date: '2026-01-15' },
+    { vendor: 'Example Yearly Only', status: 'annual', group: 'software_saas', typical_monthly_amount: 240, latest_charge: null, payment_account_last4: '1111', last_charged_date: '2026-02-01' },
+    { vendor: 'Example Stopped Tool', status: 'stopped', group: 'software_saas', typical_monthly_amount: 15, latest_charge: 15, payment_account_last4: '4242', last_charged_date: '2026-04-03' },
+  ]
+
+  it('turns an annual charge into a monthly amount and shows both', () => {
+    const paired = subscriptionSavings(rows[1])
+    assert.equal(paired.monthly, 20)
+    assert.equal(paired.annual, 240)
+    const yearlyOnly = subscriptionSavings(rows[2])
+    assert.equal(yearlyOnly.annual, 240)
+    assert.equal(yearlyOnly.monthly, 20)
+    assert.deepEqual(subscriptionSavings(rows[3]), { monthly: 0, annual: 0, included: false })
+  })
+
+  it('keeps a selection across the whole list and skips stopped rows', () => {
+    const keys = new Set([
+      subscriptionKey(rows[0]),
+      subscriptionKey(rows[1]),
+      subscriptionKey(rows[3]),
+    ])
+    const summary = summarizeSavings(rows, keys, 497.99)
+    assert.equal(summary.count, 2)
+    assert.equal(summary.monthly, 69)
+    assert.equal(summary.annual, 828)
+    assert.equal(summary.percent, 13.86)
+    assert.equal(summary.after, 428.99)
+    const stillThere = filterSubscriptionItems(rows, 'stopped')
+    assert.equal(stillThere.length, 1)
+    assert.equal(summarizeSavings(rows, keys, 497.99).count, 2)
   })
 })
 

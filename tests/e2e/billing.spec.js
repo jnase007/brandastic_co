@@ -35,15 +35,42 @@ test('anonymous billing API is 401 and hides subscriptions', async ({ request })
   expect(text).not.toContain('gz:')
 })
 
-test('subscription preview shows the fake fixture under the aging report', async ({ page }) => {
+test('anonymous subscriptions route redirects to login', async ({ page }) => {
+  await page.goto('/billing/subscriptions')
+  await expect(page).toHaveURL(/\/login/)
+  await expect(page.getByRole('heading', { name: 'Subscriptions', exact: true })).toHaveCount(0)
+  await expect(page.getByText('Example SaaS A')).toHaveCount(0)
+})
+
+test('anonymous team subscriptions alias redirects to login', async ({ page }) => {
+  await page.goto('/team/billing/subscriptions')
+  await expect(page).toHaveURL(/\/login/)
+  await expect(page.getByText('Example SaaS A')).toHaveCount(0)
+})
+
+test('subscription preview shows the fake fixture on its own view', async ({ page }) => {
   await page.goto('/dev/billing-subscriptions')
-  await expect(page.getByRole('heading', { name: 'Aging report' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Subscriptions', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Subscriptions' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Aging report' })).toHaveCount(0)
   await expect(page.getByText('Example SaaS A').first()).toBeVisible()
   await expect(page.getByText('Recurring charges found in QuickBooks. Review what to keep, cancel, or downgrade.')).toBeVisible()
-  const aging = await page.locator('#billing-aging').boundingBox()
-  const subscriptions = await page.locator('#billing-subscriptions').boundingBox()
-  expect(aging.y).toBeLessThan(subscriptions.y)
+  await expect(page.getByText('Stopped subscriptions stay out of the savings.')).toBeVisible()
+})
+
+test('subscription savings math uses the fake fixture', async ({ page }) => {
+  await page.addInitScript(() => localStorage.removeItem('brandastic.billing.subscriptionCuts'))
+  await page.goto('/dev/billing-subscriptions')
+  await page.getByRole('checkbox', { name: 'Select Example SaaS A' }).check()
+  await page.getByRole('checkbox', { name: 'Select Example Annual Tool' }).check()
+  await expect(page.getByTestId('billing-savings-count')).toHaveText('2')
+  await expect(page.getByTestId('billing-savings-monthly')).toHaveText('$69.00')
+  await expect(page.getByTestId('billing-savings-annual')).toHaveText('$828.00')
+  await expect(page.getByTestId('billing-savings-percent')).toHaveText('13.9%')
+  await expect(page.getByRole('checkbox', { name: 'Select Example Stopped Tool' })).toBeDisabled()
+  await page.getByRole('button', { name: /^Stopped/ }).click()
+  await page.getByRole('button', { name: /^All / }).click()
+  await expect(page.getByRole('checkbox', { name: 'Select Example SaaS A' })).toBeChecked()
+  await expect(page.getByTestId('billing-savings-monthly')).toHaveText('$69.00')
 })
 
 test('subscription preview empty state does not invent rows', async ({ page }) => {

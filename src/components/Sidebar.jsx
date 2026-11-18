@@ -382,7 +382,9 @@ export default function Sidebar({
                 ? location.pathname.startsWith('/profitability/websites')
                 : item.path === '/score-card'
                   ? location.pathname.startsWith('/score-card')
-                  : location.pathname === item.path
+                  : item.path === '/billing'
+                    ? location.pathname === '/billing' || location.pathname.startsWith('/billing/')
+                    : location.pathname === item.path
           const sections = item.path === '/feature-list' && location.pathname === '/feature-list' && !collapsed ? featureNav?.sections : null
           const hiddenItem = showFullNav && !simplePaths.has(item.path)
           const linkClass = cn(
@@ -426,6 +428,22 @@ export default function Sidebar({
               ) : (
                 <Link to={item.path} onMouseEnter={() => prefetchRoute(item.path)} className={linkClass}>{inner}</Link>
               )}
+              {item.path === '/billing' && isActive && !collapsed ? (
+                <div className="mb-2 ml-3 mt-1 border-l border-border pl-2">
+                  <Link
+                    to="/billing/subscriptions"
+                    onMouseEnter={() => prefetchRoute('/billing/subscriptions')}
+                    className={cn(
+                      "flex w-full rounded-lg px-2 py-1.5 text-left text-sm",
+                      location.pathname === '/billing/subscriptions'
+                        ? "bg-[#e8eeff] font-medium text-[#1644ED]"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    Subscriptions
+                  </Link>
+                </div>
+              ) : null}
               {item.path === '/score-card' && isActive && !collapsed ? (
                 <div className="mb-2 ml-3 mt-1 border-l border-border pl-2">
                   <Link
