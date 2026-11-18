@@ -2,10 +2,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 import {
+  DEFAULT_LOST_REASON,
+  PIPELINE_ALERTS_ENABLED,
   PIPELINE_STAGES,
   businessDaysSince,
   calendarDaysSince,
   dealAlert,
+  dropUnavailableDealColumns,
   qualityForLostReason,
   stageFromLead,
   summarizeAlerts,
@@ -67,6 +70,20 @@ describe('deal pipeline stages and alerts', () => {
     assert.equal(summary.items.filter((item) => item.kind === 'suggest-lost').length, 3)
     assert.equal(summary.priority, 1)
     assert.equal(summary.undated, 0)
+  })
+
+  it('leaves alerts off and still moves a deal when the new columns are missing', () => {
+    assert.equal(PIPELINE_ALERTS_ENABLED, false)
+    assert.equal(DEFAULT_LOST_REASON, 'Other')
+    const patch = { pipeline_stage: 'lost', quality: 'No response from emails & calls', lost_reason: 'Other', updated_at: '2026-06-10' }
+    const next = dropUnavailableDealColumns(patch, "Could not find the 'lost_reason' column of 'sales_leads' in the schema cache")
+    assert.equal(next.pipeline_stage, 'lost')
+    assert.equal(next.quality, 'No response from emails & calls')
+    assert.equal(next.lost_reason, undefined)
+    assert.equal(dropUnavailableDealColumns(patch, 'permission denied'), null)
+    const checklist = dropUnavailableDealColumns({ pipeline_stage: 'won', won_checklist: { signed: true } }, 'column won_checklist does not exist')
+    assert.equal(checklist.pipeline_stage, 'won')
+    assert.equal(checklist.won_checklist, undefined)
   })
 
   it('maps a lost reason onto an existing quality only when one already exists', () => {
