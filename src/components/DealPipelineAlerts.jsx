@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LOST_REASONS, summarizeAlerts, wonChecklist } from '../lib/dealPipeline'
+import { DEFAULT_LOST_REASON, LOST_REASONS, summarizeAlerts, wonChecklist } from '../lib/dealPipeline'
 import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
 import {
@@ -107,7 +107,7 @@ export function DealLostDialog({ open, rows, onOpenChange, onSave }) {
 
   useEffect(() => {
     if (!open) return
-    setReason(single?.lost_reason || '')
+    setReason(single?.lost_reason || DEFAULT_LOST_REASON)
     setNote(single?.lost_note || '')
     setFollowUp(single?.follow_up_recommendation || '')
   }, [open, single])
@@ -150,8 +150,7 @@ export function DealLostDialog({ open, rows, onOpenChange, onSave }) {
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
             type="button"
-            disabled={!reason}
-            onClick={() => onSave({ reason, note: note.trim(), followUp: followUp.trim() })}
+            onClick={() => onSave({ reason: reason || DEFAULT_LOST_REASON, note: note.trim(), followUp: followUp.trim() })}
           >
             {moving ? 'Save Deal Lost' : 'Save lost reason'}
           </Button>

@@ -11,6 +11,13 @@
  * - Quality "No response from emails & calls" is not Deal Lost unless pipeline_stage is already lost.
  */
 
+/** In-app timers, badges, the alerts panel, and Deal Lost prompts. Off until turned back on. */
+export const PIPELINE_ALERTS_ENABLED = false
+
+export const DEFAULT_LOST_REASON = 'Other'
+
+export const OPTIONAL_DEAL_COLUMNS = ['lost_reason', 'lost_note', 'follow_up_recommendation', 'won_checklist']
+
 export const LOST_REASONS = [
   'No Response',
   'Budget',
@@ -35,6 +42,16 @@ export const PIPELINE_STAGES = [
 export const FUNNEL_STAGE_IDS = ['lead', 'kickoff', 'proposal', 'contract', 'won']
 
 const STAGE_IDS = new Set(PIPELINE_STAGES.map((stage) => stage.id))
+
+/** Drop optional columns named in a Postgres/PostgREST error so the stage move can still save. */
+export function dropUnavailableDealColumns(patch, message) {
+  const text = String(message || '')
+  const missing = OPTIONAL_DEAL_COLUMNS.filter((column) => text.includes(column))
+  if (!missing.length) return null
+  const next = { ...patch }
+  for (const column of missing) delete next[column]
+  return next
+}
 
 export function stageTitle(id) {
   return PIPELINE_STAGES.find((stage) => stage.id === id)?.title || id

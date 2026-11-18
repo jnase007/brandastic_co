@@ -3,7 +3,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { GripVertical, Loader2, Plus, RefreshCw, Target } from 'lucide-react'
 import { supabase, ensureValidSession } from '../lib/supabase'
 import { CHANNEL_COLORS, chipClass, displayDate, formatMoney, jiraUrl } from '../lib/leads'
-import { PIPELINE_STAGES as STAGES, dealAlert, qualityForLostReason, stageFromLead } from '../lib/dealPipeline'
+import { DEFAULT_LOST_REASON, PIPELINE_ALERTS_ENABLED, PIPELINE_STAGES as STAGES, dealAlert, dropUnavailableDealColumns, qualityForLostReason, stageFromLead } from '../lib/dealPipeline'
 import { REPORT_MONTHS, REPORT_VIEWS, REPORT_YEAR } from '../lib/dealReports'
 import { Button } from '../components/ui/button'
 import LeadContactDialog from '../components/LeadContactDialog'
@@ -151,15 +151,16 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
   }
 
   async function saveLost(fields) {
-    if (!lostIds?.length || !fields?.reason) return
+    if (!lostIds?.length) return
+    const reason = fields?.reason || DEFAULT_LOST_REASON
     const stamp = new Date().toISOString()
     const nextRows = rows.map((row) => {
       if (!lostIds.includes(String(row.id))) return row
       return {
         ...row,
         pipeline_stage: 'lost',
-        quality: qualityForLostReason(fields.reason, row.quality),
-        lost_reason: fields.reason,
+        quality: qualityForLostReason(reason, row.quality),
+        lost_reason: reason,
         lost_note: fields.note,
         follow_up_recommendation: fields.followUp,
         updated_at: stamp,
@@ -174,19 +175,20 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
     }
     for (const id of lostIds) {
       const row = nextRows.find((item) => String(item.id) === id)
-      const patch = {
+      let patch = {
         pipeline_stage: 'lost',
         quality: row.quality,
-        lost_reason: fields.reason,
+        lost_reason: reason,
         lost_note: fields.note,
         follow_up_recommendation: fields.followUp,
         updated_at: stamp,
       }
-      const result = await supabase.from('sales_leads').update(patch).eq('id', id).select('*').single()
-      if (result.error && /lost_reason|lost_note|follow_up_recommendation/.test(result.error.message || '')) {
-        setStorageNote('Lost reasons stay on this page until supabase/deal-pipeline-alerts.sql is run. Nothing was moved.')
-        toast({ title: 'Lost reason is not stored yet', description: 'Run supabase/deal-pipeline-alerts.sql once.', variant: 'destructive' })
-        return
+      let result = await supabase.from('sales_leads').update(patch).eq('id', id).select('*').single()
+      for (let attempt = 0; attempt < 4 && result.error; attempt += 1) {
+        const nextPatch = dropUnavailableDealColumns(patch, result.error.message)
+        if (!nextPatch) break
+        patch = nextPatch
+        result = await supabase.from('sales_leads').update(patch).eq('id', id).select('*').single()
       }
       if (result.error) {
         toast({ title: 'Could not save Deal Lost', description: result.error.message, variant: 'destructive' })
@@ -203,23 +205,18 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
     setRows((current) => current.map((row) => (String(row.id) === String(id) ? { ...row, won_checklist: next } : row)))
     if (preview) return
     const result = await supabase.from('sales_leads').update({ won_checklist: next }).eq('id', id)
-    if (result.error && /won_checklist/.test(result.error.message || '')) {
-      setStorageNote('The Deal Won checklist is on this page until supabase/deal-pipeline-alerts.sql is run.')
-    } else if (result.error) {
+    if (result.error && dropUnavailableDealColumns({ won_checklist: next }, result.error.message)) return
+    if (result.error) {
       toast({ title: 'Could not save checklist', description: result.error.message, variant: 'destructive' })
-      load()
     }
   }
 
   async function persistStages(ids, stageId) {
     const unique = [...new Set(ids.map(String))]
     if (!unique.length) return
-    if (stageId === 'lost') {
-      openLost(unique)
-      return
-    }
     const stage = STAGES.find((s) => s.id === stageId)
-    const patch = { pipeline_stage: stageId, quality: stage.quality, updated_at: new Date().toISOString() }
+    let patch = { pipeline_stage: stageId, quality: stage.quality, updated_at: new Date().toISOString() }
+    if (stageId === 'lost') patch = { ...patch, lost_reason: DEFAULT_LOST_REASON }
     setRows((current) => current.map((row) => (unique.includes(String(row.id)) ? { ...row, ...patch } : row)))
     if (preview) {
       toast({ title: unique.length > 1 ? `${unique.length} moved to ${stage.title}` : `Moved to ${stage.title}` })
@@ -227,6 +224,12 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
       return
     }
     let { error } = await supabase.from('sales_leads').update(patch).in('id', unique)
+    for (let attempt = 0; attempt < 4 && error; attempt += 1) {
+      const nextPatch = dropUnavailableDealColumns(patch, error.message)
+      if (!nextPatch) break
+      patch = nextPatch
+      error = (await supabase.from('sales_leads').update(patch).in('id', unique)).error
+    }
     if (error && String(error.message || '').includes('pipeline_stage')) {
       const { pipeline_stage, ...rest } = patch
       error = (await supabase.from('sales_leads').update(rest).in('id', unique)).error
@@ -300,8 +303,8 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
           </div>
         </div>
 
-        <DealAlertsPanel rows={rows} now={clock} onReview={(id) => openLost([id])} />
-        {storageNote ? (
+        {PIPELINE_ALERTS_ENABLED ? <DealAlertsPanel rows={rows} now={clock} onReview={(id) => openLost([id])} /> : null}
+        {PIPELINE_ALERTS_ENABLED && storageNote ? (
           <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">{storageNote}</div>
         ) : null}
 
@@ -421,7 +424,7 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
                                         <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${chipClass(CHANNEL_COLORS, row.source)}`}>
                                           {row.source || '—'}
                                         </span>
-                                        <DealAlertBadge alert={dealAlert(row, clock)} />
+                                        {PIPELINE_ALERTS_ENABLED ? <DealAlertBadge alert={dealAlert(row, clock)} /> : null}
                                       </div>
                                       <div>
                                         {row.deal_type === 'Monthly' && Number(row.value_2026) ? (
@@ -435,7 +438,7 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
                                       {stage.id === 'won' ? (
                                         <WonChecklist row={row} onChange={(next) => saveChecklist(row.id, next)} />
                                       ) : null}
-                                      {dealAlert(row, clock)?.kind === 'suggest-lost' || dealAlert(row, clock)?.kind === 'reason-needed' ? (
+                                      {PIPELINE_ALERTS_ENABLED && (dealAlert(row, clock)?.kind === 'suggest-lost' || dealAlert(row, clock)?.kind === 'reason-needed') ? (
                                         <button
                                           type="button"
                                           className="font-semibold text-red-700 underline"
@@ -487,12 +490,14 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
         </div>
       </div>}
 
-      <DealLostDialog
-        open={Boolean(lostIds?.length)}
-        rows={rows.filter((row) => lostIds?.includes(String(row.id)))}
-        onOpenChange={(open) => { if (!open) setLostIds(null) }}
-        onSave={saveLost}
-      />
+      {PIPELINE_ALERTS_ENABLED ? (
+        <DealLostDialog
+          open={Boolean(lostIds?.length)}
+          rows={rows.filter((row) => lostIds?.includes(String(row.id)))}
+          onOpenChange={(open) => { if (!open) setLostIds(null) }}
+          onSave={saveLost}
+        />
+      ) : null}
 
       <LeadContactDialog
         open={dialogOpen}
