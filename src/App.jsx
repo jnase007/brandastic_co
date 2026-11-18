@@ -1044,10 +1044,26 @@ function App() {
                 }
               />
               <Route
+                path="/billing/subscriptions"
+                element={
+                  <TeamRoute>
+                    <Billing view="subscriptions" />
+                  </TeamRoute>
+                }
+              />
+              <Route
                 path="/team/billing"
                 element={
                   <TeamRoute>
                     <Billing />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/team/billing/subscriptions"
+                element={
+                  <TeamRoute>
+                    <Billing view="subscriptions" />
                   </TeamRoute>
                 }
               />

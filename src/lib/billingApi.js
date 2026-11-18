@@ -245,8 +245,9 @@ export async function fetchBilling() {
   if (!response.ok) return { status: 'error' }
 
   const body = await response.json().catch(() => null)
+  const subscriptions = pickSubscriptions(body?.subscriptions)
   if (!body || body.configured !== true || !Array.isArray(body.clients)) {
-    return { status: 'unconfigured_data' }
+    return { status: 'unconfigured_data', report: { subscriptions } }
   }
 
   const clients = body.clients.map(pickClient).filter(Boolean)
@@ -274,7 +275,7 @@ export async function fetchBilling() {
         overdue_balance: numberOrNull(summary.overdue_balance) ?? 0,
         no_payment_90_count: numberOrNull(summary.no_payment_90_count) ?? clients.filter((row) => row.unpaid_90_days_flag).length,
       },
-      subscriptions: pickSubscriptions(body.subscriptions),
+      subscriptions,
     },
   }
 }
