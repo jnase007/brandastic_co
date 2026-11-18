@@ -277,20 +277,20 @@ function visibleHolidays(holidays, today, windowEnd) {
   return expandHolidays(holidays, today, monthEnd(windowEnd)).map((range) => holidayCalendarItem(range, today))
 }
 
-export default function Announcements() {
+export default function Announcements({ preview = null }) {
   const today = useMemo(() => losAngelesToday(), [])
-  const [people, setPeople] = useState([])
+  const [people, setPeople] = useState(() => preview?.people || [])
   const [peopleError, setPeopleError] = useState('')
-  const [holidays, setHolidays] = useState([])
-  const [holidayRows, setHolidayRows] = useState([])
+  const [holidays, setHolidays] = useState(() => (preview?.holidayRows || []).map(holidayRuleFromRow))
+  const [holidayRows, setHolidayRows] = useState(() => preview?.holidayRows || [])
   const [holidaysMissing, setHolidaysMissing] = useState(false)
   const [holidayColumnsMissing, setHolidayColumnsMissing] = useState(false)
   const [holidayError, setHolidayError] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!preview)
   const [view, setView] = useState('calendar')
   const [selectedDay, setSelectedDay] = useState(today)
   const [hoveredDay, setHoveredDay] = useState(null)
-  const [noteRows, setNoteRows] = useState([])
+  const [noteRows, setNoteRows] = useState(() => preview?.noteRows || [])
   const [notesMissing, setNotesMissing] = useState(false)
   const [noteError, setNoteError] = useState('')
   const [noteFormOpen, setNoteFormOpen] = useState(false)
@@ -298,6 +298,7 @@ export default function Announcements() {
   const [noteSaving, setNoteSaving] = useState(false)
 
   useEffect(() => {
+    if (preview) return undefined
     let cancel = false
     Promise.allSettled([fetchAnnouncementPeople(), fetchCompanyHolidays(), fetchAnnouncementNotes()]).then(([rateResult, holidayResult, noteResult]) => {
       if (cancel) return
@@ -464,6 +465,19 @@ export default function Announcements() {
 
         {!loading ? (
           <>
+            <div className="mt-6">
+              <CompanyHolidays
+                rows={holidayRows}
+                missing={holidaysMissing}
+                columnsMissing={holidayColumnsMissing}
+                onSaved={(rows) => {
+                  setHolidayRows(rows)
+                  setHolidayColumnsMissing(false)
+                  setHolidays(rows.map(holidayRuleFromRow))
+                }}
+              />
+            </div>
+
             <div className="mt-6 space-y-4">
               <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -550,19 +564,6 @@ export default function Announcements() {
                 onEditNote={editNoteItem}
                 onDeleteNote={removeNoteItem}
                 groups={groups}
-              />
-            </div>
-
-            <div className="mt-6">
-              <CompanyHolidays
-                rows={holidayRows}
-                missing={holidaysMissing}
-                columnsMissing={holidayColumnsMissing}
-                onSaved={(rows) => {
-                  setHolidayRows(rows)
-                  setHolidayColumnsMissing(false)
-                  setHolidays(rows.map(holidayRuleFromRow))
-                }}
               />
             </div>
           </>
