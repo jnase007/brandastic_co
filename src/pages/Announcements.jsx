@@ -465,19 +465,6 @@ export default function Announcements({ preview = null }) {
 
         {!loading ? (
           <>
-            <div className="mt-6">
-              <CompanyHolidays
-                rows={holidayRows}
-                missing={holidaysMissing}
-                columnsMissing={holidayColumnsMissing}
-                onSaved={(rows) => {
-                  setHolidayRows(rows)
-                  setHolidayColumnsMissing(false)
-                  setHolidays(rows.map(holidayRuleFromRow))
-                }}
-              />
-            </div>
-
             <div className="mt-6 space-y-4">
               <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -548,6 +535,17 @@ export default function Announcements({ preview = null }) {
                   </div>
                 ) : null}
               </section>
+
+              <CompanyHolidays
+                rows={holidayRows}
+                missing={holidaysMissing}
+                columnsMissing={holidayColumnsMissing}
+                onSaved={(rows) => {
+                  setHolidayRows(rows)
+                  setHolidayColumnsMissing(false)
+                  setHolidays(rows.map(holidayRuleFromRow))
+                }}
+              />
 
               <UpcomingCalendar
                 title="Coming up"
