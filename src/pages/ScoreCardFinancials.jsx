@@ -7,6 +7,7 @@ import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 import { useToast } from '../hooks/useToast'
 import PageHeader from '../components/PageHeader'
+import { MeetingCloseRateSection } from '../components/MeetingCloseRate'
 
 const SPEND_KEY = 'scorecard_monthly_spend_v1'
 const SHEET = 'https://docs.google.com/spreadsheets/d/1h-O3MynKwL9MhxO2Ytly5gtHd_udyqNJ6n4_OfXLCgY'
@@ -348,6 +349,8 @@ export default function ScoreCardFinancials() {
         </div>
         }
       />
+
+      <MeetingCloseRateSection leads={leads} monthView={monthView} year={YEAR} />
 
       <h2 className="mb-2 text-lg font-semibold">Spend input — cost to run the channel</h2>
       <div className="mb-8 overflow-auto rounded-xl border bg-white shadow-sm">

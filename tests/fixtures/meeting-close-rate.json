@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Example Academy A",
+    "company": "Example Academy A",
+    "source": "Direct",
+    "quality": "Closed",
+    "pipeline_stage": "won",
+    "jira_key": "FAKE-101",
+    "first_contact_date": "2026-03-04",
+    "value_2026": 1200
+  },
+  {
+    "name": "Example Academy B",
+    "company": "Example Academy B",
+    "source": "Meta",
+    "quality": "Good Lead",
+    "pipeline_stage": "lead",
+    "jira_key": "FAKE-102",
+    "first_contact_date": "2026-03-12",
+    "value_2026": 0
+  },
+  {
+    "name": "Example Academy C",
+    "company": "Example Academy C",
+    "source": "Referral",
+    "quality": "Good Lead",
+    "pipeline_stage": "won",
+    "jira_key": "FAKE-103",
+    "first_contact_date": "2026-06-01",
+    "value_2026": 800
+  },
+  {
+    "name": "Example Academy D",
+    "company": "Example Academy D",
+    "source": "Direct",
+    "quality": "Closed",
+    "pipeline_stage": "won",
+    "jira_key": "",
+    "first_contact_date": "2026-03-20",
+    "value_2026": 500
+  },
+  {
+    "name": "Example Academy E",
+    "company": "Example Academy E",
+    "source": "Direct",
+    "quality": "New lead",
+    "pipeline_stage": null,
+    "jira_key": "FAKE-104",
+    "first_contact_date": "2026-06-18",
+    "value_2026": 0
+  },
+  {
+    "name": "Example Academy F",
+    "company": "Example Academy F",
+    "source": "Direct",
+    "quality": "Closed",
+    "pipeline_stage": "lead",
+    "jira_key": "https://brandastic.atlassian.net/browse/FAKE-105",
+    "first_contact_date": "2026-01-09",
+    "value_2026": 400
+  }
+]
