@@ -3,27 +3,14 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { GripVertical, Loader2, Plus, RefreshCw, Target } from 'lucide-react'
 import { supabase, ensureValidSession } from '../lib/supabase'
 import { CHANNEL_COLORS, chipClass, displayDate, formatMoney, jiraUrl } from '../lib/leads'
+import { PIPELINE_STAGES as STAGES, dealAlert, qualityForLostReason, stageFromLead } from '../lib/dealPipeline'
+import { REPORT_MONTHS, REPORT_VIEWS, REPORT_YEAR } from '../lib/dealReports'
 import { Button } from '../components/ui/button'
 import LeadContactDialog from '../components/LeadContactDialog'
+import DealReports from '../components/DealReports'
+import { DealAlertBadge, DealAlertsPanel, DealLostDialog, WonChecklist } from '../components/DealPipelineAlerts'
 import { useToast } from '../hooks/useToast'
 import { cn } from '../lib/utils'
-
-const STAGES = [
-  { id: 'lead', title: 'Lead', quality: 'Good Lead', weight: 0.1, color: 'bg-gray-400' },
-  { id: 'kickoff', title: 'Kick-Off Meeting', quality: 'Good Lead', weight: 0.3, color: 'bg-blue-500' },
-  { id: 'proposal', title: 'Proposal Sent', quality: 'Proposal sent', weight: 0.6, color: 'bg-purple-500' },
-  { id: 'contract', title: 'Buy-in/Contract Sent', quality: 'Proposal sent', weight: 0.9, color: 'bg-orange-500' },
-  { id: 'won', title: 'Closed Won', quality: 'Closed', weight: 1, color: 'bg-green-500' },
-  { id: 'lost', title: 'Closed Lost', quality: 'No response from emails & calls', weight: 0, color: 'bg-red-500' },
-]
-
-function stageFromLead(row) {
-  const stage = String(row.pipeline_stage || '').toLowerCase()
-  if (STAGES.some((s) => s.id === stage)) return stage
-  if (row.quality === 'Closed') return 'won'
-  if (row.quality === 'Proposal sent') return 'proposal'
-  return 'lead'
-}
 
 function contractMonths(row) {
   const months = Number(row.contract_months)
@@ -46,19 +33,31 @@ function amountOf(row) {
   return estimate
 }
 
-export default function ScoreCardPipeline() {
+export default function ScoreCardPipeline({ previewRows = null, previewNow = null } = {}) {
+  const preview = Array.isArray(previewRows)
   const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(!preview)
+  const [rows, setRows] = useState(() => (preview ? previewRows : []))
   const [setupNeeded, setSetupNeeded] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingLead, setEditingLead] = useState(null)
   const [selected, setSelected] = useState(() => new Set())
+  const [report, setReport] = useState('')
+  const [monthView, setMonthView] = useState('all')
+  const [lostIds, setLostIds] = useState(null)
+  const [storageNote, setStorageNote] = useState('')
+  const clock = previewNow || new Date()
   const selectedRef = useRef(selected)
   selectedRef.current = selected
   const lastAnchorRef = useRef(null)
 
   const load = async () => {
+    if (preview) {
+      setRows(previewRows)
+      setLoading(false)
+      setSetupNeeded(false)
+      return
+    }
     setLoading(true)
     await ensureValidSession()
     const { data, error } = await supabase
@@ -76,8 +75,9 @@ export default function ScoreCardPipeline() {
   }
 
   useEffect(() => {
+    if (preview) return
     load()
-  }, [])
+  }, [preview])
 
   const byStage = useMemo(() => {
     const grouped = Object.fromEntries(STAGES.map((s) => [s.id, []]))
@@ -144,12 +144,88 @@ export default function ScoreCardPipeline() {
     if (cards[0]) lastAnchorRef.current = String(cards[0].id)
   }
 
+  function openLost(ids) {
+    const unique = [...new Set(ids.map(String))].filter(Boolean)
+    if (!unique.length) return
+    setLostIds(unique)
+  }
+
+  async function saveLost(fields) {
+    if (!lostIds?.length || !fields?.reason) return
+    const stamp = new Date().toISOString()
+    const nextRows = rows.map((row) => {
+      if (!lostIds.includes(String(row.id))) return row
+      return {
+        ...row,
+        pipeline_stage: 'lost',
+        quality: qualityForLostReason(fields.reason, row.quality),
+        lost_reason: fields.reason,
+        lost_note: fields.note,
+        follow_up_recommendation: fields.followUp,
+        updated_at: stamp,
+      }
+    })
+    if (preview) {
+      setRows(nextRows)
+      setLostIds(null)
+      setSelected(new Set())
+      toast({ title: 'Deal Lost saved' })
+      return
+    }
+    for (const id of lostIds) {
+      const row = nextRows.find((item) => String(item.id) === id)
+      const patch = {
+        pipeline_stage: 'lost',
+        quality: row.quality,
+        lost_reason: fields.reason,
+        lost_note: fields.note,
+        follow_up_recommendation: fields.followUp,
+        updated_at: stamp,
+      }
+      const result = await supabase.from('sales_leads').update(patch).eq('id', id).select('*').single()
+      if (result.error && /lost_reason|lost_note|follow_up_recommendation/.test(result.error.message || '')) {
+        setStorageNote('Lost reasons stay on this page until supabase/deal-pipeline-alerts.sql is run. Nothing was moved.')
+        toast({ title: 'Lost reason is not stored yet', description: 'Run supabase/deal-pipeline-alerts.sql once.', variant: 'destructive' })
+        return
+      }
+      if (result.error) {
+        toast({ title: 'Could not save Deal Lost', description: result.error.message, variant: 'destructive' })
+        return
+      }
+    }
+    setRows(nextRows)
+    setLostIds(null)
+    setSelected(new Set())
+    toast({ title: 'Deal Lost saved' })
+  }
+
+  async function saveChecklist(id, next) {
+    setRows((current) => current.map((row) => (String(row.id) === String(id) ? { ...row, won_checklist: next } : row)))
+    if (preview) return
+    const result = await supabase.from('sales_leads').update({ won_checklist: next }).eq('id', id)
+    if (result.error && /won_checklist/.test(result.error.message || '')) {
+      setStorageNote('The Deal Won checklist is on this page until supabase/deal-pipeline-alerts.sql is run.')
+    } else if (result.error) {
+      toast({ title: 'Could not save checklist', description: result.error.message, variant: 'destructive' })
+      load()
+    }
+  }
+
   async function persistStages(ids, stageId) {
     const unique = [...new Set(ids.map(String))]
     if (!unique.length) return
+    if (stageId === 'lost') {
+      openLost(unique)
+      return
+    }
     const stage = STAGES.find((s) => s.id === stageId)
     const patch = { pipeline_stage: stageId, quality: stage.quality, updated_at: new Date().toISOString() }
     setRows((current) => current.map((row) => (unique.includes(String(row.id)) ? { ...row, ...patch } : row)))
+    if (preview) {
+      toast({ title: unique.length > 1 ? `${unique.length} moved to ${stage.title}` : `Moved to ${stage.title}` })
+      setSelected(new Set())
+      return
+    }
     let { error } = await supabase.from('sales_leads').update(patch).in('id', unique)
     if (error && String(error.message || '').includes('pipeline_stage')) {
       const { pipeline_stage, ...rest } = patch
@@ -188,7 +264,31 @@ export default function ScoreCardPipeline() {
               Check one card, scroll, Shift-click another to grab the whole stretch (50+). Drag any selected card into the next column — they all move.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              aria-label="Reporting"
+              className="h-9 rounded-lg border bg-white px-3 text-sm"
+              value={report}
+              onChange={(event) => setReport(event.target.value)}
+            >
+              <option value="">Reporting: Pipeline</option>
+              {REPORT_VIEWS.map((view) => (
+                <option key={view.id} value={view.id}>{view.label}</option>
+              ))}
+            </select>
+            {report ? (
+              <select
+                aria-label="Month view"
+                className="h-9 rounded-lg border bg-white px-3 text-sm"
+                value={monthView}
+                onChange={(event) => setMonthView(event.target.value)}
+              >
+                <option value="all">Month view: All</option>
+                {REPORT_MONTHS.map((month) => (
+                  <option key={month.id} value={String(month.id)}>{month.label} {REPORT_YEAR}</option>
+                ))}
+              </select>
+            ) : null}
             <Button variant="outline" size="sm" onClick={load}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
@@ -199,6 +299,11 @@ export default function ScoreCardPipeline() {
             </Button>
           </div>
         </div>
+
+        <DealAlertsPanel rows={rows} now={clock} onReview={(id) => openLost([id])} />
+        {storageNote ? (
+          <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">{storageNote}</div>
+        ) : null}
 
         <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3">
           <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4">
@@ -232,18 +337,20 @@ export default function ScoreCardPipeline() {
           </div>
         ) : null}
 
-        {loading ? (
+        {report ? (
+          <DealReports rows={rows} report={report} monthView={monthView} now={clock} />
+        ) : loading ? (
           <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading…
           </div>
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
-            <div className="flex gap-4 overflow-x-auto pb-4">
+            <div className="flex gap-4 overflow-x-auto pb-24">
               {STAGES.map((stage) => {
                 const cards = byStage[stage.id]
                 return (
                   <div key={stage.id} className="flex w-[260px] min-w-[260px] shrink-0 flex-col">
-                    <div className="mb-3 flex items-center gap-2 px-1">
+                      <div className="mb-3 flex items-center gap-2 px-1">
                       <input
                         type="checkbox"
                         title="Select all in this column"
@@ -253,6 +360,7 @@ export default function ScoreCardPipeline() {
                       <div className={cn('h-2 w-2 rounded-full', stage.color)} />
                       <h3 className="text-sm font-semibold">{stage.title}</h3>
                       <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs">{cards.length}</span>
+                      <span className="text-[11px] text-slate-500">{stage.owner}</span>
                     </div>
                     <Droppable droppableId={stage.id}>
                       {(provided, snapshot) => (
@@ -309,10 +417,11 @@ export default function ScoreCardPipeline() {
                                       </div>
                                     </div>
                                     <div className="space-y-1 text-xs text-slate-600">
-                                      <div>
+                                      <div className="flex flex-wrap items-center gap-1">
                                         <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${chipClass(CHANNEL_COLORS, row.source)}`}>
                                           {row.source || '—'}
                                         </span>
+                                        <DealAlertBadge alert={dealAlert(row, clock)} />
                                       </div>
                                       <div>
                                         {row.deal_type === 'Monthly' && Number(row.value_2026) ? (
@@ -323,6 +432,22 @@ export default function ScoreCardPipeline() {
                                         ) : (formatMoney(amountOf(row)) || '$0')}
                                       </div>
                                       <div>{displayDate(row.first_contact_date) || '—'}</div>
+                                      {stage.id === 'won' ? (
+                                        <WonChecklist row={row} onChange={(next) => saveChecklist(row.id, next)} />
+                                      ) : null}
+                                      {dealAlert(row, clock)?.kind === 'suggest-lost' || dealAlert(row, clock)?.kind === 'reason-needed' ? (
+                                        <button
+                                          type="button"
+                                          className="font-semibold text-red-700 underline"
+                                          onMouseDown={(event) => event.stopPropagation()}
+                                          onClick={(event) => {
+                                            event.stopPropagation()
+                                            openLost([row.id])
+                                          }}
+                                        >
+                                          {dealAlert(row, clock)?.kind === 'reason-needed' ? 'Add lost reason' : 'Review Deal Lost'}
+                                        </button>
+                                      ) : null}
                                       {link ? (
                                         <a className="text-[#1644ED] hover:underline" href={link} target="_blank" rel="noreferrer">
                                           {row.jira_key}
@@ -347,7 +472,7 @@ export default function ScoreCardPipeline() {
         )}
       </div>
 
-      <div className="sticky bottom-0 z-20 -mx-4 mt-4 overflow-x-auto border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur">
+      {report ? null : <div className="sticky bottom-0 z-20 -mx-4 mt-4 overflow-x-auto border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur">
         <div className="flex gap-4">
           {stageStats.map((stage) => (
             <div key={stage.id} className="w-[260px] min-w-[260px] shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2">
@@ -360,7 +485,14 @@ export default function ScoreCardPipeline() {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
+
+      <DealLostDialog
+        open={Boolean(lostIds?.length)}
+        rows={rows.filter((row) => lostIds?.includes(String(row.id)))}
+        onOpenChange={(open) => { if (!open) setLostIds(null) }}
+        onSave={saveLost}
+      />
 
       <LeadContactDialog
         open={dialogOpen}
