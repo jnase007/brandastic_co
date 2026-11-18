@@ -297,6 +297,9 @@ describe('client bundle sources', () => {
       'src/lib/billingAging.js',
       'src/lib/billingApi.js',
       'src/hooks/useBillingAllowed.js',
+      'src/pages/BillingSubscriptions.jsx',
+      'src/pages/BillingSubscriptionsPreview.jsx',
+      'src/lib/billingSubscriptionsView.js',
     ]
     for (const file of files) {
       const source = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8')

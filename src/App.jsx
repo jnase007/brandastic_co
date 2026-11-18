@@ -19,6 +19,9 @@ const Settings = lazy(() => import('./pages/Settings'))
 const Admin = lazy(() => import('./pages/Admin'))
 const TeamHub = lazy(() => import('./pages/TeamHub'))
 const Billing = lazy(() => import('./pages/Billing'))
+const BillingSubscriptionsPreview = import.meta.env.DEV
+  ? lazy(() => import('./pages/BillingSubscriptionsPreview'))
+  : null
 const JiraImport = lazy(() => import('./pages/JiraImport'))
 const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'))
 const TimeTracking = lazy(() => import('./pages/TimeTracking'))
@@ -855,6 +858,16 @@ function App() {
   useEffect(() => {
     console.log('[App] Auth state:', { loading, user: user?.email || null, profile: profile?.full_name || null })
   }, [loading, user, profile])
+
+  if (import.meta.env.DEV && location.pathname === '/dev/billing-subscriptions') {
+    return (
+      <div className="min-h-screen bg-white">
+        <Suspense fallback={<PageLoader />}>
+          <BillingSubscriptionsPreview />
+        </Suspense>
+      </div>
+    )
+  }
 
   // Show loading screen while auth is initializing
   if (loading) {

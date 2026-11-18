@@ -6,6 +6,7 @@ import { writeFeaturePriority } from './server/featurePriority.js'
 import { assertTeam, loadHostingPortfolio } from './server/hostingData.js'
 import { loadWebsites } from './server/websitesData.js'
 import { billingResponseHeaders, runBillingRequest } from './server/billingHttp.js'
+import { emptySubscriptions, loadBillingSubscriptions } from './server/billingSubscriptions.js'
 
 // Generate a build version for cache busting
 const buildVersion = Date.now().toString(36)
@@ -110,6 +111,44 @@ function billingPlugin(env) {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const pathname = req.url?.split('?')[0]
+        if (pathname === '/dev/billing-subscriptions-fixture') {
+          res.setHeader('Cache-Control', 'no-store')
+          res.setHeader('Content-Type', 'application/json')
+          try {
+            const raw = fs.readFileSync(path.resolve(__dirname, 'tests/fixtures/billing-subscriptions.json'), 'utf8')
+            const subscriptions = loadBillingSubscriptions({ BILLING_SUBSCRIPTIONS_JSON: raw })
+            res.statusCode = 200
+            res.end(JSON.stringify({
+              sample: false,
+              updated_at: null,
+              clients: [],
+              alerts: [],
+              non_recurring_unpaid: [],
+              other_open: [],
+              summary: {
+                mrr: 0,
+                client_count: 0,
+                open_balance: 0,
+                overdue_balance: 0,
+                no_payment_90_count: 0,
+              },
+              subscriptions,
+            }))
+          } catch {
+            res.statusCode = 200
+            res.end(JSON.stringify({
+              sample: false,
+              updated_at: null,
+              clients: [],
+              alerts: [],
+              non_recurring_unpaid: [],
+              other_open: [],
+              summary: { mrr: 0, client_count: 0, open_balance: 0, overdue_balance: 0, no_payment_90_count: 0 },
+              subscriptions: emptySubscriptions(),
+            }))
+          }
+          return
+        }
         const kind = pathname === '/api/billing-data' ? 'data' : pathname === '/api/billing-access' ? 'access' : null
         if (!kind) return next()
         const headers = billingResponseHeaders()
