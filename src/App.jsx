@@ -22,6 +22,9 @@ const Billing = lazy(() => import('./pages/Billing'))
 const BillingSubscriptionsPreview = import.meta.env.DEV
   ? lazy(() => import('./pages/BillingSubscriptionsPreview'))
   : null
+const MeetingCloseRatePreview = import.meta.env.DEV
+  ? lazy(() => import('./pages/MeetingCloseRatePreview'))
+  : null
 const JiraImport = lazy(() => import('./pages/JiraImport'))
 const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'))
 const TimeTracking = lazy(() => import('./pages/TimeTracking'))
@@ -858,6 +861,16 @@ function App() {
   useEffect(() => {
     console.log('[App] Auth state:', { loading, user: user?.email || null, profile: profile?.full_name || null })
   }, [loading, user, profile])
+
+  if (import.meta.env.DEV && location.pathname === '/dev/meeting-close-rate') {
+    return (
+      <div className="min-h-screen bg-white">
+        <Suspense fallback={<PageLoader />}>
+          <MeetingCloseRatePreview />
+        </Suspense>
+      </div>
+    )
+  }
 
   if (import.meta.env.DEV && location.pathname === '/dev/mobile-nav') {
     return (
