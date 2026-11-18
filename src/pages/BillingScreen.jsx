@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { AGING, BillingCharts, ColorLegend, ageStatus } from './BillingCharts'
 import { AgingReport } from './BillingAging'
+import { BillingSubscriptions } from './BillingSubscriptions'
 
 export const BILLING_DATA_SOURCE_LABEL = 'Data pulled via QuickBooks Online'
 
@@ -67,7 +68,7 @@ function Section({ id, title, subtitle, children }) {
   )
 }
 
-function Shell({ children }) {
+function Shell({ children, sectionNav = false }) {
   return (
     <div className="billing-page">
       <style>{`
@@ -88,6 +89,12 @@ function Shell({ children }) {
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6d28d9]">Team</p>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Billing</h1>
         </div>
+        {sectionNav ? (
+          <nav aria-label="On this page" className="flex flex-wrap gap-1.5" data-testid="billing-section-nav">
+            <a href="#billing-aging" className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">Aging report</a>
+            <a href="#billing-subscriptions" className="rounded-full bg-[#5b21b6] px-3 py-1 text-xs font-bold text-white">Subscriptions</a>
+          </nav>
+        ) : null}
       </header>
       {children}
     </div>
@@ -298,7 +305,7 @@ export function BillingScreen({ state, initialLateOnly = false, initialClientNam
   }
 
   return (
-    <Shell>
+    <Shell sectionNav>
       <SourceLine updatedAt={report.updated_at} />
       {report.sample ? (
         <p className="text-sm text-slate-500" data-testid="billing-sample-banner">
@@ -488,6 +495,8 @@ export function BillingScreen({ state, initialLateOnly = false, initialClientNam
           </div>
         )}
       </Section>
+
+      <BillingSubscriptions data={report.subscriptions} />
 
       <ClientDrawer item={selected} alerts={alerts} onClose={() => setSelected(null)} />
     </Shell>

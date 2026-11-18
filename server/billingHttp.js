@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { isAllowedEmail, parseAllowlist } from './billingGate.js'
 import { emptyBillingSummary, loadBillingDataset, summarizeBilling } from './billingData.js'
+import { emptySubscriptions, loadBillingSubscriptions } from './billingSubscriptions.js'
 
 export function billingResponseHeaders() {
   return {
@@ -34,6 +35,14 @@ async function resolveSupabaseUser(env, token) {
 
 function denied(status, error) {
   return { status, body: { error } }
+}
+
+function subscriptionsBody(env) {
+  try {
+    return loadBillingSubscriptions(env)
+  } catch {
+    return emptySubscriptions()
+  }
 }
 
 export async function handleBilling(env, token, kind, options = {}) {
@@ -70,6 +79,7 @@ export async function handleBilling(env, token, kind, options = {}) {
         other_open: [],
         updated_at: null,
         summary: emptyBillingSummary(),
+        subscriptions: subscriptionsBody(env),
       },
     }
   }
@@ -85,6 +95,7 @@ export async function handleBilling(env, token, kind, options = {}) {
       other_open: dataset.other_open || [],
       updated_at: dataset.updated_at || null,
       summary: summarizeBilling(dataset.clients),
+      subscriptions: subscriptionsBody(env),
     },
   }
 }
