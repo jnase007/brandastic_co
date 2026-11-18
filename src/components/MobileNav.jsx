@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -58,11 +58,95 @@ const adminNavItems = [
   { path: '/admin', icon: Shield, label: 'Admin' },
 ]
 
+const MOBILE_MENU = [
+  {
+    group: 'Sales',
+    items: [
+      {
+        path: '/score-card',
+        icon: ClipboardList,
+        label: 'All Leads',
+        children: [{ path: '/score-card/financials', label: 'Financials' }],
+      },
+      { path: '/deals', icon: Target, label: 'Deal Pipeline' },
+    ],
+  },
+  {
+    group: 'Delivery',
+    items: [
+      { path: '/profitability', icon: BarChart3, label: 'Marketing Retainers' },
+      { path: '/profitability/websites', icon: Globe, label: 'Websites' },
+      { path: '/hosting', icon: Server, label: 'Hosting' },
+    ],
+  },
+  {
+    group: 'Ops',
+    items: [{ path: '/feature-list', icon: ListChecks, label: 'Feature List' }],
+  },
+  {
+    group: 'Company',
+    items: [
+      { path: '/mission', icon: Target, label: 'Mission' },
+      { path: '/strategy', icon: Compass, label: 'Strategy 2027' },
+      { path: '/ideal-target-client', icon: Crosshair, label: 'Target Client(s)' },
+      { path: '/brand-care', icon: Heart, label: 'Brand Care' },
+      { path: '/announcements', icon: Megaphone, label: 'Announcements' },
+    ],
+  },
+  {
+    group: 'Education',
+    items: [
+      { path: '/education/v1-overview', icon: GraduationCap, label: 'Masterclass' },
+      { path: '/education/agency-academy-course', icon: BookOpen, label: 'Courses' },
+      { path: '/education/course-downloads', icon: BookOpen, label: 'Course downloads' },
+    ],
+  },
+  {
+    group: 'Team',
+    items: [
+      { path: '/new_admin', icon: Shield, label: 'Admin' },
+      { path: '/profitability/team', icon: Users2, label: 'Team Hours' },
+      {
+        path: '/billing',
+        icon: Receipt,
+        label: 'Billing',
+        billingOnly: true,
+        children: [{ path: '/billing/subscriptions', label: 'Subscriptions' }],
+      },
+      { path: '/people', icon: Users, label: 'People' },
+      { path: '/scenarios', icon: BarChart3, label: 'Scenarios' },
+      { path: '/working', icon: CheckCircle, label: 'Working/Not' },
+      { path: '/org-structure', icon: Building2, label: 'Org structure' },
+    ],
+  },
+]
+
+const WORKSPACE_ITEMS = [
+  { path: '/docs', icon: BookOpen, label: 'Internal Docs' },
+  { path: '/taskboard', icon: ListTodo, label: 'Task Board' },
+  { path: '/reports', icon: BarChart3, label: 'Reports' },
+  { path: '/team', icon: Users2, label: 'Team Hub' },
+  { path: '/ideas', icon: Lightbulb, label: 'Ideas' },
+  { path: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+  { path: '/boards', icon: Kanban, label: 'Boards' },
+  { path: '/pipeline', icon: Target, label: 'Pipeline' },
+]
+
+function pathActive(path, pathname) {
+  if (path === '/billing') return pathname === '/billing' || pathname.startsWith('/billing/')
+  if (path === '/score-card') return pathname === '/score-card' || pathname.startsWith('/score-card/')
+  if (path === '/profitability') return pathname === '/profitability'
+  if (path === '/profitability/team') return pathname.startsWith('/profitability/team')
+  if (path === '/profitability/websites') return pathname.startsWith('/profitability/websites')
+  return pathname === path
+}
+
 // Bottom tab bar for quick access
-export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
+export function MobileTabBar({ onOpenTimer, onOpenActivity, billingAllowedOverride = false }) {
   const location = useLocation()
   const { user, isAdmin, profile, canSeePeople, canSeeScoreCard, canSeeProfitability, canManageUsers } = useAuth()
-  const billingAllowed = useBillingAllowed()
+  const billingFromHook = useBillingAllowed()
+  const billingAllowed = billingAllowedOverride || billingFromHook
   const canSeePath = (path) => {
     if (path === '/billing' || path === '/team/billing' || path === '/billing/subscriptions' || path === '/team/billing/subscriptions') return billingAllowed
     if (['/people', '/new_admin', '/admin', '/profitability/team', '/scenarios', '/working', '/org-structure'].includes(path)) return canManageUsers
@@ -83,30 +167,31 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
         { action: 'more', icon: Menu, label: 'More' },
       ]
     : [
-        { path: '/score-card', icon: ClipboardList, label: 'All Leads' },
-        { path: '/deals', icon: Target, label: 'Deal Pipeline' },
-        { path: '/profitability', icon: BarChart3, label: 'Marketing Retainers' },
-        { path: '/profitability/websites', icon: Globe, label: 'Websites' },
+        { path: '/score-card', icon: ClipboardList, label: 'Leads' },
+        { path: '/deals', icon: Target, label: 'Deals' },
         { path: '/hosting', icon: Server, label: 'Hosting' },
-        { path: '/feature-list', icon: ListChecks, label: 'Features' },
-        { path: '/mission', icon: Target, label: 'Mission' },
-        { path: '/strategy', icon: Compass, label: 'Strategy 2027' },
-        { path: '/ideal-target-client', icon: Crosshair, label: 'Target Client(s)' },
-        { path: '/brand-care', icon: Heart, label: 'Brand Care' },
-        { path: '/announcements', icon: Megaphone, label: 'Announcements' },
-        { path: '/education/v1-overview', icon: GraduationCap, label: 'Masterclass' },
-        { path: '/education/agency-academy-course', icon: BookOpen, label: 'Courses' },
-        { path: '/education/course-downloads', icon: BookOpen, label: 'Course downloads' },
-        { path: '/new_admin', icon: Shield, label: 'Admin' },
-        { path: '/profitability/team', icon: Users2, label: 'Team Hours' },
-        ...(billingAllowed ? [{ path: '/billing', icon: Receipt, label: 'Billing' }] : []),
-        { path: '/people', icon: Users, label: 'People' },
-        { path: '/scenarios', icon: BarChart3, label: 'Scenarios' },
-        { path: '/working', icon: CheckCircle, label: 'Working/Not' },
-        { path: '/org-structure', icon: Building2, label: 'Org structure' },
-      ].filter((item) => canSeePath(item.path))
+        { action: 'more', icon: Menu, label: 'More' },
+      ].filter((item) => !item.path || canSeePath(item.path))
 
   const [showMore, setShowMore] = useState(false)
+
+  useEffect(() => {
+    setShowMore(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    if (!showMore) return undefined
+    const previousBody = document.body.style.overflow
+    const previousHtml = document.documentElement.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousBody
+      document.documentElement.style.overflow = previousHtml
+    }
+  }, [showMore])
+
+  const closeMenu = () => setShowMore(false)
   
   return (
     <>
@@ -230,14 +315,19 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowMore(false)}
-              className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-[55] bg-black/50 backdrop-blur-sm lg:hidden"
             />
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Navigation menu"
+              data-testid="mobile-nav-drawer"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-background rounded-t-3xl border-t shadow-2xl lg:hidden max-h-[85vh] flex flex-col"
+              className="fixed inset-x-0 bottom-0 z-[60] flex flex-col overflow-hidden rounded-t-3xl border-t bg-background shadow-2xl lg:hidden"
+              style={{ height: '100dvh', maxHeight: '100dvh', paddingTop: 'env(safe-area-inset-top, 0px)' }}
             >
               {/* Handle - Fixed at top */}
               <div className="flex-shrink-0 pt-3 pb-2">
@@ -245,7 +335,11 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
               </div>
               
               {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto px-4 pb-4">
+              <div
+                data-testid="mobile-nav-scroll"
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4"
+                style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}
+              >
                 {/* User Profile */}
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 mb-4">
                   <Avatar className="h-12 w-12">
@@ -260,8 +354,8 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
                   </div>
                   <Link
                     to="/settings"
-                    onClick={() => setShowMore(false)}
-                    className="p-2 rounded-lg hover:bg-muted"
+                    onClick={closeMenu}
+                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg hover:bg-muted"
                   >
                     <Settings className="h-5 w-5 text-muted-foreground" />
                   </Link>
@@ -308,74 +402,93 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
                 </div>
 
                 {/* Nav Items */}
-                <div className="space-y-1 mb-4">
-                  {navItems.slice(3).filter((item) => canSeePath(item.path)).map((item) => {
-                    const Icon = item.icon
-                    const isActive = location.pathname === item.path
-                    
+                <div className="mb-4">
+                  {MOBILE_MENU.map((section) => {
+                    const items = section.items.filter((item) => !item.billingOnly || billingAllowed).filter((item) => canSeePath(item.path))
+                    if (!items.length) return null
                     return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setShowMore(false)}
-                        className={cn(
-                          "flex items-center gap-3 px-4 py-3 rounded-xl transition-colors",
-                          isActive
-                            ? "bg-brand-orange/10 text-brand-orange"
-                            : "text-foreground hover:bg-muted"
-                        )}
-                      >
-                        <Icon className="h-5 w-5" />
-                        <span className="font-medium">{item.label}</span>
-                        <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
-                      </Link>
+                      <div key={section.group}>
+                        <p className="px-4 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{section.group}</p>
+                        <div className="space-y-0.5">
+                          {items.map((item) => {
+                            const Icon = item.icon
+                            const active = pathActive(item.path, location.pathname)
+                            return (
+                              <div key={item.path}>
+                                <Link
+                                  to={item.path}
+                                  onClick={closeMenu}
+                                  className={cn(
+                                    'flex min-h-[44px] items-center gap-3 rounded-xl px-4 transition-colors',
+                                    active ? 'bg-brand-orange/10 font-semibold text-brand-orange' : 'text-foreground hover:bg-muted'
+                                  )}
+                                >
+                                  <Icon className="h-5 w-5 shrink-0" />
+                                  <span className="font-medium">{item.label}</span>
+                                  <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
+                                </Link>
+                                {item.children?.map((child) => (
+                                  <Link
+                                    key={child.path}
+                                    to={child.path}
+                                    onClick={closeMenu}
+                                    className={cn(
+                                      'ml-6 flex min-h-[44px] items-center rounded-lg border-l border-border px-3 text-sm',
+                                      location.pathname === child.path
+                                        ? 'bg-[#e8eeff] font-medium text-[#1644ED]'
+                                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                    )}
+                                  >
+                                    {child.label}
+                                  </Link>
+                                ))}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
                     )
                   })}
 
-                  {billingAllowed ? (
-                    <>
-                      <Link
-                        to="/billing"
-                        onClick={() => setShowMore(false)}
-                        className={cn(
-                          "flex items-center gap-3 px-4 py-3 rounded-xl transition-colors",
-                          location.pathname === '/billing'
-                            ? "bg-brand-orange/10 text-brand-orange"
-                            : "text-foreground hover:bg-muted"
-                        )}
-                      >
-                        <Receipt className="h-5 w-5" />
-                        <span className="font-medium">Billing</span>
-                        <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
-                      </Link>
-                      <Link
-                        to="/billing/subscriptions"
-                        onClick={() => setShowMore(false)}
-                        className={cn(
-                          "ml-6 flex items-center gap-3 rounded-lg border-l border-border px-3 py-2 text-sm",
-                          location.pathname === '/billing/subscriptions'
-                            ? "bg-[#e8eeff] font-medium text-[#1644ED]"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                        )}
-                      >
-                        Subscriptions
-                      </Link>
-                    </>
+                  {showFullNav ? (
+                    <div>
+                      <p className="px-4 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Workspace</p>
+                      <div className="space-y-0.5">
+                        {WORKSPACE_ITEMS.filter((item) => canSeePath(item.path)).map((item) => {
+                          const Icon = item.icon
+                          const active = pathActive(item.path, location.pathname)
+                          return (
+                            <Link
+                              key={item.path}
+                              to={item.path}
+                              onClick={closeMenu}
+                              className={cn(
+                                'flex min-h-[44px] items-center gap-3 rounded-xl px-4 transition-colors',
+                                active ? 'bg-brand-orange/10 font-semibold text-brand-orange' : 'text-foreground hover:bg-muted'
+                              )}
+                            >
+                              <Icon className="h-5 w-5 shrink-0" />
+                              <span className="font-medium">{item.label}</span>
+                              <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    </div>
                   ) : null}
-                  
+
                   {isAdmin && adminNavItems.map((item) => {
                     const Icon = item.icon
-                    
                     return (
                       <Link
                         key={item.path}
                         to={item.path}
-                        onClick={() => setShowMore(false)}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-brand-purple hover:bg-brand-purple/10 transition-colors"
+                        onClick={closeMenu}
+                        className="mt-2 flex min-h-[44px] items-center gap-3 rounded-xl px-4 text-brand-purple hover:bg-brand-purple/10"
                       >
                         <Icon className="h-5 w-5" />
                         <span className="font-medium">{item.label}</span>
-                        <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
+                        <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
                       </Link>
                     )
                   })}
@@ -384,15 +497,12 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity }) {
                 {/* Close Button */}
                 <Button
                   variant="ghost"
-                  className="w-full mt-4"
-                  onClick={() => setShowMore(false)}
+                  className="mt-4 min-h-[44px] w-full"
+                  onClick={closeMenu}
                 >
                   Close
                 </Button>
               </div>
-              
-              {/* Safe area padding at bottom */}
-              <div className="safe-area-bottom" />
             </motion.div>
           </>
         )}

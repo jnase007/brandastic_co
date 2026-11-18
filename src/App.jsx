@@ -859,6 +859,14 @@ function App() {
     console.log('[App] Auth state:', { loading, user: user?.email || null, profile: profile?.full_name || null })
   }, [loading, user, profile])
 
+  if (import.meta.env.DEV && location.pathname === '/dev/mobile-nav') {
+    return (
+      <div className="min-h-[100dvh] bg-white">
+        <MobileTabBar billingAllowedOverride onOpenTimer={() => {}} onOpenActivity={() => {}} />
+      </div>
+    )
+  }
+
   if (import.meta.env.DEV && location.pathname === '/dev/billing-subscriptions') {
     return (
       <div className="min-h-screen bg-white">
