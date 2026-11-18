@@ -28,6 +28,9 @@ const MeetingCloseRatePreview = import.meta.env.DEV
 const AnnouncementsPreview = import.meta.env.DEV
   ? lazy(() => import('./pages/AnnouncementsPreview'))
   : null
+const DealsReportingPreview = import.meta.env.DEV
+  ? lazy(() => import('./pages/DealsReportingPreview'))
+  : null
 const JiraImport = lazy(() => import('./pages/JiraImport'))
 const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'))
 const TimeTracking = lazy(() => import('./pages/TimeTracking'))
@@ -864,6 +867,14 @@ function App() {
   useEffect(() => {
     console.log('[App] Auth state:', { loading, user: user?.email || null, profile: profile?.full_name || null })
   }, [loading, user, profile])
+
+  if (import.meta.env.DEV && location.pathname === '/dev/deals-reporting') {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <DealsReportingPreview />
+      </Suspense>
+    )
+  }
 
   if (import.meta.env.DEV && location.pathname === '/dev/announcements') {
     return (

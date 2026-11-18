@@ -14,15 +14,9 @@ import {
   DialogTitle,
 } from './ui/dialog'
 import { DEAL_INTERESTS, DEAL_TYPE_LABELS, DEAL_TYPES, LEAD_QUALITIES, LEAD_SOURCES, commaMoney, monthLabel, parseJiraKey, parseMoney } from '../lib/leads'
+import { LOST_REASONS, PIPELINE_STAGES as PROCESS_STAGES, qualityForLostReason } from '../lib/dealPipeline'
 
-export const PIPELINE_STAGES = [
-  { id: 'lead', label: 'Lead' },
-  { id: 'kickoff', label: 'Kick-Off Meeting' },
-  { id: 'proposal', label: 'Proposal Sent' },
-  { id: 'contract', label: 'Buy-in / Contract' },
-  { id: 'won', label: 'Closed Won' },
-  { id: 'lost', label: 'Closed Lost' },
-]
+export const PIPELINE_STAGES = PROCESS_STAGES.map((stage) => ({ id: stage.id, label: stage.title }))
 
 const EMPTY = {
   source: 'Direct',
@@ -42,6 +36,9 @@ const EMPTY = {
   value_2026: '',
   contract_months: '12',
   pipeline_stage: '',
+  lost_reason: '',
+  lost_note: '',
+  follow_up_recommendation: '',
 }
 
 function draftFromLead(lead, defaultStage) {
@@ -73,6 +70,9 @@ function draftFromLead(lead, defaultStage) {
     value_2026: commaMoney(lead.value_2026),
     contract_months: String(lead.contract_months || 12),
     pipeline_stage: lead.pipeline_stage || defaultStage || '',
+    lost_reason: lead.lost_reason || '',
+    lost_note: lead.lost_note || '',
+    follow_up_recommendation: lead.follow_up_recommendation || '',
   }
 }
 
@@ -96,7 +96,8 @@ export default function LeadContactDialog({ open, onOpenChange, lead, defaultSta
   function payloadFromDraft() {
     const amount = (value) => parseMoney(value)
     const jira = parseJiraKey(draft.jira_key)
-    return {
+    const stage = draft.pipeline_stage || defaultStage || null
+    const payload = {
       source: (draft.source || '').trim(),
       first_contact_date: draft.first_contact_date || null,
       jira_key: jira,
@@ -106,16 +107,24 @@ export default function LeadContactDialog({ open, onOpenChange, lead, defaultSta
       email: draft.email.trim(),
       notes: draft.notes.trim(),
       month: draft.month.trim() || monthLabel(draft.first_contact_date),
-      quality: draft.quality.trim() || (jira ? 'Good Lead' : ''),
+      quality: stage === 'lost'
+        ? qualityForLostReason(draft.lost_reason, draft.quality.trim())
+        : (draft.quality.trim() || (jira ? 'Good Lead' : '')),
       close_amount: amount(draft.close_amount),
       referred_by: draft.referred_by.trim(),
       deal_type: draft.deal_type || null,
       deal_interest: (draft.deal_interest || '').trim() || null,
       value_2026: amount(draft.value_2026),
       contract_months: draft.deal_type === 'Monthly' ? Number(draft.contract_months) || 12 : null,
-      pipeline_stage: draft.pipeline_stage || defaultStage || null,
+      pipeline_stage: stage,
       updated_at: new Date().toISOString(),
     }
+    if (stage === 'lost') {
+      payload.lost_reason = draft.lost_reason
+      payload.lost_note = draft.lost_note.trim()
+      payload.follow_up_recommendation = draft.follow_up_recommendation.trim()
+    }
+    return payload
   }
 
   async function saveLead() {
@@ -123,11 +132,20 @@ export default function LeadContactDialog({ open, onOpenChange, lead, defaultSta
       toast({ title: 'Add a name or company', variant: 'destructive' })
       return
     }
+    if ((draft.pipeline_stage || defaultStage) === 'lost' && !draft.lost_reason) {
+      toast({ title: 'Choose a lost reason', variant: 'destructive' })
+      return
+    }
     setSaving(true)
     const payload = payloadFromDraft()
     let result = lead?.id
       ? await supabase.from('sales_leads').update(payload).eq('id', lead.id).select('*').single()
       : await supabase.from('sales_leads').insert(payload).select('*').single()
+    if (result.error && /lost_reason|lost_note|follow_up_recommendation/.test(result.error.message || '')) {
+      setSaving(false)
+      toast({ title: 'Lost reason is not stored yet', description: 'Run supabase/deal-pipeline-alerts.sql once. This deal was not saved.', variant: 'destructive' })
+      return
+    }
     if (result.error && String(result.error.message || '').includes('pipeline_stage')) {
       const { pipeline_stage, ...rest } = payload
       result = lead?.id
@@ -292,6 +310,23 @@ export default function LeadContactDialog({ open, onOpenChange, lead, defaultSta
               </div>
             </div>
           </section>
+          {draft.pipeline_stage === 'lost' ? (
+            <section className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Deal Lost</p>
+              <Field label="Lost reason">
+                <select aria-label="Lost reason" className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.lost_reason} onChange={(event) => updateDraft('lost_reason', event.target.value)}>
+                  <option value="">Select a reason</option>
+                  {LOST_REASONS.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </Field>
+              <Field label="Internal note">
+                <Textarea aria-label="Internal note" rows={3} value={draft.lost_note} onChange={(event) => updateDraft('lost_note', event.target.value)} />
+              </Field>
+              <Field label="Follow-up recommendation">
+                <Textarea aria-label="Follow-up recommendation" rows={2} value={draft.follow_up_recommendation} onChange={(event) => updateDraft('follow_up_recommendation', event.target.value)} placeholder="Revisitable — this does not schedule anything" />
+              </Field>
+            </section>
+          ) : null}
           <Field label="Notes">
             <Textarea rows={4} value={draft.notes} onChange={(event) => updateDraft('notes', event.target.value)} />
           </Field>
