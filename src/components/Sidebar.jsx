@@ -384,7 +384,9 @@ export default function Sidebar({
                   ? location.pathname.startsWith('/score-card')
                   : item.path === '/billing'
                     ? location.pathname === '/billing' || location.pathname.startsWith('/billing/')
-                    : location.pathname === item.path
+                    : item.path === '/deals'
+                      ? location.pathname === '/deals' || location.pathname.startsWith('/deals/')
+                      : location.pathname === item.path
           const sections = item.path === '/feature-list' && location.pathname === '/feature-list' && !collapsed ? featureNav?.sections : null
           const hiddenItem = showFullNav && !simplePaths.has(item.path)
           const linkClass = cn(
@@ -441,6 +443,22 @@ export default function Sidebar({
                     )}
                   >
                     Subscriptions
+                  </Link>
+                </div>
+              ) : null}
+              {item.path === '/deals' && isActive && !collapsed ? (
+                <div className="mb-2 ml-3 mt-1 border-l border-border pl-2">
+                  <Link
+                    to="/deals/reporting"
+                    onMouseEnter={() => prefetchRoute('/deals/reporting')}
+                    className={cn(
+                      "flex w-full rounded-lg px-2 py-1.5 text-left text-sm",
+                      location.pathname === '/deals/reporting'
+                        ? "bg-[#e8eeff] font-medium text-[#1644ED]"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    Reporting
                   </Link>
                 </div>
               ) : null}

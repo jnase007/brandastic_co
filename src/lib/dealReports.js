@@ -69,21 +69,38 @@ export function stageConversion(rows) {
       conversionFromPrevious: previous ? percent(reached, previousReached) : null,
     }
   })
+  const entered = steps[0]?.reached || 0
+  const won = steps[steps.length - 1]?.reached || 0
   return {
     steps,
     lost: counts.lost,
-    note: 'Conversion is deals currently in this stage or a later funnel stage, divided by the previous stage on that same basis. Deal Lost is separate because the stage a lost deal left is not stored.',
+    overall: percent(won, entered),
+    note: 'Stage-to-stage conversion is deals in this stage or later, divided by the previous stage on that basis. Overall is Deal Won divided by deals that reached Lead. Deal Lost is separate because the stage a lost deal left is not stored.',
   }
 }
 
 export function closedWonBySource(rows) {
   const groups = new Map()
-  for (const row of (rows || []).filter(isClosedWon)) {
+  for (const row of rows || []) {
+    const won = isClosedWon(row)
+    const lost = stageFromLead(row) === 'lost' && !won
+    if (!won && !lost) continue
     const source = sourceLabel(row)
-    groups.set(source, (groups.get(source) || 0) + 1)
+    const current = groups.get(source) || { source, count: 0, lost: 0 }
+    if (won) current.count += 1
+    else current.lost += 1
+    groups.set(source, current)
   }
-  return [...groups.entries()]
-    .map(([source, count]) => ({ source, count }))
+  const totalWon = [...groups.values()].reduce((sum, group) => sum + group.count, 0)
+  return [...groups.values()]
+    .filter((group) => group.count > 0)
+    .map((group) => ({
+      source: group.source,
+      count: group.count,
+      lost: group.lost,
+      share: percent(group.count, totalWon),
+      winRate: percent(group.count, group.count + group.lost),
+    }))
     .sort((a, b) => b.count - a.count || a.source.localeCompare(b.source))
 }
 
@@ -141,11 +158,22 @@ export function stalledByStage(rows, now) {
     }
     if (alert.kind === 'suggest-lost' || alert.kind === 'reengage' || alert.kind === 'reminder') counts[stage] += 1
   }
+  const openByStage = Object.fromEntries(OPEN_STAGE_IDS.map((id) => [id, 0]))
+  for (const row of rows || []) {
+    const stage = stageFromLead(row)
+    if (OPEN_STAGE_IDS.includes(stage)) openByStage[stage] += 1
+  }
   const stalled = OPEN_STAGE_IDS.reduce((sum, id) => sum + counts[id], 0)
   return {
     enough: open === 0 || undated < open,
     undated,
-    bars: OPEN_STAGE_IDS.map((id) => ({ id, title: stageTitle(id), count: counts[id] })),
+    bars: OPEN_STAGE_IDS.map((id) => ({
+      id,
+      title: stageTitle(id),
+      count: counts[id],
+      open: openByStage[id],
+      share: percent(counts[id], openByStage[id]),
+    })),
     stalled,
     basis: 'Lead at 45 days since first contact. Kick-Off at 30, 60, or 90 days since the last update. Proposal Sent at 5 business days, or 60 days, since the last update. Buy-In / Contract Sent has no auto-cadence.',
     reason: 'Not enough data yet. Open deals in this view have no date to judge against the timers.',
@@ -168,6 +196,7 @@ export function wonLostOverTime(rows, { year = REPORT_YEAR } = {}) {
     if (won) months[month - 1].won += 1
     else months[month - 1].lost += 1
   }
+  for (const month of months) month.winRate = percent(month.won, month.won + month.lost)
   return {
     months,
     skipped,
@@ -179,7 +208,8 @@ export function stageDistribution(rows) {
   const order = [...FUNNEL_STAGE_IDS, 'lost']
   const counts = Object.fromEntries(order.map((id) => [id, 0]))
   for (const row of rows || []) counts[stageFromLead(row)] += 1
-  return order.map((id) => ({ id, title: stageTitle(id), count: counts[id] }))
+  const total = order.reduce((sum, id) => sum + counts[id], 0)
+  return order.map((id) => ({ id, title: stageTitle(id), count: counts[id], share: percent(counts[id], total) }))
 }
 
 export function dealsCreatedOverTime(rows, { year = REPORT_YEAR } = {}) {
@@ -203,6 +233,10 @@ export function dealsCreatedOverTime(rows, { year = REPORT_YEAR } = {}) {
     }
     months[month - 1].count += 1
   }
+  months.forEach((month, index) => {
+    const previous = index === 0 ? null : months[index - 1].count
+    month.change = previous == null ? null : percent(month.count - previous, previous)
+  })
   const total = months.reduce((sum, month) => sum + month.count, 0)
   return {
     enough: total > 0,
@@ -210,5 +244,56 @@ export function dealsCreatedOverTime(rows, { year = REPORT_YEAR } = {}) {
     missing,
     outside,
     reason: 'Not enough data yet. No created date in this view falls in 2026.',
+  }
+}
+
+export function monthOverMonth(current, previous) {
+  if (!previous) return null
+  return percent(current - previous, previous)
+}
+
+function leadMonthNumber(row, year) {
+  const date = String(row?.first_contact_date || '')
+  if (!date.startsWith(String(year))) return null
+  const month = Number(date.slice(5, 7))
+  return month >= 1 && month <= 12 ? month : null
+}
+
+function focusMonth(monthView, now, year) {
+  if (monthView && monthView !== 'all') {
+    const month = Number(monthView)
+    return month >= 1 && month <= 12 ? month : null
+  }
+  const parsed = String(now instanceof Date ? now.toISOString().slice(0, 10) : now || '')
+  if (!parsed.startsWith(String(year))) return null
+  const month = Number(parsed.slice(5, 7))
+  return month >= 1 && month <= 12 ? month : null
+}
+
+export function reportingKpis(rows, { year = REPORT_YEAR, monthView = 'all', now } = {}) {
+  const list = Array.isArray(rows) ? rows : []
+  const filtered = filterDealsByLeadMonth(list, { year, monthView })
+  const wonOf = (month) => list.filter((row) => isClosedWon(row) && (month == null || leadMonthNumber(row, year) === month)).length
+  const lostOf = (month) => list.filter((row) => stageFromLead(row) === 'lost' && !isClosedWon(row) && (month == null || leadMonthNumber(row, year) === month)).length
+  const countOf = (month) => list.filter((row) => leadMonthNumber(row, year) === month).length
+  const openOf = (month) => list.filter((row) => OPEN_STAGE_IDS.includes(stageFromLead(row)) && (month == null || leadMonthNumber(row, year) === month)).length
+  const rateOf = (month) => percent(wonOf(month), wonOf(month) + lostOf(month))
+  const month = focusMonth(monthView, now, year)
+  const previous = month && month > 1 ? month - 1 : null
+  const won = filtered.filter(isClosedWon).length
+  const lost = filtered.filter((row) => stageFromLead(row) === 'lost' && !isClosedWon(row)).length
+  const winRate = percent(won, won + lost)
+  const previousRate = previous ? rateOf(previous) : null
+  return {
+    total: filtered.length,
+    totalChange: previous == null ? null : monthOverMonth(monthView === 'all' ? countOf(month) : filtered.length, countOf(previous)),
+    winRate,
+    winRateChange: previousRate == null || winRate == null ? null : monthOverMonth(winRate, previousRate),
+    open: filtered.filter((row) => OPEN_STAGE_IDS.includes(stageFromLead(row))).length,
+    openChange: previous == null ? null : monthOverMonth(openOf(month), openOf(previous)),
+    wonThisMonth: month == null ? 0 : wonOf(month),
+    wonThisMonthChange: previous == null ? null : monthOverMonth(wonOf(month), wonOf(previous)),
+    cycle: closedWonCycle(),
+    compareLabel: previous ? `vs ${REPORT_MONTHS[previous - 1].label}, by lead date` : 'No prior month to compare',
   }
 }

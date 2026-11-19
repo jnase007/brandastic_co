@@ -19,7 +19,9 @@ import {
   closedWonCycle,
   dealsCreatedOverTime,
   filterDealsByLeadMonth,
+  reportingKpis,
   stageConversion,
+  stageDistribution,
   stalledByStage,
   wonLostOverTime,
 } from '../src/lib/dealReports.js'
@@ -104,13 +106,14 @@ describe('deal reports', () => {
     assert.equal(funnel.steps[2].conversionFromPrevious, 71.4)
     assert.equal(funnel.steps[3].conversionFromPrevious, 60)
     assert.equal(funnel.steps[4].conversionFromPrevious, 66.7)
+    assert.equal(funnel.overall, 20)
   })
 
   it('counts closed won by source and refuses a made-up cycle time', () => {
     const sources = closedWonBySource(leads)
     assert.deepEqual(sources, [
-      { source: 'Direct', count: 1 },
-      { source: 'SEO (organic)', count: 1 },
+      { source: 'Direct', count: 1, lost: 1, share: 50, winRate: 50 },
+      { source: 'SEO (organic)', count: 1, lost: 0, share: 50, winRate: 100 },
     ])
     const cycle = closedWonCycle()
     assert.equal(cycle.enough, false)
@@ -143,5 +146,27 @@ describe('deal reports', () => {
     assert.deepEqual(march.map((row) => row.id).sort(), ['ea-lost-open', 'ea-prop-60'])
     const noCreated = dealsCreatedOverTime([{ company: 'Example Only', pipeline_stage: 'lead', first_contact_date: '2026-03-01' }])
     assert.equal(noCreated.enough, false)
+  })
+
+  it('labels percentages from the counts and uses a dash when the denominator is zero', () => {
+    const stalled = stalledByStage(leads, NOW)
+    assert.deepEqual(stalled.bars.map((bar) => bar.share), [33.3, 100, 100, 0])
+    const distribution = stageDistribution(leads)
+    assert.equal(distribution.find((row) => row.id === 'lead').share, 25)
+    const series = wonLostOverTime(leads)
+    assert.equal(series.months[0].winRate, 0)
+    assert.equal(series.months[1].winRate, 100)
+    assert.equal(series.months[4].winRate, null)
+    const created = dealsCreatedOverTime(leads)
+    assert.equal(created.months[0].change, null)
+    assert.equal(created.months[1].change, -66.7)
+    assert.equal(created.months[2].change, 200)
+    const kpis = reportingKpis(leads, { year: 2026, monthView: 'all', now: NOW })
+    assert.equal(kpis.total, 12)
+    assert.equal(kpis.winRate, 50)
+    assert.equal(kpis.wonThisMonth, 0)
+    assert.equal(kpis.cycle.enough, false)
+    assert.equal(kpis.wonThisMonthChange, null)
+    assert.equal(reportingKpis([], { monthView: '6', now: NOW }).winRate, null)
   })
 })

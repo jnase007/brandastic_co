@@ -15,6 +15,7 @@ const loaders = {
   '/score-card': () => import('../pages/ScoreCard'),
   '/score-card/financials': () => import('../pages/ScoreCardFinancials'),
   '/deals': () => import('../pages/ScoreCardPipeline'),
+  '/deals/reporting': () => import('../pages/DealReporting'),
   '/pipeline': () => import('../pages/SalesPipeline'),
 }
 
