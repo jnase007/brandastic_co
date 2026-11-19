@@ -16,8 +16,13 @@ import {
   sortSubscriptionItems,
   subscriptionKey,
   subscriptionSavings,
+  contractTermOf,
+  daysRemainingLabel,
+  renewalBadgeLabel,
+  renewalTiming,
   summarizeSavings,
   subscriptionsEmptyState,
+  upcomingContractRenewals,
   topSubscriptionsByMonthly,
 } from '../src/lib/billingSubscriptionsView.js'
 
@@ -304,6 +309,61 @@ describe('subscription HTTP gate', () => {
     assert.equal(result.status, 500)
     assert.deepEqual(result.body, { error: 'Could not load billing' })
     assert.equal(JSON.stringify(result.body).includes('Example SaaS'), false)
+  })
+})
+
+describe('subscription renewal fields', () => {
+  const NOW = new Date('2026-11-19T15:00:00.000Z')
+
+  it('reads optional renewal fields and drops anything that is not a real date or term', () => {
+    const parsed = parseBillingSubscriptions(JSON.stringify({
+      subscriptions: [
+        { vendor: 'Example Calendar Co', renewalDate: '2027-04-19', renewalNote: 'Fake note for a later renewal.', contractTerm: 'annual' },
+        { vendor: 'Example Month Co', renewalDate: '2026-12-01', renewalNote: 'Fake note that should not flag.', contractTerm: 'monthly' },
+        { vendor: 'Example No Date Co' },
+        { vendor: 'Example Bad Date Co', renewalDate: '2027-02-31', renewalNote: 12, contractTerm: 'weekly' },
+      ],
+    }))
+    const calendar = parsed.items.find((item) => item.vendor === 'Example Calendar Co')
+    assert.equal(calendar.renewalDate, '2027-04-19')
+    assert.equal(calendar.renewalNote, 'Fake note for a later renewal.')
+    assert.equal(calendar.contractTerm, 'annual')
+    const month = parsed.items.find((item) => item.vendor === 'Example Month Co')
+    assert.equal(month.contractTerm, 'monthly')
+    assert.equal(renewalBadgeLabel(month, NOW), '')
+    const blank = parsed.items.find((item) => item.vendor === 'Example No Date Co')
+    assert.equal(blank.renewalDate, null)
+    assert.equal(blank.renewalNote, '')
+    assert.equal(blank.contractTerm, '')
+    assert.equal(renewalBadgeLabel(blank, NOW), '')
+    const bad = parsed.items.find((item) => item.vendor === 'Example Bad Date Co')
+    assert.equal(bad.renewalDate, null)
+    assert.equal(bad.contractTerm, '')
+  })
+
+  it('flags only annual contracts and lists them soonest first', () => {
+    const items = [
+      { vendor: 'Example Later Co', contractTerm: 'annual', renewalDate: '2027-04-19', renewalNote: 'Fake later note' },
+      { vendor: 'Example Soon Co', contractTerm: 'annual', renewalDate: '2026-12-01', renewalNote: 'Fake soon note' },
+      { vendor: 'Example Past Co', contractTerm: 'annual', renewalDate: '2026-11-01', renewalNote: '' },
+      { vendor: 'Example Month Co', contractTerm: 'monthly', renewalDate: '2026-11-20', renewalNote: 'Fake monthly note' },
+      { vendor: 'Example Open Co', contractTerm: 'annual' },
+    ]
+    assert.equal(contractTermOf(items[0]), 'annual')
+    assert.equal(renewalTiming('2026-12-01', NOW).days, 12)
+    assert.equal(renewalTiming('2026-12-01', NOW).urgent, true)
+    assert.equal(renewalTiming('2027-04-19', NOW).urgent, false)
+    assert.equal(renewalBadgeLabel(items[1], NOW), 'Renews in 12 days')
+    assert.equal(renewalBadgeLabel(items[0], NOW), 'Annual contract · renews Apr 19, 2027')
+    assert.equal(renewalBadgeLabel(items[2], NOW), 'Past due by 18 days')
+    assert.equal(renewalBadgeLabel(items[3], NOW), '')
+    assert.equal(renewalBadgeLabel(items[4], NOW), '')
+    assert.equal(daysRemainingLabel(12), '12 days')
+    assert.equal(daysRemainingLabel(-18), '18 days ago')
+    const upcoming = upcomingContractRenewals(items, NOW)
+    assert.deepEqual(upcoming.map((row) => row.item.vendor), ['Example Past Co', 'Example Soon Co', 'Example Later Co'])
+    assert.equal(upcoming[0].urgent, true)
+    assert.equal(upcoming[2].urgent, false)
   })
 })
 

@@ -57,7 +57,23 @@ export default function BillingSubscriptionsPreview() {
         return response.json()
       })
       .then((report) => {
-        if (!cancelled) setState({ status: 'ready', report })
+        if (cancelled) return
+        if (params.get('renewals') === '1' && Array.isArray(report?.subscriptions?.items)) {
+          const day = (offset) => {
+            const now = new Date()
+            const utc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + offset))
+            return utc.toISOString().slice(0, 10)
+          }
+          const extras = [
+            { contractTerm: 'annual', renewalDate: day(12), renewalNote: 'Fake note: example renewal soon.' },
+            { contractTerm: 'annual', renewalDate: day(150), renewalNote: 'Fake note: example renewal later.' },
+            { contractTerm: 'monthly', renewalDate: day(10), renewalNote: 'Fake note: month-to-month, no flag.' },
+          ]
+          report.subscriptions.items = report.subscriptions.items.map((item, index) => (
+            extras[index] ? { ...item, ...extras[index] } : item
+          ))
+        }
+        setState({ status: 'ready', report })
       })
       .catch(() => {
         if (!cancelled) setState({ status: 'ready', report: emptyReport(NOT_LOADED) })
