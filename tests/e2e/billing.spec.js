@@ -73,6 +73,16 @@ test('subscription savings math uses the fake fixture', async ({ page }) => {
   await expect(page.getByTestId('billing-savings-monthly')).toHaveText('$69.00')
 })
 
+test('annual contract renewals are flagged and monthly ones are not', async ({ page }) => {
+  await page.goto('/dev/billing-subscriptions?renewals=1')
+  await expect(page.getByTestId('billing-upcoming-renewals')).toBeVisible()
+  await expect(page.getByText('Renews in 12 days').first()).toBeVisible()
+  await expect(page.getByText(/Annual contract · renews /).first()).toBeVisible()
+  await expect(page.getByText('Fake note: month-to-month, no flag.')).toHaveCount(0)
+  const flags = page.getByTestId('billing-renewal-flag')
+  await expect(flags).toHaveCount(2)
+})
+
 test('subscription preview empty state does not invent rows', async ({ page }) => {
   await page.goto('/dev/billing-subscriptions?empty=1')
   await expect(page.getByTestId('billing-subscriptions-empty')).toHaveText('No subscription data loaded yet')

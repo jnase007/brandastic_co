@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Calendar } from 'lucide-react'
 import {
   GROUP_COLORS,
   SUBSCRIPTION_FILTERS,
@@ -8,6 +9,8 @@ import {
   formatDay,
   formatSourceWindow,
   formatSubscriptionUpdated,
+  contractTermOf,
+  daysRemainingLabel,
   groupColor,
   groupLabel,
   monthlyChargeSeries,
@@ -17,8 +20,11 @@ import {
   subscriptionKey,
   subscriptionMonthly,
   subscriptionSavings,
+  renewalBadgeLabel,
+  renewalTiming,
   subscriptionSelectable,
   subscriptionsEmptyState,
+  upcomingContractRenewals,
   summarizeSavings,
   sumMonthly,
   topSubscriptionsByMonthly,
@@ -183,6 +189,56 @@ function StatusBadge({ status }) {
   )
 }
 
+function RenewalFlag({ item }) {
+  const label = renewalBadgeLabel(item)
+  if (!label) return null
+  const timing = renewalTiming(item.renewalDate)
+  const urgent = Boolean(timing?.urgent)
+  const note = String(item.renewalNote || '').trim()
+  return (
+    <span className="mt-1 flex max-w-full flex-col items-start gap-0.5" data-testid="billing-renewal-flag">
+      <span
+        title={note || undefined}
+        className="inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold normal-case tracking-normal"
+        style={urgent ? { background: '#fee2e2', color: '#991b1b' } : { background: '#f1f5f9', color: '#334155' }}
+      >
+        <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+        <span className="truncate">{label}</span>
+      </span>
+      {note ? <span className="text-[10px] font-medium normal-case tracking-normal text-slate-500">{note}</span> : null}
+    </span>
+  )
+}
+
+function UpcomingRenewals({ items }) {
+  const rows = upcomingContractRenewals(items)
+  if (!rows.length) return null
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4" data-testid="billing-upcoming-renewals" aria-label="Upcoming renewals">
+      <h3 className="text-sm font-semibold text-slate-900">Upcoming renewals</h3>
+      <p className="mt-0.5 text-xs text-slate-500">Annual contracts with a renewal date, soonest first.</p>
+      <ul className="mt-3 grid gap-2">
+        {rows.map(({ item, days, urgent }) => (
+          <li
+            key={`${item.vendor || 'vendor'}-${item.renewalDate}`}
+            className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm"
+            style={urgent ? { background: '#fee2e2', color: '#991b1b' } : { background: '#f8fafc', color: '#0f172a' }}
+          >
+            <span className="min-w-0">
+              <span className="block truncate font-semibold">{item.vendor || '—'}</span>
+              {item.renewalNote ? <span className="block truncate text-xs font-medium opacity-80">{item.renewalNote}</span> : null}
+            </span>
+            <span className="shrink-0 text-right text-xs font-semibold">
+              <span className="block">{renewalBadgeLabel(item)}</span>
+              <span className="block font-medium opacity-80">{daysRemainingLabel(days)}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 function FlagChip({ children, title, tone }) {
   return (
     <span title={title} className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide" style={tone}>
@@ -342,6 +398,8 @@ export function BillingSubscriptions({ data }) {
             </div>
           ) : null}
 
+          <UpcomingRenewals items={items} />
+
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-6" data-testid="billing-subscriptions-kpis">
             {kpis.map(([label, value, detail]) => (
               <article key={label} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
@@ -475,7 +533,11 @@ export function BillingSubscriptions({ data }) {
                               {item.group === 'maybe_personal' ? (
                                 <FlagChip title="Grouped as maybe personal." tone={{ background: '#ffe4e6', color: '#9f1239' }}>Maybe personal</FlagChip>
                               ) : null}
+                              {contractTermOf(item) === 'annual' ? (
+                                <FlagChip title="Annual contract commitment. Billing can still be monthly." tone={{ background: '#ede9fe', color: '#5b21b6' }}>Annual contract</FlagChip>
+                              ) : null}
                             </span>
+                            <RenewalFlag item={item} />
                           </td>
                           <td className="border-t border-slate-100 text-slate-700">{groupLabel(item.group)}</td>
                           <td className="border-t border-slate-100 text-right tabular-nums">

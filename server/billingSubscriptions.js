@@ -146,6 +146,12 @@ function scrubAccount(value) {
   return text.replace(/\d{5,}/g, (run) => run.slice(-4)).slice(0, 80)
 }
 
+function normalizeContractTerm(value) {
+  if (typeof value !== 'string') return ''
+  const term = value.trim().toLowerCase()
+  return term === 'annual' || term === 'monthly' ? term : ''
+}
+
 function normalizeGroup(value) {
   if (typeof value !== 'string') return ''
   const slug = value.trim().toLowerCase()
@@ -209,6 +215,9 @@ function parseItem(input, status) {
     possible_duplicate_or_overlap: clip(input.possible_duplicate_or_overlap, 500),
     reason_possible: clip(input.reason_possible, 500),
     notes: clip(input.notes, 2000),
+    renewalDate: nullableDate(input.renewalDate),
+    renewalNote: clip(input.renewalNote, 300),
+    contractTerm: normalizeContractTerm(input.contractTerm),
     charges: parseCharges(input.charges),
     status,
   }

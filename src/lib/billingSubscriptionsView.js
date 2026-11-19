@@ -170,6 +170,61 @@ export function overallMonthlyTrend(items) {
   return monthlyChargeSeries(charges)
 }
 
+export function contractTermOf(item) {
+  const term = String(item?.contractTerm || '').trim().toLowerCase()
+  return term === 'annual' || term === 'monthly' ? term : ''
+}
+
+export function renewalTiming(value, now = new Date()) {
+  if (!value || typeof value !== 'string') return null
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return null
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const target = Date.UTC(year, month - 1, day)
+  const clock = now instanceof Date ? now : new Date(now)
+  if (Number.isNaN(target) || Number.isNaN(clock.getTime())) return null
+  const today = Date.UTC(clock.getUTCFullYear(), clock.getUTCMonth(), clock.getUTCDate())
+  const utc = new Date(target)
+  if (utc.getUTCFullYear() !== year || utc.getUTCMonth() !== month - 1 || utc.getUTCDate() !== day) return null
+  const days = Math.round((target - today) / 86400000)
+  return { days, urgent: days <= 30 }
+}
+
+export function upcomingContractRenewals(items, now = new Date()) {
+  return (Array.isArray(items) ? items : [])
+    .filter((item) => contractTermOf(item) === 'annual' && renewalTiming(item?.renewalDate, now))
+    .map((item) => ({ item, ...renewalTiming(item.renewalDate, now) }))
+    .sort((a, b) => String(a.item.renewalDate).localeCompare(String(b.item.renewalDate)) || String(a.item.vendor || '').localeCompare(String(b.item.vendor || '')))
+}
+
+export function renewalBadgeLabel(item, now = new Date()) {
+  if (contractTermOf(item) !== 'annual') return ''
+  const timing = renewalTiming(item?.renewalDate, now)
+  if (!timing) return ''
+  if (timing.urgent) {
+    if (timing.days < 0) {
+      const count = Math.abs(timing.days)
+      return count === 1 ? 'Past due by 1 day' : `Past due by ${count} days`
+    }
+    if (timing.days === 0) return 'Renews today'
+    if (timing.days === 1) return 'Renews in 1 day'
+    return `Renews in ${timing.days} days`
+  }
+  const date = formatDay(item.renewalDate)
+  return date === '—' ? '' : `Annual contract · renews ${date}`
+}
+
+export function daysRemainingLabel(days) {
+  if (days == null) return '—'
+  if (days === 0) return 'Today'
+  if (days === 1) return '1 day'
+  if (days === -1) return '1 day ago'
+  if (days < 0) return `${Math.abs(days)} days ago`
+  return `${days} days`
+}
+
 export function formatDay(value) {
   if (!value || typeof value !== 'string') return '—'
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)

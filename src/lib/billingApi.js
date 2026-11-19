@@ -88,6 +88,18 @@ function pickSubscriptionCharge(row) {
   }
 }
 
+function renewalDateOrNull(value) {
+  if (typeof value !== 'string') return null
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim())
+  if (!match) return null
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const utc = new Date(Date.UTC(year, month - 1, day))
+  if (utc.getUTCFullYear() !== year || utc.getUTCMonth() !== month - 1 || utc.getUTCDate() !== day) return null
+  return `${match[1]}-${match[2]}-${match[3]}`
+}
+
 function pickSubscriptionItem(row, index) {
   if (!row || typeof row !== 'object') return null
   return {
@@ -111,6 +123,9 @@ function pickSubscriptionItem(row, index) {
     possible_duplicate_or_overlap: typeof row.possible_duplicate_or_overlap === 'string' ? row.possible_duplicate_or_overlap : '',
     reason_possible: typeof row.reason_possible === 'string' ? row.reason_possible : '',
     notes: typeof row.notes === 'string' ? row.notes : '',
+    renewalDate: renewalDateOrNull(row.renewalDate),
+    renewalNote: typeof row.renewalNote === 'string' ? row.renewalNote : '',
+    contractTerm: row.contractTerm === 'annual' || row.contractTerm === 'monthly' ? row.contractTerm : '',
     charges: Array.isArray(row.charges) ? row.charges.map(pickSubscriptionCharge).filter(Boolean) : [],
     status: SUBSCRIPTION_STATUSES.has(row.status) ? row.status : 'active',
   }
