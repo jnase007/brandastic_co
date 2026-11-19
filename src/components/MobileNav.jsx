@@ -68,7 +68,12 @@ const MOBILE_MENU = [
         label: 'All Leads',
         children: [{ path: '/score-card/financials', label: 'Financials' }],
       },
-      { path: '/deals', icon: Target, label: 'Deal Pipeline' },
+      {
+        path: '/deals',
+        icon: Target,
+        label: 'Deal Pipeline',
+        children: [{ path: '/deals/reporting', label: 'Reporting' }],
+      },
     ],
   },
   {
@@ -135,6 +140,7 @@ const WORKSPACE_ITEMS = [
 function pathActive(path, pathname) {
   if (path === '/billing') return pathname === '/billing' || pathname.startsWith('/billing/')
   if (path === '/score-card') return pathname === '/score-card' || pathname.startsWith('/score-card/')
+  if (path === '/deals') return pathname === '/deals' || pathname.startsWith('/deals/')
   if (path === '/profitability') return pathname === '/profitability'
   if (path === '/profitability/team') return pathname.startsWith('/profitability/team')
   if (path === '/profitability/websites') return pathname.startsWith('/profitability/websites')
@@ -221,7 +227,9 @@ export function MobileTabBar({ onOpenTimer, onOpenActivity, billingAllowedOverri
                 ? location.pathname.startsWith('/profitability/websites')
                 : item.path === '/profitability'
                   ? location.pathname.startsWith('/profitability') && !location.pathname.startsWith('/profitability/team') && !location.pathname.startsWith('/profitability/websites')
-                  : item.path && location.pathname === item.path
+                  : item.path === '/deals'
+                    ? location.pathname === '/deals' || location.pathname.startsWith('/deals/')
+                    : item.path && location.pathname === item.path
             
             if (item.action === 'timer') {
               return (

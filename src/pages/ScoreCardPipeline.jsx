@@ -4,10 +4,8 @@ import { GripVertical, Loader2, Plus, RefreshCw, Target } from 'lucide-react'
 import { supabase, ensureValidSession } from '../lib/supabase'
 import { CHANNEL_COLORS, chipClass, displayDate, formatMoney, jiraUrl } from '../lib/leads'
 import { DEFAULT_LOST_REASON, PIPELINE_ALERTS_ENABLED, PIPELINE_STAGES as STAGES, dealAlert, dropUnavailableDealColumns, qualityForLostReason, stageFromLead } from '../lib/dealPipeline'
-import { REPORT_MONTHS, REPORT_VIEWS, REPORT_YEAR } from '../lib/dealReports'
 import { Button } from '../components/ui/button'
 import LeadContactDialog from '../components/LeadContactDialog'
-import DealReports from '../components/DealReports'
 import { DealAlertBadge, DealAlertsPanel, DealLostDialog, WonChecklist } from '../components/DealPipelineAlerts'
 import { useToast } from '../hooks/useToast'
 import { cn } from '../lib/utils'
@@ -42,8 +40,6 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingLead, setEditingLead] = useState(null)
   const [selected, setSelected] = useState(() => new Set())
-  const [report, setReport] = useState('funnel')
-  const [monthView, setMonthView] = useState('all')
   const [lostIds, setLostIds] = useState(null)
   const [storageNote, setStorageNote] = useState('')
   const clock = previewNow || new Date()
@@ -278,39 +274,6 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
             </Button>
           </div>
         </div>
-
-        <section className="mb-8" aria-labelledby="deal-reporting-title" data-testid="deal-reporting">
-          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 id="deal-reporting-title" className="text-lg font-semibold text-slate-900">Reporting</h2>
-              <p className="text-sm text-slate-500">Pipeline charts for the deals on this page. The board below stays as it is.</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                aria-label="Reporting view"
-                className="h-9 rounded-lg border bg-white px-3 text-sm"
-                value={report}
-                onChange={(event) => setReport(event.target.value)}
-              >
-                {REPORT_VIEWS.map((view) => (
-                  <option key={view.id} value={view.id}>{view.label}</option>
-                ))}
-              </select>
-              <select
-                aria-label="Month view"
-                className="h-9 rounded-lg border bg-white px-3 text-sm"
-                value={monthView}
-                onChange={(event) => setMonthView(event.target.value)}
-              >
-                <option value="all">Month view: All</option>
-                {REPORT_MONTHS.map((month) => (
-                  <option key={month.id} value={String(month.id)}>{month.label} {REPORT_YEAR}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <DealReports rows={rows} report={report} monthView={monthView} now={clock} />
-        </section>
 
         {PIPELINE_ALERTS_ENABLED ? <DealAlertsPanel rows={rows} now={clock} onReview={(id) => openLost([id])} /> : null}
         {PIPELINE_ALERTS_ENABLED && storageNote ? (

@@ -51,6 +51,7 @@ const IdealTargetClient = lazy(() => import('./pages/IdealTargetClient'))
 const ScoreCard = lazy(() => import('./pages/ScoreCard'))
 const ScoreCardFinancials = lazy(() => import('./pages/ScoreCardFinancials'))
 const ScoreCardPipeline = lazy(() => import('./pages/ScoreCardPipeline'))
+const DealReporting = lazy(() => import('./pages/DealReporting'))
 const Financials = lazy(() => import('./pages/Financials'))
 const FeatureList = lazy(() => import('./pages/FeatureList'))
 const Announcements = lazy(() => import('./pages/Announcements'))
@@ -1183,6 +1184,14 @@ function App() {
                 element={
                   <TeamRoute>
                     <ScoreCardPipeline />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/deals/reporting"
+                element={
+                  <TeamRoute>
+                    <DealReporting />
                   </TeamRoute>
                 }
               />
