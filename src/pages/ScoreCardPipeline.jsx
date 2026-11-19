@@ -42,7 +42,7 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingLead, setEditingLead] = useState(null)
   const [selected, setSelected] = useState(() => new Set())
-  const [report, setReport] = useState('')
+  const [report, setReport] = useState('funnel')
   const [monthView, setMonthView] = useState('all')
   const [lostIds, setLostIds] = useState(null)
   const [storageNote, setStorageNote] = useState('')
@@ -268,18 +268,34 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              aria-label="Reporting"
-              className="h-9 rounded-lg border bg-white px-3 text-sm"
-              value={report}
-              onChange={(event) => setReport(event.target.value)}
-            >
-              <option value="">Reporting: Pipeline</option>
-              {REPORT_VIEWS.map((view) => (
-                <option key={view.id} value={view.id}>{view.label}</option>
-              ))}
-            </select>
-            {report ? (
+            <Button variant="outline" size="sm" onClick={load}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+            <Button size="sm" className="bg-purple-500 text-white hover:bg-purple-600" onClick={() => { setEditingLead(null); setDialogOpen(true) }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Prospect
+            </Button>
+          </div>
+        </div>
+
+        <section className="mb-8" aria-labelledby="deal-reporting-title" data-testid="deal-reporting">
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 id="deal-reporting-title" className="text-lg font-semibold text-slate-900">Reporting</h2>
+              <p className="text-sm text-slate-500">Pipeline charts for the deals on this page. The board below stays as it is.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                aria-label="Reporting view"
+                className="h-9 rounded-lg border bg-white px-3 text-sm"
+                value={report}
+                onChange={(event) => setReport(event.target.value)}
+              >
+                {REPORT_VIEWS.map((view) => (
+                  <option key={view.id} value={view.id}>{view.label}</option>
+                ))}
+              </select>
               <select
                 aria-label="Month view"
                 className="h-9 rounded-lg border bg-white px-3 text-sm"
@@ -291,17 +307,10 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
                   <option key={month.id} value={String(month.id)}>{month.label} {REPORT_YEAR}</option>
                 ))}
               </select>
-            ) : null}
-            <Button variant="outline" size="sm" onClick={load}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
-            </Button>
-            <Button size="sm" className="bg-purple-500 text-white hover:bg-purple-600" onClick={() => { setEditingLead(null); setDialogOpen(true) }}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Prospect
-            </Button>
+            </div>
           </div>
-        </div>
+          <DealReports rows={rows} report={report} monthView={monthView} now={clock} />
+        </section>
 
         {PIPELINE_ALERTS_ENABLED ? <DealAlertsPanel rows={rows} now={clock} onReview={(id) => openLost([id])} /> : null}
         {PIPELINE_ALERTS_ENABLED && storageNote ? (
@@ -340,9 +349,7 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
           </div>
         ) : null}
 
-        {report ? (
-          <DealReports rows={rows} report={report} monthView={monthView} now={clock} />
-        ) : loading ? (
+        {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading…
           </div>
@@ -475,7 +482,7 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
         )}
       </div>
 
-      {report ? null : <div className="sticky bottom-0 z-20 -mx-4 mt-4 overflow-x-auto border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur">
+      <div className="sticky bottom-0 z-20 -mx-4 mt-4 overflow-x-auto border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur">
         <div className="flex gap-4">
           {stageStats.map((stage) => (
             <div key={stage.id} className="w-[260px] min-w-[260px] shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2">
@@ -488,7 +495,7 @@ export default function ScoreCardPipeline({ previewRows = null, previewNow = nul
             </div>
           ))}
         </div>
-      </div>}
+      </div>
 
       {PIPELINE_ALERTS_ENABLED ? (
         <DealLostDialog
