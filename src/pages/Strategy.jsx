@@ -35,10 +35,6 @@ const QUICK_LINKS = [
     href: 'https://docs.google.com/spreadsheets/d/1yYH9HL9553Hq-ZwqlHrtTp3VC-rXKKAPSRRx5OijdDA/edit#gid=883467252',
   },
   {
-    title: 'Blog Drafts Doc',
-    href: 'https://docs.google.com/document/d/1If8wbnw7TTeY_ygv8rnrpDBTD9n6RnzlNtfpxC-WBo0/edit',
-  },
-  {
     title: 'CalOPS Case Study',
     href: 'https://brandastic.com/portfolio/california-online-public-schools/',
   },
