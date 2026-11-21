@@ -46,6 +46,20 @@ export const STATUS_LABELS = {
   annual: 'Annual',
 }
 
+export const AUTHORIZE_NET_NOTE = 'Connected to our QuickBooks payment system (used to collect credit cards through QuickBooks). Do not remove.'
+
+const AUTHORIZE_NET_NAME = /authorize\.?net/i
+
+export function subscriptionGuardNote(item) {
+  const names = []
+  if (typeof item?.vendor === 'string') names.push(item.vendor)
+  if (typeof item?.name === 'string') names.push(item.name)
+  if (Array.isArray(item?.vendor_name_variants)) names.push(...item.vendor_name_variants)
+  return names.some((entry) => typeof entry === 'string' && AUTHORIZE_NET_NAME.test(entry))
+    ? AUTHORIZE_NET_NOTE
+    : ''
+}
+
 export function groupLabel(group) {
   if (!group) return '—'
   return GROUP_LABELS[group] || String(group).replace(/_/g, ' ')

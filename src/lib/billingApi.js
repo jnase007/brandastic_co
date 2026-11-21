@@ -123,6 +123,7 @@ function pickSubscriptionItem(row, index) {
     possible_duplicate_or_overlap: typeof row.possible_duplicate_or_overlap === 'string' ? row.possible_duplicate_or_overlap : '',
     reason_possible: typeof row.reason_possible === 'string' ? row.reason_possible : '',
     notes: typeof row.notes === 'string' ? row.notes : '',
+    note: typeof row.note === 'string' ? row.note : '',
     renewalDate: renewalDateOrNull(row.renewalDate),
     renewalNote: typeof row.renewalNote === 'string' ? row.renewalNote : '',
     contractTerm: row.contractTerm === 'annual' || row.contractTerm === 'monthly' ? row.contractTerm : '',

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { Calendar } from 'lucide-react'
+import { Calendar, Info, Lock } from 'lucide-react'
 import {
   GROUP_COLORS,
   SUBSCRIPTION_FILTERS,
@@ -17,6 +17,7 @@ import {
   monthlyCostByGroup,
   overallMonthlyTrend,
   sortSubscriptionItems,
+  subscriptionGuardNote,
   subscriptionKey,
   subscriptionMonthly,
   subscriptionSavings,
@@ -185,6 +186,29 @@ function StatusBadge({ status }) {
     <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide" style={{ background: tone.wash, color: tone.text }}>
       <i className="h-1.5 w-1.5 rounded-full" style={{ background: tone.dot }} />
       {tone.label}
+    </span>
+  )
+}
+
+function SubscriptionNotes({ item }) {
+  const guard = subscriptionGuardNote(item)
+  const custom = String(item?.note || '').trim()
+  const showCustom = Boolean(custom) && custom !== guard
+  if (!guard && !showCustom) return null
+  return (
+    <span className="mt-1 grid gap-1">
+      {guard ? (
+        <span className="flex items-start gap-1 text-[11px] font-medium normal-case tracking-normal text-slate-500" data-testid="billing-subscription-guard">
+          <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+          <span>{guard}</span>
+        </span>
+      ) : null}
+      {showCustom ? (
+        <span className="flex items-start gap-1 text-[11px] font-medium normal-case tracking-normal text-slate-500" data-testid="billing-subscription-note">
+          <Info className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+          <span>{custom}</span>
+        </span>
+      ) : null}
     </span>
   )
 }
@@ -523,6 +547,7 @@ export function BillingSubscriptions({ data }) {
                           </td>
                           <td className="border-t border-slate-100 font-semibold text-slate-900">
                             <span className="block">{item.vendor || '—'}</span>
+                            <SubscriptionNotes item={item} />
                             <span className="mt-1 flex flex-wrap gap-1">
                               {item.amount_changed_recently === true ? (
                                 <FlagChip title="The amount changed recently." tone={{ background: '#ffedd5', color: '#9a3412' }}>Price up</FlagChip>

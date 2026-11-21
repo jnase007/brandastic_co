@@ -215,6 +215,7 @@ function parseItem(input, status) {
     possible_duplicate_or_overlap: clip(input.possible_duplicate_or_overlap, 500),
     reason_possible: clip(input.reason_possible, 500),
     notes: clip(input.notes, 2000),
+    note: clip(input.note, 500),
     renewalDate: nullableDate(input.renewalDate),
     renewalNote: clip(input.renewalNote, 300),
     contractTerm: normalizeContractTerm(input.contractTerm),

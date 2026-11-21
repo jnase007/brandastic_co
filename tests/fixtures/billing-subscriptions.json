@@ -204,6 +204,26 @@
       "possible_duplicate_or_overlap": "",
       "reason_possible": "",
       "notes": ""
+    },
+    {
+      "vendor": "Authorize.net",
+      "vendor_name_variants": ["AuthorizeNet"],
+      "group": "payment_processing",
+      "category_or_account": "Fees",
+      "typical_monthly_amount": null,
+      "latest_charge": null,
+      "average_monthly_amount": null,
+      "first_seen": "",
+      "last_charged_date": "",
+      "charge_count_in_window": null,
+      "payment_account": "",
+      "payment_account_last4": "",
+      "next_expected_date": null,
+      "amount_changed_recently": false,
+      "possible_duplicate_or_overlap": "",
+      "reason_possible": "",
+      "notes": "Fake fixture. Name only, so the guard note can be tested.",
+      "note": "Fake fixture note."
     }
   ],
   "possible": [
@@ -345,7 +365,7 @@
     }
   ],
   "totals": {
-    "subscription_count": 11,
+    "subscription_count": 12,
     "possible_count": 4,
     "annual_count": 2,
     "stopped_count": 2,

@@ -48,6 +48,16 @@ test('anonymous team subscriptions alias redirects to login', async ({ page }) =
   await expect(page.getByText('Example SaaS A')).toHaveCount(0)
 })
 
+test('authorize.net row shows the quickbooks guard note', async ({ page }) => {
+  await page.goto('/dev/billing-subscriptions')
+  const guard = page.getByTestId('billing-subscription-guard')
+  await expect(guard).toHaveCount(1)
+  await expect(guard).toContainText('Connected to our QuickBooks payment system (used to collect credit cards through QuickBooks). Do not remove.')
+  await expect(page.getByTestId('billing-subscription-note')).toHaveCount(1)
+  await expect(page.getByTestId('billing-subscription-note')).toContainText('Fake fixture note.')
+  await expect(page.getByText('Authorize.net').first()).toBeVisible()
+})
+
 test('subscription preview shows the fake fixture on its own view', async ({ page }) => {
   await page.goto('/dev/billing-subscriptions')
   await expect(page.getByRole('heading', { level: 1, name: 'Subscriptions' })).toBeVisible()
