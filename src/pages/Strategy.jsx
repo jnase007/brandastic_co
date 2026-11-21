@@ -35,20 +35,12 @@ const QUICK_LINKS = [
     href: 'https://docs.google.com/spreadsheets/d/1yYH9HL9553Hq-ZwqlHrtTp3VC-rXKKAPSRRx5OijdDA/edit#gid=883467252',
   },
   {
-    title: 'Blog Drafts Doc',
-    href: 'https://docs.google.com/document/d/1If8wbnw7TTeY_ygv8rnrpDBTD9n6RnzlNtfpxC-WBo0/edit',
-  },
-  {
-    title: 'CalOPS Case Study',
-    href: 'https://brandastic.com/portfolio/california-online-public-schools/',
-  },
-  {
     title: 'AI Information Page',
     href: 'https://brandastic.com/ai-information/',
   },
   {
-    title: 'School Target List',
-    href: 'https://docs.google.com/spreadsheets/d/1yYH9HL9553Hq-ZwqlHrtTp3VC-rXKKAPSRRx5OijdDA/edit',
+    title: 'Ideal target schools ($90K fit)',
+    href: 'https://docs.google.com/spreadsheets/d/1yYH9HL9553Hq-ZwqlHrtTp3VC-rXKKAPSRRx5OijdDA/edit#gid=1197467443',
   },
   {
     title: 'Education Directories',
@@ -62,7 +54,7 @@ const QUICK_LINKS = [
 
 function StrategyQuickNav() {
   return (
-    <aside className="education-nav hidden w-[272px] shrink-0 pt-6 lg:block">
+    <aside className="education-nav ml-6 hidden w-[272px] shrink-0 pt-6 lg:block">
       <div className="mb-6">
         <p className="px-1 pb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">2027 Education Strategy</p>
         <p className="ed-kicker v3">Quick links</p>
@@ -138,9 +130,9 @@ export default function Strategy() {
   }
 
   return (
-    <div className="mx-auto flex max-w-7xl items-start">
+    <div className="education-shell mx-auto flex max-w-7xl gap-6">
       <StrategyQuickNav />
-      <div className="mx-auto min-w-0 w-full max-w-4xl flex-1 px-6 py-6">
+      <div className="min-w-0 w-full max-w-4xl flex-1 px-6 py-6">
       <PageHeader
         title="Strategy 2027"
         description="Rally cry: Focused. Growth. · 2027"
