@@ -54,7 +54,7 @@ const QUICK_LINKS = [
 
 function StrategyQuickNav() {
   return (
-    <aside className="education-nav hidden w-[272px] shrink-0 lg:block">
+    <aside className="education-nav ml-6 hidden w-[272px] shrink-0 pt-6 lg:block">
       <div className="mb-6">
         <p className="px-1 pb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">2027 Education Strategy</p>
         <p className="ed-kicker v3">Quick links</p>
@@ -130,9 +130,9 @@ export default function Strategy() {
   }
 
   return (
-    <div className="education-shell mx-auto flex max-w-7xl gap-6 px-4 py-6 sm:px-6">
+    <div className="education-shell mx-auto flex max-w-7xl gap-6">
       <StrategyQuickNav />
-      <div className="min-w-0 w-full max-w-4xl flex-1">
+      <div className="min-w-0 w-full max-w-4xl flex-1 px-6 py-6">
       <PageHeader
         title="Strategy 2027"
         description="Rally cry: Focused. Growth. · 2027"
