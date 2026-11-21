@@ -50,6 +50,10 @@ const QUICK_LINKS = [
     title: 'Education SEO and AI Plan (PDF)',
     href: 'https://drive.google.com/file/d/14_40cx77S4V24Mw_6j03xzjIHHdGu6TU/view',
   },
+  {
+    title: '2027 Education Events',
+    href: 'https://docs.google.com/spreadsheets/d/1yYH9HL9553Hq-ZwqlHrtTp3VC-rXKKAPSRRx5OijdDA/edit#gid=1162331497',
+  },
 ]
 
 function StrategyQuickNav() {
