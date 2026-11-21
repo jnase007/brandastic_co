@@ -4,6 +4,7 @@ import { Compass, ExternalLink, Target, TrendingUp } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import { Input } from '../components/ui/input'
 import { loadStrategyGoals, saveStrategyGoals, OWNERS } from '../lib/strategyGoals'
+import './education.css'
 
 const PILLARS = [
   {
@@ -30,54 +31,78 @@ const MOVES = [
 
 const QUICK_LINKS = [
   {
-    id: 'blog-calendar',
     title: '2027 Blog Calendar',
-    description: 'Weekly blog schedule, January through September 2027, with status and CTA.',
     href: 'https://docs.google.com/spreadsheets/d/1yYH9HL9553Hq-ZwqlHrtTp3VC-rXKKAPSRRx5OijdDA/edit#gid=883467252',
   },
   {
-    id: 'blog-drafts',
     title: 'Blog Drafts Doc',
-    description: 'All education blog post drafts, one tab per post, ready for review.',
     href: 'https://docs.google.com/document/d/1If8wbnw7TTeY_ygv8rnrpDBTD9n6RnzlNtfpxC-WBo0/edit',
   },
   {
-    id: 'calops-case-study',
     title: 'CalOPS Case Study',
-    description: 'Online charter results: 7+ percent over the annual enrollment target and a 118x return on ad spend.',
     href: 'https://brandastic.com/portfolio/california-online-public-schools/',
   },
   {
-    id: 'ai-information',
     title: 'AI Information Page',
-    description: 'What AI assistants learn about Brandastic: services, results and facts.',
     href: 'https://brandastic.com/ai-information/',
   },
   {
-    id: 'school-target-list',
     title: 'School Target List',
-    description: 'The 2027 school prospect database, directories and research tabs.',
     href: 'https://docs.google.com/spreadsheets/d/1yYH9HL9553Hq-ZwqlHrtTp3VC-rXKKAPSRRx5OijdDA/edit',
   },
   {
-    id: 'education-directories',
     title: 'Education Directories',
-    description: 'Prioritized directories and listings for AI visibility, free versus paid.',
     href: 'https://docs.google.com/spreadsheets/d/1yYH9HL9553Hq-ZwqlHrtTp3VC-rXKKAPSRRx5OijdDA/edit#gid=69320033',
   },
   {
-    id: 'seo-ai-plan',
     title: 'Education SEO and AI Plan (PDF)',
-    description: 'The 11-page plan for ranking in search and AI answers.',
     href: 'https://drive.google.com/file/d/14_40cx77S4V24Mw_6j03xzjIHHdGu6TU/view',
   },
-  {
-    id: 'live-post-education-agency',
-    title: 'Live Post: What an Education Marketing Agency Does',
-    description: 'First published education blog post, with pricing tiers and channels.',
-    href: 'https://brandastic.com/blog/what-does-an-education-marketing-agency-do/',
-  },
 ]
+
+function StrategyQuickNav() {
+  return (
+    <aside className="education-nav hidden w-[272px] shrink-0 pt-6 lg:block">
+      <div className="mb-6">
+        <p className="px-1 pb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">2027 Education Strategy</p>
+        <p className="ed-kicker v3">Quick links</p>
+        <div className="ed-card v3">
+          <p className="ed-card-title">2027 assets</p>
+          {QUICK_LINKS.map((item) => (
+            <a key={item.href} href={item.href} target="_blank" rel="noreferrer" className="ed-link">
+              <span className="ed-dot" />
+              {item.title}
+            </a>
+          ))}
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+function StrategyQuickNavSelect() {
+  return (
+    <div className="mt-4 lg:hidden">
+      <label className="sr-only" htmlFor="strategy-quick-nav">2027 strategy links</label>
+      <select
+        id="strategy-quick-nav"
+        className="h-10 w-full rounded-lg border px-3 text-sm"
+        defaultValue=""
+        onChange={(event) => {
+          const value = event.target.value
+          event.target.value = ''
+          if (!value) return
+          window.open(value, '_blank', 'noreferrer')
+        }}
+      >
+        <option value="">2027 strategy links</option>
+        {QUICK_LINKS.map((item) => (
+          <option key={item.href} value={item.href}>{item.title}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
 
 export default function Strategy() {
   const [goals, setGoals] = useState(loadStrategyGoals)
@@ -113,7 +138,9 @@ export default function Strategy() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-6">
+    <div className="mx-auto flex max-w-7xl items-start">
+      <StrategyQuickNav />
+      <div className="mx-auto min-w-0 w-full max-w-4xl flex-1 px-6 py-6">
       <PageHeader
         title="Strategy 2027"
         description="Rally cry: Focused. Growth. · 2027"
@@ -128,6 +155,7 @@ export default function Strategy() {
           </a>
         }
       />
+      <StrategyQuickNavSelect />
       <p className="mt-3 max-w-2xl text-muted-foreground">
         Built around education clients. Overall we want to be at <span className="font-semibold text-foreground">$3.5 million by 2030</span>.
       </p>
@@ -143,27 +171,6 @@ export default function Strategy() {
           className="w-full object-cover"
         />
       </a>
-      <section className="mt-8" id="education-strategy-quick-links" aria-labelledby="education-strategy-quick-links-heading">
-        <h2 id="education-strategy-quick-links-heading" className="font-semibold">2027 Education Strategy: Quick Links</h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
-          {QUICK_LINKS.map((item) => (
-            <a
-              key={item.id}
-              id={item.id}
-              href={item.href}
-              target="_blank"
-              rel="noreferrer"
-              className="group flex h-full flex-col rounded-xl border bg-card p-5 hover:opacity-95"
-            >
-              <span className="flex items-start justify-between gap-3">
-                <h3 className="font-semibold group-hover:underline">{item.title}</h3>
-                <ExternalLink className="mt-1 h-3.5 w-3.5 shrink-0 text-brand-orange" aria-hidden="true" />
-              </span>
-              <p className="mt-2 text-sm text-muted-foreground">{item.description}</p>
-            </a>
-          ))}
-        </div>
-      </section>
       <div className="mt-8 grid gap-4 md:grid-cols-3">
         {PILLARS.map((p) => (
           <div key={p.title} className="rounded-xl border bg-card p-5">
@@ -319,6 +326,7 @@ export default function Strategy() {
             <p className="mt-2 text-sm text-emerald-800">Nothing archived yet. Mark a goal done and it lands here.</p>
           )}
         </div>
+      </div>
       </div>
     </div>
   )
