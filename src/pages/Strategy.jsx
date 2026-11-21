@@ -4,6 +4,7 @@ import { Compass, ExternalLink, Target, TrendingUp } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import { Input } from '../components/ui/input'
 import { loadStrategyGoals, saveStrategyGoals, OWNERS } from '../lib/strategyGoals'
+import './education.css'
 
 const PILLARS = [
   {
@@ -79,6 +80,59 @@ const QUICK_LINKS = [
   },
 ]
 
+function StrategyQuickNav() {
+  return (
+    <aside className="education-nav hidden w-[272px] shrink-0 pt-6 lg:block">
+      <div className="mb-6">
+        <p className="px-1 pb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">2027 Education Strategy</p>
+        <p className="ed-kicker v3">Quick links</p>
+        <div className="ed-card v3">
+          <p className="ed-card-title">2027 assets</p>
+          <a href="#education-strategy-quick-links" className="ed-link">
+            <span className="ed-dot" />
+            On this page
+          </a>
+          {QUICK_LINKS.map((item) => (
+            <a key={item.id} href={item.href} target="_blank" rel="noreferrer" className="ed-link">
+              <span className="ed-dot" />
+              {item.title}
+            </a>
+          ))}
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+function StrategyQuickNavSelect() {
+  return (
+    <div className="mt-4 lg:hidden">
+      <label className="sr-only" htmlFor="strategy-quick-nav">2027 strategy links</label>
+      <select
+        id="strategy-quick-nav"
+        className="h-10 w-full rounded-lg border px-3 text-sm"
+        defaultValue=""
+        onChange={(event) => {
+          const value = event.target.value
+          event.target.value = ''
+          if (!value) return
+          if (value.startsWith('#')) {
+            document.getElementById(value.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            return
+          }
+          window.open(value, '_blank', 'noreferrer')
+        }}
+      >
+        <option value="">2027 strategy links</option>
+        <option value="#education-strategy-quick-links">On this page</option>
+        {QUICK_LINKS.map((item) => (
+          <option key={item.id} value={item.href}>{item.title}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 export default function Strategy() {
   const [goals, setGoals] = useState(loadStrategyGoals)
   const [editing, setEditing] = useState(false)
@@ -113,7 +167,9 @@ export default function Strategy() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-6">
+    <div className="mx-auto flex max-w-7xl items-start">
+      <StrategyQuickNav />
+      <div className="mx-auto min-w-0 w-full max-w-4xl flex-1 px-6 py-6">
       <PageHeader
         title="Strategy 2027"
         description="Rally cry: Focused. Growth. · 2027"
@@ -128,6 +184,7 @@ export default function Strategy() {
           </a>
         }
       />
+      <StrategyQuickNavSelect />
       <p className="mt-3 max-w-2xl text-muted-foreground">
         Built around education clients. Overall we want to be at <span className="font-semibold text-foreground">$3.5 million by 2030</span>.
       </p>
@@ -143,7 +200,7 @@ export default function Strategy() {
           className="w-full object-cover"
         />
       </a>
-      <section className="mt-8" id="education-strategy-quick-links" aria-labelledby="education-strategy-quick-links-heading">
+      <section className="mt-8 scroll-mt-20" id="education-strategy-quick-links" aria-labelledby="education-strategy-quick-links-heading">
         <h2 id="education-strategy-quick-links-heading" className="font-semibold">2027 Education Strategy: Quick Links</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-3">
           {QUICK_LINKS.map((item) => (
@@ -319,6 +376,7 @@ export default function Strategy() {
             <p className="mt-2 text-sm text-emerald-800">Nothing archived yet. Mark a goal done and it lands here.</p>
           )}
         </div>
+      </div>
       </div>
     </div>
   )
