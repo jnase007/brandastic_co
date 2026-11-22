@@ -34,7 +34,7 @@ const MARKETS = [
     cases: [
       { name: 'CalOPS', href: 'https://brandastic.com/portfolio/california-online-public-schools/' },
       { name: 'Think Together', href: 'https://brandastic.com/portfolio/think-together/' },
-      { name: 'Heart Christian', note: 'Case study in progress' },
+      { name: 'Heart Christian Academy', href: 'https://brandastic.com/portfolio/heart-christian-academy/' },
     ],
   },
   {
@@ -59,6 +59,18 @@ const MARKETS = [
       { name: 'Health Mate', href: 'https://brandastic.com/portfolio/health-mate/' },
       { name: 'Orangetheory Fitness', href: 'https://brandastic.com/portfolio/orangetheory-fitness/' },
       { name: 'Nordic Sauna', href: 'https://brandastic.com/portfolio/nordic-sauna/' },
+    ],
+  },
+  {
+    rank: 'Fourth',
+    title: 'Senior Living',
+    tone: 'border-violet-200 bg-violet-50',
+    rankClass: 'text-violet-700',
+    note: 'Assisted living, memory care and independent living operators that need tours and move-ins.',
+    cases: [
+      { name: 'Senior living strategy', href: 'https://www.canva.com/d/BmYX8D56jsAQoT0' },
+      { name: 'Senior living target list', href: 'https://docs.google.com/spreadsheets/d/1VSwGoewld5eyC9OFAXMYJWTojgZxOxQXONzyfi92KDc/edit' },
+      { name: 'Sage Valley Senior Living', note: 'Branding' },
     ],
   },
 ]
@@ -87,11 +99,11 @@ export default function IdealTargetClient() {
     <div className="mx-auto max-w-5xl px-6 py-6">
       <PageHeader
         title="Target Client(s)"
-        description="Three markets. Proof lives on brandastic.com/work."
+        description="Four markets. Proof lives on brandastic.com/work."
       />
-      <div className="mt-8 grid gap-4 md:grid-cols-3">
+      <div className="mt-8 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-4">
         {MARKETS.map((market) => (
-          <div key={market.title} className={`rounded-2xl border p-6 shadow-sm ${market.tone}`}>
+          <div key={market.title} className={`flex h-full min-w-0 flex-col break-words rounded-2xl border p-6 shadow-sm ${market.tone}`}>
             <p className={`text-xs font-semibold uppercase tracking-wide ${market.rankClass}`}>{market.star ? '★ ' : ''}{market.rank}</p>
             <h2 className="mt-1 text-2xl font-bold">{market.star ? '★ ' : ''}{market.title}</h2>
             <p className="mt-2 text-sm text-muted-foreground">{market.note}</p>
@@ -99,9 +111,12 @@ export default function IdealTargetClient() {
               {market.cases.map((item) => (
                 <li key={item.name}>
                   {item.href ? (
-                    <a href={item.href} target="_blank" rel="noreferrer" className="text-sm font-medium text-[#FF6B00] hover:underline">
-                      {item.name}
-                    </a>
+                    <>
+                      <a href={item.href} target="_blank" rel="noreferrer" className="text-sm font-medium text-[#FF6B00] hover:underline">
+                        {item.name}
+                      </a>
+                      {item.note ? <span className="text-sm font-normal text-muted-foreground"> · {item.note}</span> : null}
+                    </>
                   ) : (
                     <span className="text-sm font-medium">
                       {item.name}
