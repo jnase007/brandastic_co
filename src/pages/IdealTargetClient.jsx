@@ -34,7 +34,7 @@ const MARKETS = [
     cases: [
       { name: 'CalOPS', href: 'https://brandastic.com/portfolio/california-online-public-schools/' },
       { name: 'Think Together', href: 'https://brandastic.com/portfolio/think-together/' },
-      { name: 'Heart Christian', note: 'Case study in progress' },
+      { name: 'Heart Christian Academy', href: 'https://brandastic.com/portfolio/heart-christian-academy/' },
     ],
   },
   {
