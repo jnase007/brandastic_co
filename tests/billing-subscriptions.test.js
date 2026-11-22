@@ -21,9 +21,11 @@ import {
   renewalBadgeLabel,
   renewalTiming,
   summarizeSavings,
+  subscriptionGuardNote,
   subscriptionsEmptyState,
   upcomingContractRenewals,
   topSubscriptionsByMonthly,
+  AUTHORIZE_NET_NOTE,
 } from '../src/lib/billingSubscriptionsView.js'
 
 const JUSTIN = 'justin.sample@example.test'
@@ -96,8 +98,19 @@ describe('subscription parser', () => {
     const blank = plain.items.find((item) => item.vendor === 'Example Blank Fields')
     assert.equal(blank.typical_monthly_amount, null)
     assert.equal(blank.notes, '')
+    assert.equal(blank.note, '')
     assert.equal(blank.payment_account_last4, '')
-    assert.equal(plain.totals.subscription_count, 11)
+    const authorize = plain.items.find((item) => item.vendor === 'Authorize.net')
+    assert.equal(authorize.note, 'Fake fixture note.')
+    assert.equal(authorize.group, 'payment_processing')
+    assert.equal(authorize.typical_monthly_amount, null)
+    assert.equal(subscriptionGuardNote(authorize), AUTHORIZE_NET_NOTE)
+    assert.equal(subscriptionGuardNote({ vendor: 'AuthorizeNet' }), AUTHORIZE_NET_NOTE)
+    assert.equal(subscriptionGuardNote({ vendor: 'authorizenet' }), AUTHORIZE_NET_NOTE)
+    assert.equal(subscriptionGuardNote({ name: 'Authorize.net fees' }), AUTHORIZE_NET_NOTE)
+    assert.equal(subscriptionGuardNote({ vendor: 'Example Payments Co', vendor_name_variants: ['Authorize Net'] }), '')
+    assert.equal(subscriptionGuardNote(saas), '')
+    assert.equal(plain.totals.subscription_count, 12)
     assert.equal(plain.totals.possible_count, 4)
     assert.equal(plain.totals.annual_count, 2)
     assert.equal(plain.totals.stopped_count, 2)
@@ -124,6 +137,20 @@ describe('subscription parser', () => {
     assert.equal(parsed.items[0].payment_account_last4, '4242')
     assert.equal(parsed.items[0].payment_account.includes('0000000000004242'), false)
     assert.equal(JSON.stringify(parsed).includes('0000000000004242'), false)
+  })
+
+  it('keeps an optional note and leaves it blank when absent', () => {
+    const parsed = parseBillingSubscriptions(JSON.stringify({
+      subscriptions: [
+        { vendor: 'Example Noted Co', note: '  Fake note to keep.  ' },
+        { vendor: 'Example Quiet Co' },
+        { vendor: 'Example Long Note Co', note: `Fake ${'n'.repeat(600)}` },
+      ],
+    }))
+    assert.equal(parsed.items[0].note, 'Fake note to keep.')
+    assert.equal(parsed.items[1].note, '')
+    assert.equal(parsed.items[2].note.length, 500)
+    assert.equal(subscriptionGuardNote(parsed.items[0]), '')
   })
 
   it('drops unknown item fields and unknown groups without throwing', () => {
