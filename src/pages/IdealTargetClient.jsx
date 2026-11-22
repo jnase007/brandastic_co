@@ -68,8 +68,9 @@ const MARKETS = [
     rankClass: 'text-violet-700',
     note: 'Assisted living, memory care and independent living operators that need tours and move-ins.',
     cases: [
+      { name: 'Senior living strategy', href: 'https://www.canva.com/d/BmYX8D56jsAQoT0' },
       { name: 'Senior living target list', href: 'https://docs.google.com/spreadsheets/d/1VSwGoewld5eyC9OFAXMYJWTojgZxOxQXONzyfi92KDc/edit' },
-      { name: 'Sage Valley Senior Living', href: 'https://sagevalleyseniorliving.com/', note: 'Branding' },
+      { name: 'Sage Valley Senior Living', note: 'Branding' },
     ],
   },
 ]
