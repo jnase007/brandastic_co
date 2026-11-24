@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { isAllowedEmail, parseAllowlist } from './billingGate.js'
-import { emptyBillingSummary, loadBillingDataset, summarizeBilling } from './billingData.js'
+import { applyReadTimePaymentAges, emptyBillingSummary, summarizeBilling } from './billingData.js'
 import { emptySubscriptions, loadBillingSubscriptions } from './billingSubscriptions.js'
+import { loadPreferredDataset } from './qboSnapshot.js'
 
 export function billingResponseHeaders() {
   return {
@@ -45,29 +46,45 @@ function subscriptionsBody(env) {
   }
 }
 
-export async function handleBilling(env, token, kind, options = {}) {
-  if (kind !== 'access' && kind !== 'data') return denied(404, 'not_found')
-  if (!token) return denied(401, 'Sign in required')
+function publicQbo(qbo) {
+  return {
+    source: qbo?.source || 'missing',
+    refreshed_at: qbo?.refreshed_at || null,
+    status: qbo?.status || 'unconfigured',
+    slot: qbo?.slot === 'production' ? 'production' : 'sandbox',
+  }
+}
 
+export async function authorizeBilling(env, token, options = {}) {
+  if (!token) return denied(401, 'Sign in required')
   const resolveUser = options.resolveUser || resolveSupabaseUser
   const user = await resolveUser(env, token)
   if (user?.misconfigured) return denied(403, 'not_configured')
   if (!user?.email) return denied(401, 'Sign in required')
-
   const allowlist = parseAllowlist(env?.BILLING_ALLOWED_EMAILS)
   if (!allowlist) return denied(403, 'not_configured')
   if (!isAllowedEmail(allowlist, user.email)) return denied(403, 'forbidden')
+  return { status: 200, email: user.email }
+}
 
+export async function handleBilling(env, token, kind, options = {}) {
+  if (kind !== 'access' && kind !== 'data') return denied(404, 'not_found')
+  const auth = await authorizeBilling(env, token, options)
+  if (auth.status !== 200) return auth
   if (kind === 'access') return { status: 200, body: { allowed: true } }
 
-  let dataset
+  let preferred
   try {
-    dataset = loadBillingDataset(env)
+    preferred = await loadPreferredDataset(env, options)
   } catch {
     return denied(500, 'Could not load billing')
   }
 
-  if (!dataset.clients) {
+  let dataset = preferred.dataset
+  const qbo = publicQbo(preferred.qbo)
+  if (dataset?.clients) dataset = applyReadTimePaymentAges(dataset, options.now)
+
+  if (!dataset?.clients) {
     return {
       status: 200,
       body: {
@@ -80,6 +97,7 @@ export async function handleBilling(env, token, kind, options = {}) {
         updated_at: null,
         summary: emptyBillingSummary(),
         subscriptions: subscriptionsBody(env),
+        qbo,
       },
     }
   }
@@ -96,6 +114,7 @@ export async function handleBilling(env, token, kind, options = {}) {
       updated_at: dataset.updated_at || null,
       summary: summarizeBilling(dataset.clients),
       subscriptions: subscriptionsBody(env),
+      qbo,
     },
   }
 }

@@ -6,6 +6,7 @@ import { writeFeaturePriority } from './server/featurePriority.js'
 import { assertTeam, loadHostingPortfolio } from './server/hostingData.js'
 import { loadWebsites } from './server/websitesData.js'
 import { billingResponseHeaders, runBillingRequest } from './server/billingHttp.js'
+import { runQboRequest } from './server/qboHttp.js'
 import { emptySubscriptions, loadBillingSubscriptions } from './server/billingSubscriptions.js'
 
 // Generate a build version for cache busting
@@ -147,6 +148,21 @@ function billingPlugin(env) {
               subscriptions: emptySubscriptions(),
             }))
           }
+          return
+        }
+        if (pathname === '/api/billing-refresh' || pathname === '/api/qbo/connect' || pathname === '/api/qbo/callback') {
+          const headers = billingResponseHeaders()
+          for (const [key, value] of Object.entries(headers)) res.setHeader(key, value)
+          const result = await runQboRequest(env, { method: req.method, url: req.url, headers: req.headers })
+          if (result.redirect) {
+            res.statusCode = result.status
+            res.setHeader('Location', result.redirect)
+            res.end()
+            return
+          }
+          res.statusCode = result.status
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify(result.body || {}))
           return
         }
         const kind = pathname === '/api/billing-data' ? 'data' : pathname === '/api/billing-access' ? 'access' : null

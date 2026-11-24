@@ -241,6 +241,59 @@ function pickClient(row) {
   }
 }
 
+function pickQbo(raw) {
+  const qbo = raw && typeof raw === 'object' ? raw : {}
+  const source = qbo.source === 'quickbooks' || qbo.source === 'sample' || qbo.source === 'manual' ? qbo.source : 'missing'
+  const status = ['connected', 'disconnected', 'expired', 'unconfigured', 'unavailable'].includes(qbo.status) ? qbo.status : 'unconfigured'
+  return {
+    source,
+    refreshed_at: typeof qbo.refreshed_at === 'string' ? qbo.refreshed_at : null,
+    status,
+    slot: qbo.slot === 'production' ? 'production' : 'sandbox',
+  }
+}
+
+export function qboActionError(code) {
+  if (code === 'expired') return 'The QuickBooks connection expired. Reconnect, then refresh.'
+  if (code === 'disconnected') return 'QuickBooks is not connected.'
+  if (code === 'not_configured') return 'QuickBooks refresh is not set up on this server.'
+  if (code === 'unavailable') return 'The QuickBooks store could not be reached. The manual snapshot is unchanged.'
+  if (code === 'csrf' || code === 'forbidden') return 'That request was blocked.'
+  return 'QuickBooks did not accept the refresh. Reconnect and try again.'
+}
+
+async function postBilling(path, action) {
+  const token = await accessToken()
+  if (!token) return { ok: false, code: 'unauthorized' }
+  const response = await fetch(path, {
+    method: 'POST',
+    cache: 'no-store',
+    credentials: 'omit',
+    referrerPolicy: 'no-referrer',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+      'X-Billing-Action': action,
+    },
+  })
+  const body = await response.json().catch(() => null)
+  const url = typeof body?.url === 'string' ? body.url : ''
+  return {
+    ok: response.ok,
+    code: typeof body?.error === 'string' ? body.error : '',
+    url: url.startsWith('https://appcenter.intuit.com/connect/oauth2') ? url : '',
+    refreshed_at: typeof body?.refreshed_at === 'string' ? body.refreshed_at : null,
+  }
+}
+
+export function connectQuickBooks() {
+  return postBilling('/api/qbo/connect', 'connect')
+}
+
+export function refreshQuickBooks() {
+  return postBilling('/api/billing-refresh', 'refresh')
+}
+
 export async function fetchBilling() {
   const token = await accessToken()
   if (!token) return { status: 'unauthorized' }
@@ -261,8 +314,9 @@ export async function fetchBilling() {
 
   const body = await response.json().catch(() => null)
   const subscriptions = pickSubscriptions(body?.subscriptions)
+  const qbo = pickQbo(body?.qbo)
   if (!body || body.configured !== true || !Array.isArray(body.clients)) {
-    return { status: 'unconfigured_data', report: { subscriptions } }
+    return { status: 'unconfigured_data', report: { subscriptions, qbo } }
   }
 
   const clients = body.clients.map(pickClient).filter(Boolean)
@@ -291,6 +345,7 @@ export async function fetchBilling() {
         no_payment_90_count: numberOrNull(summary.no_payment_90_count) ?? clients.filter((row) => row.unpaid_90_days_flag).length,
       },
       subscriptions,
+      qbo,
     },
   }
 }

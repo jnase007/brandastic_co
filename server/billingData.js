@@ -1,5 +1,7 @@
 /**
- * Billing rows are loaded on the server from the BILLING_CLIENTS_JSON environment variable.
+ * Billing rows are loaded on the server. The preferred source is the private QuickBooks
+ * snapshot written by an on-demand refresh (server/qboSnapshot.js). When that snapshot
+ * is absent, rows fall back to the BILLING_CLIENTS_JSON environment variable.
  * That variable is a Vercel project env value (server-only, not VITE_-prefixed, never committed).
  * Canonical value: a JSON object with `clients`, `alerts`, and `non_recurring_unpaid`.
  * A bare array is still accepted and treated as `clients` only.
@@ -289,6 +291,35 @@ export function emptyBillingSummary() {
     overdue_balance: 0,
     no_payment_90_count: 0,
   }
+}
+
+export function pacificDate(now = new Date()) {
+  const date = now instanceof Date ? now : new Date(now)
+  const valid = Number.isNaN(date.getTime()) ? new Date() : date
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(valid)
+}
+
+export function daysSinceDate(iso, today) {
+  if (!iso) return null
+  const then = Date.parse(`${iso}T00:00:00Z`)
+  const end = Date.parse(`${today}T00:00:00Z`)
+  if (Number.isNaN(then) || Number.isNaN(end)) return null
+  return Math.max(0, Math.floor((end - then) / 86400000))
+}
+
+export function applyReadTimePaymentAges(dataset, now = new Date()) {
+  if (!dataset?.clients) return dataset
+  const today = pacificDate(now)
+  const clients = dataset.clients.map((row) => {
+    const days = daysSinceDate(row.last_payment_date, today)
+    const unpaid = (days == null || days >= 90) && ((row.open_balance || 0) > 0 || (row.overdue_balance || 0) > 0)
+    return { ...row, days_since_last_payment: days, unpaid_90_days_flag: unpaid }
+  })
+  const nonRecurring = (dataset.non_recurring_unpaid || []).map((row) => ({
+    ...row,
+    days_since_payment: daysSinceDate(row.last_payment_date, today),
+  }))
+  return { ...dataset, clients, non_recurring_unpaid: nonRecurring }
 }
 
 export function loadBillingDataset(env) {

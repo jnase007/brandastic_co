@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
+import { billingSourceDetail, billingSourceLabel } from '../lib/billingSource'
 import { AGING, BillingCharts, ColorLegend, ageStatus } from './BillingCharts'
 import { AgingReport } from './BillingAging'
 import { BillingSubscriptions } from './BillingSubscriptions'
 
-export const BILLING_DATA_SOURCE_LABEL = 'Data pulled via QuickBooks Online'
+export const BILLING_DATA_SOURCE_LABEL = 'Source: manual snapshot'
 
 function money(value) {
   return new Intl.NumberFormat('en-US', {
@@ -95,25 +96,62 @@ function Shell({ children, title = 'Billing' }) {
   )
 }
 
-function Message({ title, children }) {
+function Message({ title, children, extra = null }) {
   return (
     <Shell>
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" data-testid="billing-message">
         <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
         <p className="mt-2 text-sm text-slate-500">{children}</p>
       </section>
+      {extra}
     </Shell>
   )
 }
 
-function SourceLine({ updatedAt }) {
+function formatStamp(value) {
+  const text = formatUpdated(value)
+  return text.replace(/^Updated\s+/, '')
+}
+
+function SourceLine({ updatedAt, qbo }) {
+  const fromQuickBooks = qbo?.source === 'quickbooks'
+  const detail = billingSourceDetail(qbo, formatStamp)
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1" data-testid="billing-source">
-      <span className="inline-flex items-center gap-2 rounded-full border border-[#b7e0b0] bg-[#f3faf1] px-2.5 py-1 text-sm font-semibold text-[#1f7a12]">
-        <span className="grid h-5 w-5 place-items-center rounded bg-[#2ca01c] text-[10px] font-bold leading-none text-white" aria-hidden="true">QB</span>
-        {BILLING_DATA_SOURCE_LABEL}
+      <span className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-sm font-semibold ${fromQuickBooks ? 'border-[#b7e0b0] bg-[#f3faf1] text-[#1f7a12]' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
+        {fromQuickBooks ? <span className="grid h-5 w-5 place-items-center rounded bg-[#2ca01c] text-[10px] font-bold leading-none text-white" aria-hidden="true">QB</span> : null}
+        {billingSourceLabel(qbo)}
       </span>
-      <span className="text-sm text-slate-500">{formatUpdated(updatedAt)}</span>
+      {qbo?.slot === 'sandbox' ? <span className="text-sm font-semibold text-slate-500">Sandbox company</span> : null}
+      <span className="text-sm text-slate-500">{detail || formatUpdated(updatedAt)}</span>
+    </div>
+  )
+}
+
+function QboControls({ qbo, onRefresh, onConnect, busy, actionError, notice }) {
+  if (!onRefresh && !onConnect) return null
+  const status = qbo?.status || 'unconfigured'
+  const needsReconnect = status === 'disconnected' || status === 'expired' || status === 'unavailable'
+  return (
+    <div className="grid gap-2" data-testid="billing-qbo-controls">
+      {notice ? <p className="text-sm text-slate-600">{notice}</p> : null}
+      {status === 'expired' ? <p className="text-sm font-medium text-amber-800">The QuickBooks connection expired.</p> : null}
+      {status === 'disconnected' ? <p className="text-sm font-medium text-slate-600">QuickBooks is not connected.</p> : null}
+      {status === 'unconfigured' ? <p className="text-sm text-slate-500">QuickBooks refresh is not set up on this server.</p> : null}
+      {status === 'unavailable' ? <p className="text-sm text-slate-500">The QuickBooks snapshot could not be read. Showing the saved fallback.</p> : null}
+      {actionError ? <p className="text-sm font-medium text-amber-800">{actionError}</p> : null}
+      <div className="flex flex-wrap gap-2">
+        {status === 'connected' ? (
+          <button type="button" className="rounded-full bg-[#5b21b6] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60" onClick={onRefresh} disabled={busy}>
+            {busy ? 'Refreshing…' : 'Refresh from QuickBooks'}
+          </button>
+        ) : null}
+        {needsReconnect ? (
+          <button type="button" className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 disabled:opacity-60" onClick={onConnect} disabled={busy}>
+            Reconnect
+          </button>
+        ) : null}
+      </div>
     </div>
   )
 }
@@ -211,7 +249,7 @@ function ClientDrawer({ item, alerts, onClose }) {
   )
 }
 
-export function BillingScreen({ state, initialLateOnly = false, initialClientName = '', view = 'billing' }) {
+export function BillingScreen({ state, initialLateOnly = false, initialClientName = '', view = 'billing', onRefresh, onConnect, busy = false, actionError = '', notice = '' }) {
   const [filter, setFilter] = useState(initialLateOnly ? 'late' : 'all')
   const [query, setQuery] = useState('')
   const [nonQuery, setNonQuery] = useState('')
@@ -269,8 +307,11 @@ export function BillingScreen({ state, initialLateOnly = false, initialClientNam
       )
     }
     return (
-      <Message title="Billing data is not configured.">
-        Set BILLING_CLIENTS_JSON on the server. Client and payment rows are not stored in the repository.
+      <Message
+        title="Billing data is not configured."
+        extra={<QboControls qbo={state.report?.qbo} onRefresh={onRefresh} onConnect={onConnect} busy={busy} actionError={actionError} notice={notice} />}
+      >
+        Set BILLING_CLIENTS_JSON on the server, or connect QuickBooks and refresh. Client and payment rows are not stored in the repository.
       </Message>
     )
   }
@@ -315,7 +356,8 @@ export function BillingScreen({ state, initialLateOnly = false, initialClientNam
 
   return (
     <Shell>
-      <SourceLine updatedAt={report.updated_at} />
+      <SourceLine updatedAt={report.updated_at} qbo={report.qbo} />
+      <QboControls qbo={report.qbo} onRefresh={onRefresh} onConnect={onConnect} busy={busy} actionError={actionError} notice={notice} />
       {report.sample ? (
         <p className="text-sm text-slate-500" data-testid="billing-sample-banner">
           Sample data for review. Every client on this page is fictional.

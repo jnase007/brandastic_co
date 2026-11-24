@@ -99,6 +99,46 @@
       ]
     },
     {
+      "source": "/api/billing-refresh",
+      "headers": [
+        { "key": "Cache-Control", "value": "private, no-store, no-cache, must-revalidate" },
+        { "key": "CDN-Cache-Control", "value": "no-store" },
+        { "key": "Vercel-CDN-Cache-Control", "value": "no-store" },
+        { "key": "Pragma", "value": "no-cache" },
+        { "key": "Expires", "value": "0" },
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Vary", "value": "Authorization" }
+      ]
+    },
+    {
+      "source": "/api/qbo/connect",
+      "headers": [
+        { "key": "Cache-Control", "value": "private, no-store, no-cache, must-revalidate" },
+        { "key": "CDN-Cache-Control", "value": "no-store" },
+        { "key": "Vercel-CDN-Cache-Control", "value": "no-store" },
+        { "key": "Pragma", "value": "no-cache" },
+        { "key": "Expires", "value": "0" },
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Vary", "value": "Authorization" }
+      ]
+    },
+    {
+      "source": "/api/qbo/callback",
+      "headers": [
+        { "key": "Cache-Control", "value": "private, no-store, no-cache, must-revalidate" },
+        { "key": "CDN-Cache-Control", "value": "no-store" },
+        { "key": "Pragma", "value": "no-cache" },
+        { "key": "Expires", "value": "0" },
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    },
+    {
       "source": "/api/billing-access",
       "headers": [
         { "key": "Cache-Control", "value": "private, no-store, no-cache, must-revalidate" },
