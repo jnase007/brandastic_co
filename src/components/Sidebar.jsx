@@ -45,6 +45,7 @@ import {
   Megaphone,
   Heart,
   Receipt,
+  LineChart,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { prefetchRoute } from '../lib/routePrefetch'
@@ -85,6 +86,7 @@ const navItems = [
 const simpleNavItems = [
   { path: '/score-card', icon: ClipboardList, label: 'All Leads', group: 'Sales' },
   { path: '/deals', icon: Target, label: 'Deal Pipeline', group: 'Sales' },
+  { path: '/analytics', icon: LineChart, label: 'Analytics', group: 'Sales', billingOnly: true },
   { path: '/profitability', icon: BarChart3, label: 'Marketing Retainers', group: 'Delivery' },
   { path: '/profitability/websites', icon: Globe, label: 'Websites', group: 'Delivery' },
   { path: '/hosting', icon: Server, label: 'Hosting', group: 'Delivery' },

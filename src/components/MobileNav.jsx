@@ -15,6 +15,7 @@ import {
   GraduationCap,
   Heart,
   Receipt,
+  LineChart,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
@@ -74,6 +75,7 @@ const MOBILE_MENU = [
         label: 'Deal Pipeline',
         children: [{ path: '/deals/reporting', label: 'Reporting' }],
       },
+      { path: '/analytics', icon: LineChart, label: 'Analytics', billingOnly: true },
     ],
   },
   {

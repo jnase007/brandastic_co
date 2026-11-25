@@ -6,6 +6,8 @@ import { writeFeaturePriority } from './server/featurePriority.js'
 import { assertTeam, loadHostingPortfolio } from './server/hostingData.js'
 import { loadWebsites } from './server/websitesData.js'
 import { billingResponseHeaders, runBillingRequest } from './server/billingHttp.js'
+import { analyticsResponseHeaders, runAnalyticsRequest } from './server/analyticsHttp.js'
+import { runRankCheckRequest } from './server/analyticsRankCheck.js'
 import { emptySubscriptions, loadBillingSubscriptions } from './server/billingSubscriptions.js'
 
 // Generate a build version for cache busting
@@ -163,6 +165,30 @@ function billingPlugin(env) {
   }
 }
 
+function analyticsPlugin(env) {
+  return {
+    name: 'analytics-api',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const pathname = req.url?.split('?')[0]
+        const rank = pathname === '/api/analytics-rank-check'
+        const data = pathname === '/api/analytics-data'
+        if (!rank && !data) return next()
+        const headers = analyticsResponseHeaders()
+        for (const [key, value] of Object.entries(headers)) res.setHeader(key, value)
+        const url = new URL(req.url, 'http://localhost')
+        const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+        const result = rank
+          ? await runRankCheckRequest(env, { method: req.method, token, action: url.searchParams.get('action'), runId: url.searchParams.get('runId') })
+          : await runAnalyticsRequest(env, { method: req.method, token, range: url.searchParams.get('range') })
+        res.statusCode = result.status
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify(result.body))
+      })
+    },
+  }
+}
+
 function featurePriorityPlugin(env) {
   return {
     name: 'feature-priority-api',
@@ -200,6 +226,7 @@ export default defineConfig(({ mode }) => {
     hostingPlugin(env),
     websitesPlugin(env),
     billingPlugin(env),
+    analyticsPlugin(env),
     // Generate version.json on build for detecting new deployments
     {
       name: 'generate-version',
