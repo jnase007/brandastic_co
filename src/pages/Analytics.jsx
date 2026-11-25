@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import {
   DualAxisChart,
   EmptyPanel,
+  Gauge,
   GoogleRank,
   HorizontalBars,
   KpiCard,
@@ -17,8 +18,10 @@ import {
   formatPosition,
 } from '../components/analytics/AnalyticsVisuals'
 import { estimateRankCheck, fetchAnalytics, rankCheckStatus, startRankCheck } from '../lib/analyticsApi'
-import { ANALYTICS_RANGES, COMPARE_MODES } from '../lib/analyticsRange'
+import { ANALYTICS_RANGES, COMPARE_MODES, comparisonWindow, formatComparisonDates, resolveAnalyticsRange } from '../lib/analyticsRange'
 import { KEYWORD_CATEGORIES } from '../lib/keywordCategoryLabels'
+import { engineAppearances, groupAiPrompts, promptMentioned } from '../lib/aiCards'
+import { averageRank, isRankingKeyword } from '../lib/rankPages'
 
 function ctr(value) {
   if (value == null) return '—'
@@ -32,10 +35,19 @@ function share(part, whole) {
 
 function Section({ id, title, children }) {
   return (
-    <section id={id} className="space-y-4" aria-labelledby={`${id}-title`}>
+    <section id={id} className="space-y-3" aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`} className="text-xl font-semibold tracking-tight text-slate-900">{title}</h2>
       {children}
     </section>
+  )
+}
+
+function CompactEmpty({ title, children, testId }) {
+  return (
+    <details className="rounded-xl border border-dashed border-slate-300 bg-slate-50" data-testid={testId}>
+      <summary className="cursor-pointer px-4 py-2 text-sm font-semibold text-slate-800">{title}</summary>
+      <p className="px-4 pb-3 text-sm leading-6 text-slate-600">{children}</p>
+    </details>
   )
 }
 
@@ -85,15 +97,17 @@ export default function Analytics() {
   const [state, setState] = useState({ status: 'loading' })
   const [dialog, setDialog] = useState(null)
   const [check, setCheck] = useState(null)
+  const [pending, setPending] = useState(false)
+  const selectedRange = resolveAnalyticsRange(rangeId, new Date(), { start: customStart, end: customEnd })
+  const selectedCompare = comparisonWindow(selectedRange, compare)
+  const compareLabel = formatComparisonDates(selectedCompare?.startDate, selectedCompare?.endDate)
 
-  const load = () => {
-    fetchAnalytics({
-      range: rangeId,
-      compare,
-      start: rangeId === 'custom' ? customStart : undefined,
-      end: rangeId === 'custom' ? customEnd : undefined,
-    }).then(setState).catch(() => setState({ status: 'error' }))
-  }
+  const request = (query) => fetchAnalytics({
+    range: query.rangeId,
+    compare: query.compare,
+    start: query.rangeId === 'custom' ? query.customStart : undefined,
+    end: query.rangeId === 'custom' ? query.customEnd : undefined,
+  })
 
   useEffect(() => {
     const previous = document.title
@@ -116,9 +130,14 @@ export default function Analytics() {
   }, [])
 
   useEffect(() => {
-    load()
-    const timer = setInterval(load, 180000)
-    return () => clearInterval(timer)
+    let active = true
+    const query = { rangeId, compare, customStart, customEnd }
+    setPending(true)
+    request(query).then((result) => { if (active) setState(result) }).catch(() => { if (active) setState({ status: 'error' }) }).finally(() => { if (active) setPending(false) })
+    const timer = setInterval(() => {
+      request(query).then((result) => { if (active) setState(result) }).catch(() => {})
+    }, 180000)
+    return () => { active = false; clearInterval(timer) }
   }, [rangeId, compare, customStart, customEnd])
 
   useEffect(() => {
@@ -128,7 +147,7 @@ export default function Analytics() {
       const status = result.body?.status
       if (status === 'completed' || status === 'failed' || status === 'cancelled') {
         setCheck({ ...result.body, done: true })
-        load()
+        request({ rangeId, compare, customStart, customEnd }).then(setState).catch(() => setState({ status: 'error' }))
       } else {
         setCheck(result.body)
       }
@@ -141,7 +160,7 @@ export default function Analytics() {
 
   return (
     <div className="min-h-full bg-[#f6f7fb] px-4 py-6 lg:px-8">
-      <div className="mx-auto flex max-w-[1200px] flex-col gap-8">
+      <div className="mx-auto flex max-w-[1200px] flex-col gap-6">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-orange">Marketing</p>
@@ -161,12 +180,15 @@ export default function Analytics() {
                 <label className="text-xs font-semibold text-slate-500">End<input type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} className="mt-1 block rounded-full border border-slate-200 px-3 py-1.5 text-sm" /></label>
               </div>
             ) : null}
-            <div className="flex rounded-full bg-white p-1 shadow-sm" role="group" aria-label="Comparison">
-              {COMPARE_MODES.map((item) => (
-                <button key={item.id} type="button" aria-pressed={compare === item.id} onClick={() => setCompare(item.id)} className={`rounded-full px-3 py-1.5 text-sm font-semibold ${compare === item.id ? 'bg-brand-orange text-white' : 'text-slate-600'}`}>
-                  {item.label}
-                </button>
-              ))}
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex rounded-full bg-white p-1 shadow-sm" role="group" aria-label="Comparison">
+                {COMPARE_MODES.map((item) => (
+                  <button key={item.id} type="button" aria-pressed={compare === item.id} onClick={() => setCompare(item.id)} className={`rounded-full px-3 py-1.5 text-sm font-semibold ${compare === item.id ? 'bg-brand-orange text-white' : 'text-slate-600'}`}>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs font-semibold text-slate-600" data-testid="comparison-range">Compared with {compareLabel}{pending ? ' · updating' : ''}</p>
             </div>
           </div>
         </header>
@@ -178,11 +200,11 @@ export default function Analytics() {
 
         {report ? (
           <>
-            <MarketingKpis report={report} />
-            <TrafficSection ga4={report.ga4} />
+            <MarketingKpis report={report} compare={compare} pending={pending} compareLabel={compareLabel} />
+            <TrafficSection ga4={report.ga4} compare={compare} pending={pending} compareLabel={compareLabel} />
             <KeywordList report={report.keywords} check={check} onRefresh={() => { setDialog({ status: 'loading' }); estimateRankCheck().then((result) => setDialog(result.body || { estimate: null })) }} />
             <AiList ai={report.ai} />
-            <SearchCharts search={report.search} />
+            <SearchCharts search={report.search} compare={compare} pending={pending} compareLabel={compareLabel} />
             <OtherCharts ga4={report.ga4} />
           </>
         ) : null}
@@ -204,16 +226,24 @@ export default function Analytics() {
   )
 }
 
-function MarketingKpis({ report }) {
+function comparisonReady(block, compare, pending) {
+  return !pending && block?.mode === compare
+}
+
+function MarketingKpis({ report, compare, pending, compareLabel }) {
   const ga4 = report.ga4 || {}
   const organic = ga4.organic || {}
-  const organicPrevious = organic.compare?.available ? organic.compare : {}
+  const organicReady = comparisonReady(organic.compare, compare, pending) && organic.compare?.available
+  const organicPrevious = organicReady ? organic.compare : {}
   const search = report.search || {}
   const totals = search.totals || {}
-  const previous = search.compare?.available ? (search.previous || {}) : {}
+  const searchReady = comparisonReady(search.compare, compare, pending) && search.compare?.available
+  const previous = searchReady ? (search.previous || {}) : {}
+  const note = [organic.compare, search.compare].find((block) => comparisonReady(block, compare, pending) && block?.note)?.note || ''
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="marketing-kpis">
-      <KpiCard label="Organic users" value={formatCount(organic.users)} current={organic.users} previous={organicPrevious.users} mode="percent" color="#00AEEF" testId="kpi-users" />
+      {note ? <p className="sm:col-span-2 xl:col-span-4 text-sm font-semibold text-amber-800" data-testid="comparison-note">{note}</p> : null}
+      <KpiCard label="Organic users" value={formatCount(organic.users)} current={organic.users} previous={organicPrevious.users} mode="percent" hint={organicReady ? compareLabel : pending ? 'Updating comparison…' : ''} color="#00AEEF" testId="kpi-users" />
       <KpiCard label="Organic sessions" value={formatCount(organic.sessions)} current={organic.sessions} previous={organicPrevious.sessions} mode="percent" series={(organic.series || []).map((row) => row.sessions).filter((value) => value != null)} />
       <KpiCard label="Clicks" value={formatCount(totals.clicks)} current={totals.clicks} previous={previous.clicks} mode="percent" series={(search.series || []).map((row) => row.clicks)} />
       <KpiCard label="Impressions" value={formatCount(totals.impressions)} current={totals.impressions} previous={previous.impressions} mode="percent" series={(search.series || []).map((row) => row.impressions)} color="#00AEEF" />
@@ -225,11 +255,11 @@ function MarketingKpis({ report }) {
   )
 }
 
-function TrafficSection({ ga4 }) {
+function TrafficSection({ ga4, compare, pending, compareLabel }) {
   if (!ga4?.connected) {
     return (
       <Section id="traffic" title="Site traffic and sources">
-        <EmptyPanel title="Site traffic is not connected." testId="ga4-empty">{missingCopy(ga4?.reason, 'Users and sessions stay blank until that key is set.')}</EmptyPanel>
+        <CompactEmpty title="Site traffic is not connected." testId="ga4-empty">{missingCopy(ga4?.reason, 'Users and sessions stay blank until that key is set.')}</CompactEmpty>
       </Section>
     )
   }
@@ -237,11 +267,11 @@ function TrafficSection({ ga4 }) {
   return (
     <Section id="traffic" title="Site traffic and sources">
       <p className="text-sm text-slate-500">Channel totals cover every GA4 session. The daily chart is Organic Search only. The dashed line is the selected comparison, aligned by day.</p>
-      {ga4.organic?.compare && !ga4.organic.compare.available && ga4.organic.compare.note ? <p className="text-sm text-amber-800">{ga4.organic.compare.note}</p> : null}
+      {comparisonReady(ga4.organic?.compare, compare, pending) && !ga4.organic.compare.available ? <p className="text-sm font-semibold text-amber-800">{ga4.organic.compare.note}</p> : null}
       <div className="grid gap-3 lg:grid-cols-2">
-        <Card title="Organic sessions over time" info="Daily Organic Search sessions. All-channel totals are in the table.">
-          <TimeSeriesChart series={ga4.organic?.series?.length ? ga4.organic.series : ga4.series} compare={ga4.organic?.compare?.available ? ga4.organic.compare.series : []} label="Organic sessions over time" />
-          <Legend items={[{ label: 'This range', color: '#F7931E' }, { label: ga4.organic?.compare?.label || 'Comparison', color: '#64748b' }]} />
+        <Card title="Organic sessions over time" info="Daily Organic Search sessions. The dashed line is the comparison period.">
+          <TimeSeriesChart series={ga4.organic?.series?.length ? ga4.organic.series : ga4.series} compare={comparisonReady(ga4.organic?.compare, compare, pending) && ga4.organic.compare.available ? ga4.organic.compare.series : []} label="Organic sessions over time" />
+          <Legend items={[{ label: 'This range', color: '#F7931E' }, { label: compareLabel || 'Comparison', color: '#64748b' }]} />
         </Card>
         <Card title="Sessions by channel" info="Share of all sessions.">
           <SliceDonut slices={(ga4.channels || []).map((row) => ({ label: row.label, value: row.sessions }))} caption="Sessions" />
@@ -284,17 +314,32 @@ function byGoogleRank(a, b) {
 }
 
 function KeywordList({ report, check, onRefresh }) {
-  const rows = (report?.rows || []).filter((row) => row.checked !== false).slice().sort(byGoogleRank)
-  const groups = KEYWORD_CATEGORIES.map((category) => ({
-    ...category,
-    items: rows.filter((row) => row.category === category.id).sort(byGoogleRank),
-  })).filter((group) => group.items.length)
+  const [showHidden, setShowHidden] = useState(false)
+  const [opened, setOpened] = useState(null)
+  const all = report?.rows || []
+  const ranking = all.filter(isRankingKeyword).slice().sort(byGoogleRank)
+  const hidden = all.filter((row) => !isRankingKeyword(row)).slice().sort(byGoogleRank)
+  const groups = KEYWORD_CATEGORIES.map((category) => {
+    const ranked = ranking.filter((row) => row.category === category.id)
+    const quiet = hidden.filter((row) => row.category === category.id)
+    return { ...category, ranked, quiet, items: showHidden ? ranked.concat(quiet) : ranked }
+  }).filter((group) => group.items.length)
+  const firstId = groups[0]?.id
+  const isOpen = (id) => (opened == null ? id === firstId : opened.has(id))
+  const toggle = (id) => {
+    setOpened((current) => {
+      const next = new Set(current ?? (firstId ? [firstId] : []))
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
   return (
     <Section id="keywords" title="Keyword rankings">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-2">
           <p className="text-sm text-slate-600">
-            {report?.connected ? `${formatCount(report.ranking)} ranking in the top 40 of ${formatCount(rows.length)} checked` : 'Not connected'}
+            {report?.connected ? `${formatCount(ranking.length)} ranking in the top 40` : 'Not connected'}
             {report?.lastCheckedAt ? ` · latest completed mobile check ${new Date(report.lastCheckedAt).toLocaleString()}` : ''}
           </p>
           <RankLegend />
@@ -303,90 +348,185 @@ function KeywordList({ report, check, onRefresh }) {
           {check && !check.done ? 'Checking rankings…' : 'Refresh rankings'}
         </button>
       </div>
-      {report?.connected ? <RankSummary rows={rows} /> : null}
-      {!report?.connected ? <EmptyPanel title="Keyword rankings are not connected." testId="keywords-empty">{missingCopy(report?.reason, 'The ranking list stays empty until that key is set.')}</EmptyPanel> : null}
-      {groups.map((group) => (
-        <div key={group.id} className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-          <h3 className="border-b border-slate-100 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900">{group.label} · {group.items.length}</h3>
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="text-[11px] uppercase tracking-wide text-slate-400">
-              <tr>
-                <th className="px-4 py-2">Google rank</th>
-                <th className="px-3 py-2">Keyword</th>
-                <th className="px-3 py-2">Ranking URL</th>
-                <th className="px-3 py-2 text-right">Volume</th>
-                <th className="px-3 py-2 text-right">KD</th>
-              </tr>
-            </thead>
-            <tbody>
-              {group.items.map((row) => (
-                <tr key={row.id} className="border-t border-slate-100">
-                  <td className="px-4 py-3"><GoogleRank position={row.position} change={row.change} previous={row.previousPosition} /></td>
-                  <td className="px-3 py-3 font-medium text-slate-900">{row.keyword}</td>
-                  <td className="max-w-[240px] px-3 py-3"><ExternalLink href={row.rankingUrl} className="block truncate text-sm" /></td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums text-slate-500">{row.volume == null ? '—' : formatCount(row.volume)}</td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums text-slate-500">{row.kd == null ? '—' : formatCount(row.kd)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {report?.connected ? <RankSummary rows={all} /> : null}
+      {!report?.connected ? <CompactEmpty title="Keyword rankings are not connected." testId="keywords-empty">{missingCopy(report?.reason, 'The ranking list stays empty until that key is set.')}</CompactEmpty> : null}
+      {hidden.length ? (
+        <button type="button" onClick={() => setShowHidden((value) => !value)} className="self-start text-sm font-semibold text-[#1644ED] hover:underline" aria-expanded={showHidden}>
+          {showHidden ? `Hide ${formatCount(hidden.length)} not ranking` : `Show ${formatCount(hidden.length)} not ranking`}
+        </button>
+      ) : null}
+      {groups.map((group) => {
+        const avg = averageRank(group.ranked)
+        return (
+          <div key={group.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <button type="button" aria-expanded={isOpen(group.id)} onClick={() => toggle(group.id)} className="flex w-full items-center justify-between gap-3 bg-slate-50 px-4 py-2 text-left">
+              <span className="text-sm font-semibold text-slate-900">{group.label}</span>
+              <span className="text-xs font-medium text-slate-500">
+                {formatCount(group.ranked.length)} ranking{showHidden && group.quiet.length ? ` · ${formatCount(group.quiet.length)} not ranking` : ''}
+                {avg == null ? '' : ` · avg #${avg}`}
+              </span>
+            </button>
+            {isOpen(group.id) ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead className="text-[11px] uppercase tracking-wide text-slate-400">
+                    <tr>
+                      <th className="px-4 py-2">Google rank</th>
+                      <th className="px-3 py-2">Keyword</th>
+                      <th className="px-3 py-2">Ranking URL</th>
+                      <th className="px-3 py-2 text-right">Volume</th>
+                      <th className="px-3 py-2 text-right">KD</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.items.map((row) => (
+                      <tr key={row.id} className="border-t border-slate-100">
+                        <td className="px-4 py-2"><GoogleRank position={row.position} change={row.change} previous={row.previousPosition} /></td>
+                        <td className="px-3 py-2 font-medium text-slate-900">{row.keyword}</td>
+                        <td className="max-w-[240px] px-3 py-2"><ExternalLink href={row.rankingUrl} className="block truncate text-sm" /></td>
+                        <td className="px-3 py-2 text-right text-xs tabular-nums text-slate-500">{row.volume == null ? '—' : formatCount(row.volume)}</td>
+                        <td className="px-3 py-2 text-right text-xs tabular-nums text-slate-500">{row.kd == null ? '—' : formatCount(row.kd)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </div>
+        )
+      })}
+    </Section>
+  )
+}
+
+function EngineChip({ engine }) {
+  if (engine.appears === true) {
+    return <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white">{engine.engine} {engine.rank == null ? 'Mentioned' : `#${engine.rank}`}</span>
+  }
+  if (engine.appears === false) {
+    return <span className="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600">{engine.engine} · Not mentioned</span>
+  }
+  const label = engine.answerStatus === 'no_answer' ? 'No answer' : 'Not checked'
+  return <span className="inline-flex items-center rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-500">{engine.engine} · {label}</span>
+}
+
+function PromptCard({ card }) {
+  return (
+    <article className="rounded-xl border border-slate-200 bg-white p-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h4 className="text-sm font-semibold text-slate-900">{card.prompt}</h4>
+        {card.topic ? <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">{card.topic}</span> : null}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {card.engines.length ? card.engines.map((engine) => <EngineChip key={`${card.id}-${engine.engine}`} engine={engine} />) : <span className="inline-flex items-center rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-500">Not checked</span>}
+      </div>
+      {card.citedUrls.length ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {card.citedUrls.map((url) => <ExternalLink key={url} href={url} className="max-w-full truncate text-xs" />)}
+        </div>
+      ) : null}
+      {card.competitors.length ? (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {card.competitors.map((name) => <span key={name} className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-800">{name}</span>)}
+        </div>
+      ) : null}
+    </article>
+  )
+}
+
+function AiList({ ai }) {
+  const [showPaused, setShowPaused] = useState(false)
+  const [showVoices, setShowVoices] = useState(false)
+  const [opened, setOpened] = useState(null)
+  if (!ai?.connected) {
+    return (
+      <Section id="ai" title="AI visibility rankings">
+        <CompactEmpty title="AI visibility is not connected." testId="ai-empty">{missingCopy(ai?.reason, 'Prompt rankings stay blank until that key is set.')}</CompactEmpty>
+      </Section>
+    )
+  }
+  const cards = groupAiPrompts(ai.prompts)
+  const paused = cards.filter((card) => card.paused)
+  const visible = (showPaused ? cards : cards.filter((card) => !card.paused)).slice().sort((a, b) => Number(promptMentioned(b)) - Number(promptMentioned(a)) || a.prompt.localeCompare(b.prompt))
+  const topics = []
+  for (const card of visible) {
+    const topic = card.topic || 'Other'
+    const group = topics.find((item) => item.topic === topic)
+    if (group) group.items.push(card)
+    else topics.push({ topic, items: [card], mentioned: 0 })
+  }
+  topics.forEach((group) => { group.mentioned = group.items.filter(promptMentioned).length })
+  topics.sort((a, b) => b.mentioned - a.mentioned || a.topic.localeCompare(b.topic))
+  const firstTopic = topics[0]?.topic
+  const isOpen = (topic) => (opened == null ? topic === firstTopic : opened.has(topic))
+  const toggle = (topic) => {
+    setOpened((current) => {
+      const next = new Set(current ?? (firstTopic ? [firstTopic] : []))
+      if (next.has(topic)) next.delete(topic)
+      else next.add(topic)
+      return next
+    })
+  }
+  const voices = (ai.voices || []).slice().sort((a, b) => (b.mentions || 0) - (a.mentions || 0) || Number(b.own) - Number(a.own))
+  const voiced = voices.filter((row) => row.mentions > 0)
+  const shownVoices = showVoices ? voices : (voiced.length ? voiced : voices).slice(0, 6)
+  const totalMentions = voices.reduce((sum, row) => sum + (row.mentions || 0), 0)
+  const engines = engineAppearances(visible)
+  return (
+    <Section id="ai" title="AI visibility rankings">
+      <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <Card title="Mention rate" info="Share of stored answers that mention Brandastic.">
+          <Gauge value={ai.score} label="Mention rate" />
+        </Card>
+        <Card title="Where Brandastic appears" info="Prompts in which Brandastic is mentioned, by engine.">
+          {engines.length ? <HorizontalBars rows={engines.map((row) => ({ label: row.label, value: row.value, display: formatCount(row.value) }))} color="#00D4AA" /> : <p className="text-sm text-slate-500">No engine has mentioned Brandastic in this run.</p>}
+        </Card>
+      </div>
+      {shownVoices.length ? (
+        <Card title="Share of voice" info="Mentions in the latest stored run.">
+          <HorizontalBars rows={shownVoices.map((row) => ({ label: row.name, value: row.mentions, display: share(row.mentions, totalMentions), color: row.own ? '#F7931E' : '#00AEEF' }))} />
+          {voices.length > shownVoices.length ? (
+            <button type="button" onClick={() => setShowVoices(true)} className="mt-2 text-sm font-semibold text-[#1644ED] hover:underline">
+              Show {formatCount(voices.length - shownVoices.length)} more brands
+            </button>
+          ) : null}
+        </Card>
+      ) : null}
+      {paused.length ? (
+        <button type="button" onClick={() => setShowPaused((value) => !value)} className="text-sm font-semibold text-[#1644ED] hover:underline" aria-expanded={showPaused}>
+          {showPaused ? `Hide paused (${formatCount(paused.length)})` : `Show paused (${formatCount(paused.length)})`}
+        </button>
+      ) : null}
+      {topics.map((group) => (
+        <div key={group.topic} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+          <button type="button" aria-expanded={isOpen(group.topic)} onClick={() => toggle(group.topic)} className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left">
+            <span className="text-sm font-semibold text-slate-900">{group.topic}</span>
+            <span className="text-xs font-medium text-slate-500">{formatCount(group.mentioned)} mentioned · {formatCount(group.items.length)}</span>
+          </button>
+          {isOpen(group.topic) ? (
+            <div className="space-y-2 px-3 pb-3">
+              {group.items.map((card) => <PromptCard key={card.id} card={card} />)}
+            </div>
+          ) : null}
         </div>
       ))}
     </Section>
   )
 }
 
-function AiList({ ai }) {
-  if (!ai?.connected) {
-    return (
-      <Section id="ai" title="AI visibility rankings">
-        <EmptyPanel title="AI visibility is not connected." testId="ai-empty">{missingCopy(ai?.reason, 'Prompt rankings stay blank until that key is set.')}</EmptyPanel>
-      </Section>
-    )
-  }
-  const totalMentions = (ai.voices || []).reduce((sum, row) => sum + (row.mentions || 0), 0)
-  return (
-    <Section id="ai" title="AI visibility rankings">
-      <Card title="Share of voice" info="Mentions in the latest stored run.">
-        <HorizontalBars rows={(ai.voices || []).map((row) => ({ label: row.name, value: row.mentions, display: share(row.mentions, totalMentions), color: row.own ? '#F7931E' : '#00AEEF' }))} />
-      </Card>
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="text-[11px] uppercase tracking-wide text-slate-400">
-            <tr>{['Prompt', 'Mentioned', 'Rank', 'Cited URL', 'Engine', 'Competitors', 'Checked'].map((label) => <th key={label} className="px-3 py-2">{label}</th>)}</tr>
-          </thead>
-          <tbody>
-            {(ai.prompts || []).map((row) => (
-              <tr key={row.id} className="border-t border-slate-100">
-                <td className="max-w-[280px] px-3 py-2 font-medium text-slate-900">{row.prompt}{row.paused ? ' · paused' : ''}</td>
-                <td className="px-3 py-2">{row.appears == null ? 'Not checked' : row.appears ? 'Yes' : 'No'}</td>
-                <td className="px-3 py-2">{row.rank == null ? '—' : row.rank}</td>
-                <td className="max-w-[220px] px-3 py-2"><ExternalLink href={row.citedUrl} className="block truncate text-sm" /></td>
-                <td className="px-3 py-2">{row.engine || '—'}</td>
-                <td className="px-3 py-2 text-slate-600">{(row.competitors || []).join(', ') || '—'}</td>
-                <td className="px-3 py-2 text-slate-500">{row.checkedAt ? new Date(row.checkedAt).toLocaleDateString() : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Section>
-  )
-}
-
-function SearchCharts({ search }) {
+function SearchCharts({ search, compare, pending, compareLabel }) {
   if (!search?.connected) {
     return (
       <Section id="search" title="Search Console">
-        <EmptyPanel title="Search Console is not connected." testId="search-empty">{missingCopy(search?.reason, 'Clicks and impressions stay blank until that key is set.')}</EmptyPanel>
+        <CompactEmpty title="Search Console is not connected." testId="search-empty">{missingCopy(search?.reason, 'Clicks and impressions stay blank until that key is set.')}</CompactEmpty>
       </Section>
     )
   }
   return (
     <Section id="search" title="Search Console">
       <Card title="Clicks, impressions, and position" info="Orange is clicks, blue dashes are impressions, teal is average position.">
-        <DualAxisChart series={search.series || []} />
-        <Legend items={[{ label: 'Clicks', color: '#F7931E' }, { label: 'Impressions, own scale', color: '#00AEEF' }, { label: 'Avg position', color: '#00D4AA' }]} />
+        <DualAxisChart series={search.series || []} compare={comparisonReady(search.compare, compare, pending) && search.compare.available ? search.compareSeries : []} />
+        <Legend items={[{ label: 'Clicks', color: '#F7931E' }, { label: compareLabel || 'Comparison clicks', color: '#64748b' }, { label: 'Impressions, own scale', color: '#00AEEF' }, { label: 'Avg position', color: '#00D4AA' }]} />
       </Card>
       <div className="grid gap-3 lg:grid-cols-2">
         <Card title="Top queries"><HorizontalBars rows={(search.queries || []).map((row) => ({ label: row.key, value: row.clicks, display: `${formatCount(row.clicks)} clicks` }))} /></Card>

@@ -7,6 +7,18 @@ export function rankMeaning(position) {
   return 'Page 4'
 }
 
+export function isRankingKeyword(row) {
+  const position = row?.position
+  return position != null && position >= 1 && position <= 40
+}
+
+export function averageRank(rows) {
+  const ranked = (rows || []).filter(isRankingKeyword)
+  if (!ranked.length) return null
+  const total = ranked.reduce((sum, row) => sum + Number(row.position), 0)
+  return Math.round((total / ranked.length) * 10) / 10
+}
+
 export function rankSummary(rows) {
   const counts = { top3: 0, page1: 0, page2: 0, later: 0, missing: 0 }
   for (const row of rows || []) {
