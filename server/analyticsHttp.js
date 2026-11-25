@@ -2,7 +2,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { isAllowedEmail, parseAllowlist } from './billingGate.js'
 import { loadKeywordOverrides } from './keywordCategories.js'
-import { normalizeAi, normalizeKeywords, normalizeSearch, emptySearch } from './analyticsNormalize.js'
+import { normalizeAi, normalizeKeywords, normalizeSearch, emptySearch, emptyGa4 } from './analyticsNormalize.js'
+import { loadGa4 } from './analyticsGa4.js'
 import { clearOpenseoCache, openseoConfig, openseoFetch } from './openseo.js'
 import { resolveAnalyticsRange } from '../src/lib/analyticsRange.js'
 
@@ -45,6 +46,7 @@ function disconnected(reason) {
     search: emptySearch(reason),
     keywords: { connected: false, reason, rows: [], tracked: 0, ranking: 0, device: 'mobile', lastCheckedAt: null, runStatus: null },
     ai: { connected: false, reason, score: null, trend: null, prompts: [], voices: [], citationRate: null, lastChecked: null },
+    ga4: emptyGa4(reason),
   }
 }
 
@@ -76,8 +78,9 @@ export async function loadAnalytics(env, rangeId, options = {}) {
     request(`/projects/${config.projectId}/ai`),
     request(`/projects/${config.projectId}/ai/results`),
   ])
+  const ga4 = await loadGa4(config, range, { fetchImpl, cacheMs, now: now.getTime() })
   const failed = [report, queries, pages, tracker, aiSettings, aiResults].every((item) => !item || item.status === 0 || item.status >= 400)
-  if (failed) return { range, fetchedAt: now.toISOString(), ...disconnected('unavailable') }
+  if (failed) return { range, fetchedAt: now.toISOString(), ...disconnected('unavailable'), ga4 }
   const overrides = options.overrides || loadKeywordOverrides(options.overridesPath)
   const search = report?.status >= 200 && report.status < 300 ? normalizeSearch(report.payload, queries?.payload, pages?.payload) : emptySearch('unavailable')
   const keywords = tracker?.status >= 200 && tracker.status < 300
@@ -86,7 +89,7 @@ export async function loadAnalytics(env, rangeId, options = {}) {
   const ai = aiSettings?.status >= 200 && aiSettings.status < 300
     ? normalizeAi(aiSettings.payload, aiResults?.status >= 200 && aiResults.status < 300 ? aiResults.payload : null)
     : { connected: false, reason: 'unavailable', score: null, trend: null, prompts: [], voices: [], citationRate: null, lastChecked: null }
-  return { range, fetchedAt: now.toISOString(), search, keywords, ai }
+  return { range, fetchedAt: now.toISOString(), search, keywords, ai, ga4 }
 }
 
 export async function handleAnalytics(env, token, rangeId, options = {}) {

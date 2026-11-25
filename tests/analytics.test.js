@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { assignKeywordCategory } from '../server/keywordCategories.js'
-import { normalizeAi, normalizeKeywords, normalizeSearch } from '../server/analyticsNormalize.js'
+import { normalizeAi, normalizeGa4, normalizeKeywords, normalizeSearch } from '../server/analyticsNormalize.js'
+import { openseoTool } from '../server/openseo.js'
 import { handleAnalytics } from '../server/analyticsHttp.js'
 import { cooldownDecision, startRankCheck } from '../server/analyticsRankCheck.js'
 import { salesSnapshot } from '../src/lib/analyticsSales.js'
@@ -101,7 +102,67 @@ describe('analytics gate', () => {
     assert.equal(result.body.search.totals, null)
     assert.equal(result.body.keywords.tracked, 0)
     assert.equal(result.body.ai.score, null)
+    assert.equal(result.body.ga4.connected, false)
+    assert.equal(result.body.ga4.reason, 'not_configured')
+    assert.equal(result.body.ga4.sessions, null)
     assert.equal(JSON.stringify(result.body).includes('140'), false)
+  })
+})
+
+describe('google analytics', () => {
+  it('sums all-channel totals and keeps the organic daily series', () => {
+    const parsed = normalizeGa4({
+      overview: {
+        status: 'ok',
+        source: { propertyDisplayName: 'brandastic.com' },
+        current: { sessions: 10, activeUsers: 8, engagedSessions: 7, keyEvents: 1 },
+        previous: { sessions: 12, activeUsers: 9, engagedSessions: 8, keyEvents: 2 },
+        trend: [{ date: '20261101', sessions: 4, activeUsers: 3 }, { date: '20261102', sessions: 6, activeUsers: 5 }],
+      },
+      channels: {
+        status: 'ok',
+        rows: [
+          { sessionDefaultChannelGroup: 'Direct', sessions: 30, activeUsers: 20, engagedSessions: 18, keyEvents: 2 },
+          { sessionDefaultChannelGroup: 'Organic Search', sessions: 10, activeUsers: 8, engagedSessions: 7, keyEvents: 1 },
+        ],
+        comparison: {
+          rows: [
+            { metrics: { sessions: { current: 30, previous: 40 }, activeUsers: { current: 20, previous: 22 }, engagedSessions: { current: 18, previous: 16 }, keyEvents: { current: 2, previous: 1 } } },
+            { metrics: { sessions: { current: 10, previous: 12 }, activeUsers: { current: 8, previous: 9 }, engagedSessions: { current: 7, previous: 8 }, keyEvents: { current: 1, previous: 2 } } },
+          ],
+        },
+      },
+      pages: { rows: [{ hostName: 'brandastic.com', pagePath: '/', screenPageViews: 80 }] },
+      devices: { rows: [{ deviceCategory: 'mobile', sessions: 24 }] },
+      countries: { rows: [{ country: 'United States', sessions: 40 }] },
+      events: { rows: [{ eventName: 'generate_lead', keyEvents: 3 }] },
+    })
+    assert.equal(parsed.connected, true)
+    assert.equal(parsed.sessions, 40)
+    assert.equal(parsed.users, 28)
+    assert.equal(parsed.previous.sessions, 52)
+    assert.equal(parsed.series[0].date, '2026-11-01')
+    assert.equal(parsed.channels[0].label, 'Direct')
+    assert.equal(parsed.pages[0].label, 'brandastic.com/')
+    assert.equal(parsed.devices[0].label, 'mobile')
+    assert.equal(parsed.countries[0].label, 'United States')
+    assert.equal(parsed.events[0].label, 'generate_lead')
+  })
+
+  it('says the property is not connected instead of inventing sessions', () => {
+    const parsed = normalizeGa4({
+      overview: { status: 'error', error: { code: 'ga4_not_connected', message: 'Google Analytics is not connected for this project.' } },
+    })
+    assert.equal(parsed.connected, false)
+    assert.equal(parsed.reason, 'ga4_not_connected')
+    assert.equal(parsed.sessions, null)
+  })
+
+  it('refuses to call anything except the GA4 read tools', async () => {
+    await assert.rejects(
+      () => openseoTool({ configured: true, apiKey: 'oseo_test', mcpUrl: 'https://example.test/mcp' }, 'run_rank_tracker', {}, { fetchImpl: async () => { throw new Error('should not fetch') } }),
+      (error) => error.code === 'tool_not_allowed',
+    )
   })
 })
 
@@ -125,7 +186,7 @@ describe('rank check', () => {
     )
     assert.equal(result.status, 429)
     assert.equal(result.body.error, 'cooldown')
-    assert.equal(calls.some((call) => call.method === 'POST'), false)
+    assert.equal(calls.some((call) => String(call.url).includes('/runs')), false)
   })
 
   it('posts an empty check and does not send tracker settings', async () => {
@@ -147,7 +208,7 @@ describe('rank check', () => {
         },
       },
     )
-    const post = calls.filter((call) => call.method === 'POST')
+    const post = calls.filter((call) => call.method === 'POST' && String(call.url).includes('/runs'))
     assert.equal(post.length, 1)
     assert.equal(post[0].url.endsWith('/trackers/679c3842-3d4c-4ede-967d-a9434b5c61dd/runs'), true)
     assert.equal(post[0].body, '{}')

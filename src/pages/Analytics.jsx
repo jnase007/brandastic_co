@@ -14,7 +14,9 @@ import {
   KpiCard,
   Legend,
   PositionBadge,
+  SliceDonut,
   StageFunnel,
+  TimeSeriesChart,
   Trend,
   WinLossDonut,
   formatCount,
@@ -176,6 +178,7 @@ export default function Analytics() {
         {state.status === 'ready' ? (
           <>
             <SalesSection sales={sales} prior={priorSales} leads={leads} error={leadError} range={range} />
+            <Ga4Section ga4={report.ga4} />
             <SearchSection search={report.search} />
             <KeywordSection
               report={report.keywords}
@@ -253,13 +256,67 @@ function SalesSection({ sales, prior, leads, error, range }) {
   )
 }
 
+function Ga4Section({ ga4 }) {
+  if (!ga4?.connected) {
+    const missingKey = ga4?.reason === 'not_configured'
+    const missingProperty = ga4?.reason === 'ga4_not_connected'
+    return (
+      <Section id="ga4" kicker="02" title="Google Analytics">
+        <EmptyPanel title={missingProperty ? 'Google Analytics is not connected on OpenSEO.' : 'Google Analytics is not connected.'} testId="ga4-empty">
+          {missingKey
+            ? 'Missing environment variable: OPENSEO_API_KEY. Add it on the Vercel project brandastic-co and redeploy. Google Analytics is read with that same key. No users or sessions are shown until it is set.'
+            : missingProperty
+              ? 'OPENSEO_API_KEY is set, but this OpenSEO project has no GA4 property. In OpenSEO, open the Brandastic project, then Project settings, Integrations, Google Analytics, and save the brandastic.com property.'
+              : 'OpenSEO did not return Google Analytics. Nothing is estimated in its place.'}
+        </EmptyPanel>
+      </Section>
+    )
+  }
+  const previous = ga4.previous || {}
+  return (
+    <Section id="ga4" kicker="02" title="Google Analytics">
+      <p className="text-sm text-slate-500">{ga4.property ? `${ga4.property} · ` : ''}All channels for the totals. The sessions chart is Organic Search, the daily series OpenSEO returns.</p>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard label="Users" value={formatCount(ga4.users)} current={ga4.users} previous={previous.users} color="#00AEEF" testId="ga4-users" />
+        <KpiCard label="Sessions" value={formatCount(ga4.sessions)} current={ga4.sessions} previous={previous.sessions} series={(ga4.series || []).map((row) => row.sessions).filter((value) => value != null)} />
+        <KpiCard label="Engaged sessions" value={formatCount(ga4.engagedSessions)} current={ga4.engagedSessions} previous={previous.engagedSessions} color="#00D4AA" />
+        <KpiCard label="Key events" value={formatCount(ga4.keyEvents)} current={ga4.keyEvents} previous={previous.keyEvents} color="#8B5CF6" />
+      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Card title="Sessions over time" info="Organic Search sessions by day from the connected GA4 property.">
+          <TimeSeriesChart series={ga4.series} label="Organic sessions over time" />
+        </Card>
+        <Card title="Traffic by channel" info="Session share across GA4 default channel groups.">
+          <SliceDonut slices={(ga4.channels || []).map((row) => ({ label: row.label, value: row.sessions }))} caption="Sessions" />
+        </Card>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-3">
+        <Card title="Top pages" info="Page views across all channels.">
+          <HorizontalBars rows={(ga4.pages || []).map((row) => ({ label: row.label, value: row.value, display: formatCount(row.value) }))} />
+        </Card>
+        <Card title="Devices" info="Sessions by device.">
+          <HorizontalBars rows={(ga4.devices || []).map((row) => ({ label: row.label, value: row.value, display: formatCount(row.value) }))} color="#00AEEF" />
+        </Card>
+        <Card title="Countries" info="Sessions by country.">
+          <HorizontalBars rows={(ga4.countries || []).map((row) => ({ label: row.label, value: row.value, display: formatCount(row.value) }))} color="#00D4AA" />
+        </Card>
+      </div>
+      {(ga4.events || []).length ? (
+        <Card title="Key events" info="Conversion events stored in GA4.">
+          <HorizontalBars rows={ga4.events.map((row) => ({ label: row.label, value: row.value, display: formatCount(row.value) }))} color="#8B5CF6" />
+        </Card>
+      ) : null}
+    </Section>
+  )
+}
+
 function SearchSection({ search }) {
   if (!search?.connected) {
     return (
-      <Section id="search" kicker="02" title="Site analytics">
+      <Section id="search" kicker="03" title="Site analytics">
         <EmptyPanel title="Search Console is not connected." testId="search-empty">
           {search?.reason === 'not_configured'
-            ? 'Add OPENSEO_API_KEY on the Vercel server. Search Console is read through the Brandastic OpenSEO project, which already has the property connected. No clicks or positions are shown until that key is set.'
+            ? 'Missing environment variable: OPENSEO_API_KEY. Add it on the Vercel project brandastic-co and redeploy. Search Console is read through the Brandastic OpenSEO project. No clicks or positions are shown until that key is set.'
             : 'OpenSEO did not return Search Console data. Nothing is estimated in its place.'}
         </EmptyPanel>
       </Section>
@@ -269,7 +326,7 @@ function SearchSection({ search }) {
   const previous = search.previous || {}
   const series = search.series || []
   return (
-    <Section id="search" kicker="02" title="Site analytics">
+    <Section id="search" kicker="03" title="Site analytics">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Clicks" value={formatCount(totals.clicks)} current={totals.clicks} previous={previous.clicks} series={series.map((row) => row.clicks)} />
         <KpiCard label="Impressions" value={formatCount(totals.impressions)} current={totals.impressions} previous={previous.impressions} series={series.map((row) => row.impressions)} color="#00AEEF" />
@@ -295,10 +352,10 @@ function SearchSection({ search }) {
 function KeywordSection({ report, rows, rankingOnly, onToggle, query, onQuery, openTable, onOpenTable, onRefresh, check }) {
   if (!report?.connected) {
     return (
-      <Section id="keywords" kicker="03" title="SEO keywords">
+      <Section id="keywords" kicker="04" title="SEO keywords">
         <EmptyPanel title="OpenSEO rank tracking is not connected." testId="keywords-empty">
           {report?.reason === 'not_configured'
-            ? 'Add OPENSEO_API_KEY. Optional overrides: OPENSEO_PROJECT_ID and OPENSEO_RANK_TRACKER_ID. The keyword list stays empty until the key can read the Brandastic tracker.'
+            ? 'Missing environment variable: OPENSEO_API_KEY. Add it on the Vercel project brandastic-co and redeploy. Optional: OPENSEO_PROJECT_ID and OPENSEO_RANK_TRACKER_ID. The keyword list stays empty until that key is set.'
             : 'OpenSEO did not return tracker keywords. No positions are filled in.'}
         </EmptyPanel>
       </Section>
@@ -311,7 +368,7 @@ function KeywordSection({ report, rows, rankingOnly, onToggle, query, onQuery, o
     return { ...category, items, average }
   }).filter((group) => group.items.length)
   return (
-    <Section id="keywords" kicker="03" title="SEO keywords">
+    <Section id="keywords" kicker="04" title="SEO keywords">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-slate-600">
           Showing {report.ranking} ranking of {report.tracked} tracked
@@ -389,10 +446,10 @@ function KeywordTable({ rows }) {
 function AiSection({ ai }) {
   if (!ai?.connected) {
     return (
-      <Section id="ai" kicker="04" title="AI visibility">
+      <Section id="ai" kicker="05" title="AI visibility">
         <EmptyPanel title="AI visibility is not connected." testId="ai-empty">
           {ai?.reason === 'not_configured'
-            ? 'The same OPENSEO_API_KEY reads the Brandastic AI tracker. No mention rate is shown until that read succeeds.'
+            ? 'Missing environment variable: OPENSEO_API_KEY. Add it on the Vercel project brandastic-co and redeploy. No mention rate is shown until that key is set.'
             : 'OpenSEO did not return AI visibility. Unchecked prompts are not marked as misses.'}
         </EmptyPanel>
       </Section>
@@ -400,7 +457,7 @@ function AiSection({ ai }) {
   }
   const checked = (ai.prompts || []).some((prompt) => (prompt.engines || []).length)
   return (
-    <Section id="ai" kicker="04" title="AI visibility">
+    <Section id="ai" kicker="05" title="AI visibility">
       <div className="grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
         <Card title="Mention rate" info={ai.trendStatus === 'comparable' ? 'Change versus the previous OpenSEO period.' : 'No earlier period to compare yet.'}>
           {checked || ai.score != null ? <Gauge value={ai.score} label="Brand mentions" /> : <EmptyPanel title="Not checked yet">Prompts are listed, and each engine stays blank until a stored answer exists.</EmptyPanel>}

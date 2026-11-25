@@ -257,6 +257,55 @@ export function Heatmap({ prompts }) {
   )
 }
 
+const SLICE_COLORS = ['#F7931E', '#00AEEF', '#00D4AA', '#8B5CF6', '#FF6B6B', '#FBBF24', '#1A1A2E', '#94A3B8']
+
+export function TimeSeriesChart({ series, label = 'Sessions' }) {
+  const rows = (series || []).filter((row) => row.date && row.sessions != null)
+  if (rows.length < 2) return <EmptyPanel title="No sessions trend">A chart appears when Google Analytics returns at least two days.</EmptyPanel>
+  const width = 640
+  const height = 200
+  const pad = { l: 28, r: 12, t: 16, b: 28 }
+  const max = Math.max(...rows.map((row) => row.sessions), 1)
+  const x = (index) => pad.l + (index / (rows.length - 1)) * (width - pad.l - pad.r)
+  const y = (value) => pad.t + (1 - value / max) * (height - pad.t - pad.b)
+  const line = rows.map((row, index) => `${index ? 'L' : 'M'} ${x(index)} ${y(row.sessions)}`).join(' ')
+  const area = `${line} L ${x(rows.length - 1)} ${height - pad.b} L ${x(0)} ${height - pad.b} Z`
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="h-52 w-full" role="img" aria-label={label}>
+      <path d={area} fill="#F7931E" opacity="0.18" />
+      <path d={line} fill="none" stroke="#F7931E" strokeWidth="3" />
+    </svg>
+  )
+}
+
+export function SliceDonut({ slices, caption }) {
+  const rows = (slices || []).filter((slice) => slice.value > 0)
+  const total = rows.reduce((sum, slice) => sum + slice.value, 0)
+  if (!total) return <EmptyPanel title="No channel mix">Channel share appears when Google Analytics returns sessions.</EmptyPanel>
+  const radius = 42
+  const circ = 2 * Math.PI * radius
+  let offset = 0
+  return (
+    <div className="flex flex-wrap items-center gap-4">
+      <svg width="140" height="140" viewBox="0 0 140 140" role="img" aria-label={caption || 'Channel share'}>
+        {rows.map((slice, index) => {
+          const length = (slice.value / total) * circ
+          const dash = `${length} ${circ - length}`
+          const node = (
+            <circle key={slice.label} cx="70" cy="70" r={radius} fill="none" stroke={SLICE_COLORS[index % SLICE_COLORS.length]} strokeWidth="16" strokeDasharray={dash} strokeDashoffset={-offset} transform="rotate(-90 70 70)">
+              <title>{`${slice.label}: ${slice.value}`}</title>
+            </circle>
+          )
+          offset += length
+          return node
+        })}
+        <text x="70" y="74" textAnchor="middle" fontSize="13" fontWeight="700" fill="#0f172a">{caption || ''}</text>
+      </svg>
+      <Legend items={rows.slice(0, 6).map((slice, index) => ({ label: slice.label, color: SLICE_COLORS[index % SLICE_COLORS.length] }))} />
+    </div>
+  )
+}
+
 export function KeywordSpark({ history }) {
   const points = (history || []).filter((point) => point.position != null).map((point) => point.position)
   if (points.length < 2) return <span className="text-[11px] text-slate-400">No history</span>

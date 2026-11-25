@@ -6,11 +6,22 @@ export const DEFAULT_TRACKER_ID = '679c3842-3d4c-4ede-967d-a9434b5c61dd'
 
 const cache = new Map()
 
+const GA4_TOOLS = new Set([
+  'get_google_analytics_organic_overview',
+  'get_google_analytics_traffic_acquisition',
+  'get_google_analytics_page_performance',
+  'get_google_analytics_key_events',
+  'get_google_analytics_audience_breakdown',
+  'get_google_analytics_organic_landing_pages',
+])
+
 export function openseoConfig(env = {}) {
   const apiKey = String(env.OPENSEO_API_KEY || '').trim()
+  const base = String(env.OPENSEO_API_BASE || DEFAULT_OPENSEO_BASE).replace(/\/$/, '')
   return {
     apiKey,
-    base: String(env.OPENSEO_API_BASE || DEFAULT_OPENSEO_BASE).replace(/\/$/, ''),
+    base,
+    mcpUrl: String(env.OPENSEO_MCP_URL || (base.endsWith('/api') ? `${base.slice(0, -4)}/mcp` : `${base}/mcp`)).replace(/\/$/, ''),
     projectId: String(env.OPENSEO_PROJECT_ID || DEFAULT_PROJECT_ID).trim(),
     trackerId: String(env.OPENSEO_RANK_TRACKER_ID || DEFAULT_TRACKER_ID).trim(),
     configured: Boolean(apiKey),
@@ -75,4 +86,54 @@ export function readEstimate(payload) {
 function number(value) {
   const parsed = typeof value === 'string' ? Number(value) : value
   return typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : null
+}
+
+export function parseMcpPayload(raw) {
+  const text = String(raw || '').trim()
+  if (!text) return null
+  if (text.startsWith('{') || text.startsWith('[')) {
+    try { return JSON.parse(text) } catch { return null }
+  }
+  const messages = text.split('\n').filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trim()).filter((line) => line && line !== '[DONE]')
+  const last = messages.at(-1)
+  if (!last) return null
+  try { return JSON.parse(last) } catch { return null }
+}
+
+export function readMcpToolResult(payload) {
+  const result = payload?.result && typeof payload.result === 'object' ? payload.result : payload
+  const structured = result?.structuredContent
+  if (structured && typeof structured === 'object') return structured
+  return null
+}
+
+export async function openseoTool(config, name, args, { fetchImpl = fetch, cacheMs = 0, now = Date.now() } = {}) {
+  if (!GA4_TOOLS.has(name)) {
+    const error = new Error('tool_not_allowed')
+    error.code = 'tool_not_allowed'
+    throw error
+  }
+  if (!config?.configured) {
+    const error = new Error('not_configured')
+    error.code = 'not_configured'
+    throw error
+  }
+  const cacheKey = `MCP ${name} ${JSON.stringify(args)}`
+  if (cacheMs > 0) {
+    const hit = cache.get(cacheKey)
+    if (hit && hit.expires > now) return hit.value
+  }
+  const response = await fetchImpl(config.mcpUrl, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json, text/event-stream',
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${config.apiKey}`,
+    },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }),
+  })
+  const raw = await response.text()
+  const value = { status: response.status, payload: parseMcpPayload(raw) }
+  if (response.ok && cacheMs > 0) cache.set(cacheKey, { expires: now + cacheMs, value })
+  return value
 }

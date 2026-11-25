@@ -29,6 +29,164 @@ function round1(value) {
   return value == null ? null : Math.round(value * 10) / 10
 }
 
+export function emptyGa4(reason) {
+  return {
+    connected: false,
+    reason,
+    property: null,
+    users: null,
+    sessions: null,
+    engagedSessions: null,
+    keyEvents: null,
+    previous: null,
+    series: [],
+    channels: [],
+    pages: [],
+    devices: [],
+    countries: [],
+    events: [],
+  }
+}
+
+function ga4Date(value) {
+  const raw = text(value)
+  if (!raw) return null
+  if (/^\d{8}$/.test(raw)) return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`
+  return raw.slice(0, 10)
+}
+
+function metric(row, key) {
+  if (!row || typeof row !== 'object') return null
+  const direct = num(row[key])
+  if (direct != null) return direct
+  const nested = row.metrics?.[key]
+  if (nested && typeof nested === 'object') return num(nested.current ?? nested.value)
+  return num(nested)
+}
+
+function previousMetric(row, key) {
+  const nested = row?.metrics?.[key]
+  if (nested && typeof nested === 'object') return num(nested.previous)
+  return null
+}
+
+function labelOf(row, keys) {
+  const host = text(row?.hostName) || text(row?.dimensions?.hostName)
+  const path = text(row?.pagePath) || text(row?.landingPage) || text(row?.dimensions?.pagePath) || text(row?.dimensions?.landingPage)
+  if (host && path) return `${host}${path.startsWith('/') ? path : `/${path}`}`
+  for (const key of keys) {
+    const value = text(row?.[key]) || text(row?.dimensions?.[key])
+    if (value) return value
+  }
+  return host || path || null
+}
+
+function reportRows(data) {
+  if (!data || data.status === 'error') return []
+  if (Array.isArray(data.rows)) return data.rows
+  if (Array.isArray(data.trend)) return data.trend
+  return []
+}
+
+export function ga4ErrorCode(data) {
+  if (!data || typeof data !== 'object') return null
+  return text(data.error?.code) || text(data.code) || (data.status === 'error' ? 'ga4_unavailable' : null)
+}
+
+export function normalizeGa4({ overview, channels, pages, events, devices, countries } = {}) {
+  const parts = [overview, channels, pages, events, devices, countries].filter(Boolean)
+  const codes = parts.map(ga4ErrorCode).filter(Boolean)
+  if (codes.some((code) => code === 'ga4_not_connected' || code === 'ga4_property_inaccessible' || code === 'ga4_reconnect_required')) {
+    return emptyGa4('ga4_not_connected')
+  }
+  if (!overview && !channels) return emptyGa4('unavailable')
+  const current = overview?.current || overview?.totals || null
+  const previousRow = overview?.previous || overview?.prevTotals || null
+  const channelRows = reportRows(channels)
+  const compared = Array.isArray(channels?.comparison?.rows) ? channels.comparison.rows : []
+  const sum = (rows, key) => {
+    let total = 0
+    let seen = false
+    for (const row of rows) {
+      const value = metric(row, key)
+      if (value != null) {
+        total += value
+        seen = true
+      }
+    }
+    return seen ? total : null
+  }
+  const sumPrevious = (key) => {
+    let total = 0
+    let seen = false
+    for (const row of compared) {
+      const value = previousMetric(row, key)
+      if (value != null) {
+        total += value
+        seen = true
+      }
+    }
+    return seen ? total : null
+  }
+  const users = sum(channelRows, 'activeUsers') ?? metric(current, 'activeUsers')
+  const sessions = sum(channelRows, 'sessions') ?? metric(current, 'sessions')
+  const engagedSessions = sum(channelRows, 'engagedSessions') ?? metric(current, 'engagedSessions')
+  const keyEvents = sum(channelRows, 'keyEvents') ?? metric(current, 'keyEvents')
+  const previous = {
+    users: sumPrevious('activeUsers') ?? metric(previousRow, 'activeUsers'),
+    sessions: sumPrevious('sessions') ?? metric(previousRow, 'sessions'),
+    engagedSessions: sumPrevious('engagedSessions') ?? metric(previousRow, 'engagedSessions'),
+    keyEvents: sumPrevious('keyEvents') ?? metric(previousRow, 'keyEvents'),
+  }
+  const series = (Array.isArray(overview?.trend) ? overview.trend : []).map((row) => ({
+    date: ga4Date(row.date || row.dimensions?.date),
+    sessions: metric(row, 'sessions'),
+    users: metric(row, 'activeUsers'),
+    engagedSessions: metric(row, 'engagedSessions'),
+    keyEvents: metric(row, 'keyEvents'),
+  })).filter((row) => row.date)
+  const channelsOut = channelRows.map((row) => ({
+    label: labelOf(row, ['sessionDefaultChannelGroup', 'channel']),
+    sessions: metric(row, 'sessions') ?? 0,
+    users: metric(row, 'activeUsers'),
+    keyEvents: metric(row, 'keyEvents'),
+  })).filter((row) => row.label).slice(0, 12)
+  const pagesOut = reportRows(pages).map((row) => ({
+    label: labelOf(row, ['pagePath', 'landingPage', 'page']),
+    value: metric(row, 'screenPageViews') ?? metric(row, 'sessions') ?? 0,
+  })).filter((row) => row.label).slice(0, 8)
+  const devicesOut = reportRows(devices).map((row) => ({
+    label: labelOf(row, ['deviceCategory', 'device']),
+    value: metric(row, 'sessions') ?? metric(row, 'activeUsers') ?? 0,
+  })).filter((row) => row.label)
+  const countriesOut = reportRows(countries).map((row) => ({
+    label: labelOf(row, ['country']),
+    value: metric(row, 'sessions') ?? metric(row, 'activeUsers') ?? 0,
+  })).filter((row) => row.label).slice(0, 8)
+  const eventsOut = reportRows(events).map((row) => ({
+    label: labelOf(row, ['eventName', 'event']),
+    value: metric(row, 'keyEvents') ?? 0,
+  })).filter((row) => row.label).slice(0, 8)
+  const connected = users != null || sessions != null || series.length > 0 || channelsOut.length > 0
+  if (!connected) return emptyGa4(codes.length ? 'unavailable' : 'ga4_not_connected')
+  return {
+    connected: true,
+    reason: null,
+    property: text(overview?.source?.propertyDisplayName) || text(overview?.source?.propertyId),
+    users,
+    sessions,
+    engagedSessions,
+    keyEvents,
+    previous,
+    series,
+    channels: channelsOut,
+    pages: pagesOut,
+    devices: devicesOut,
+    countries: countriesOut,
+    events: eventsOut,
+  }
+}
+
 export function emptySearch(reason) {
   return {
     connected: false,
