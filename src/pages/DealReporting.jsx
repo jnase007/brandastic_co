@@ -41,6 +41,7 @@ export default function DealReporting({ previewRows = null, previewNow = null } 
             now={now}
             focus={focus}
             onFocus={setFocus}
+            overview
           />
         )}
       </div>

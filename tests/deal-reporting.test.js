@@ -25,6 +25,7 @@ import {
   stalledByStage,
   wonLostOverTime,
 } from '../src/lib/dealReports.js'
+import { buildDealReportVisual } from '../src/lib/dealReportVisuals.js'
 
 const NOW = '2026-06-10'
 const leads = JSON.parse(readFileSync(new URL('./fixtures/deal-reporting.json', import.meta.url), 'utf8'))
@@ -168,5 +169,66 @@ describe('deal reports', () => {
     assert.equal(kpis.cycle.enough, false)
     assert.equal(kpis.wonThisMonthChange, null)
     assert.equal(reportingKpis([], { monthView: '6', now: NOW }).winRate, null)
+  })
+})
+
+describe('deal report visuals', () => {
+  it('builds pipeline value, rates, and charts from stored deal fields', () => {
+    const visual = buildDealReportVisual(leads, { monthView: 'all', now: NOW })
+    assert.equal(visual.openValue, 22400)
+    assert.equal(visual.weightedValue, 12570)
+    assert.equal(visual.winRate, 50)
+    assert.equal(visual.newDeals, 12)
+    assert.equal(visual.averageDealSize, 3600)
+    assert.equal(visual.meetingRate, 28.6)
+    assert.equal(visual.meetings, 7)
+    assert.equal(visual.meetingsClosed, 2)
+    assert.equal(visual.wonCount, 2)
+    assert.equal(visual.lostCount, 2)
+    assert.equal(visual.wonValue, 7200)
+    assert.equal(visual.lostValue, 1800)
+    assert.equal(visual.previous, null)
+    assert.equal(visual.stages.find((stage) => stage.id === 'proposal').value, 5700)
+    assert.equal(visual.stages.find((stage) => stage.id === 'lead').count, 3)
+    assert.deepEqual(visual.owners.map((row) => [row.label, row.value, row.count]), [['Justin', 13700, 3], ['Erin', 8700, 5]])
+    assert.equal(visual.sources[0].label, 'Referral')
+    assert.equal(visual.sources[0].value, 8900)
+    assert.deepEqual(visual.lostReasons, [{ reason: 'Budget', count: 1 }])
+    assert.equal(visual.lostWithoutReason, 1)
+    assert.equal(visual.hasLostReasons, true)
+    assert.equal(visual.series.openValue[0], 4800)
+    assert.deepEqual(visual.activity.map((month) => [month.created, month.won, month.lost]).slice(0, 6), [
+      [3, 0, 1],
+      [1, 1, 0],
+      [3, 0, 1],
+      [2, 1, 0],
+      [2, 0, 0],
+      [1, 0, 0],
+    ])
+  })
+
+  it('follows the lead-month filter and leaves a friendly gap when no lost reason is stored', () => {
+    const march = buildDealReportVisual(leads, { monthView: '3', now: NOW })
+    assert.equal(march.openValue, 1500)
+    assert.equal(march.weightedValue, 900)
+    assert.equal(march.winRate, 0)
+    assert.equal(march.newDeals, 3)
+    assert.equal(march.previous.openValue, 0)
+    assert.equal(march.previous.newDeals, 1)
+    assert.equal(march.previous.winRate, 100)
+    assert.equal(march.averageDealSize, null)
+    const unstored = buildDealReportVisual([
+      { pipeline_stage: 'lost', value_2026: 100, first_contact_date: '2026-01-01', source: 'Direct' },
+    ], { monthView: 'all' })
+    assert.equal(unstored.hasLostReasons, false)
+    assert.equal(unstored.lostWithoutReason, 1)
+    assert.equal(unstored.lostCount, 1)
+    assert.equal(unstored.openValue, 0)
+    const empty = buildDealReportVisual([], { monthView: 'all' })
+    assert.equal(empty.openValue, 0)
+    assert.equal(empty.newDeals, 0)
+    assert.equal(empty.winRate, null)
+    assert.equal(empty.meetingRate, null)
+    assert.equal(empty.stages.every((stage) => stage.count === 0), true)
   })
 })
