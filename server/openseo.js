@@ -17,7 +17,9 @@ const GA4_TOOLS = new Set([
   'get_rank_tracker',
   'get_ai_visibility_tracker',
   'get_ai_visibility_results',
+  'get_ai_visibility_sources',
   'get_ai_visibility_trend',
+  'get_rank_history',
 ])
 
 export function openseoConfig(env = {}) {
@@ -108,8 +110,9 @@ export function parseMcpPayload(raw) {
 export function readMcpToolResult(payload) {
   const result = payload?.result && typeof payload.result === 'object' ? payload.result : payload
   const structured = result?.structuredContent
-  if (structured && typeof structured === 'object') return structured
-  return null
+  if (!structured || typeof structured !== 'object') return null
+  if (structured.status === 'success' && structured.data && typeof structured.data === 'object') return structured.data
+  return structured
 }
 
 export async function openseoTool(config, name, args, { fetchImpl = fetch, cacheMs = 0, now = Date.now() } = {}) {

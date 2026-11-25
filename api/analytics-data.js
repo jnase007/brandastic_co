@@ -13,6 +13,9 @@ export default async function handler(req, res) {
     method: req.method,
     token: tokenFrom(req),
     range: url.searchParams.get('range'),
+    start: url.searchParams.get('start'),
+    end: url.searchParams.get('end'),
+    compare: url.searchParams.get('compare'),
   })
   res.status(result.status).json(result.body)
 }

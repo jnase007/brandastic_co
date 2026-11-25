@@ -180,7 +180,14 @@ function analyticsPlugin(env) {
         const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')
         const result = rank
           ? await runRankCheckRequest(env, { method: req.method, token, action: url.searchParams.get('action'), runId: url.searchParams.get('runId') })
-          : await runAnalyticsRequest(env, { method: req.method, token, range: url.searchParams.get('range') })
+          : await runAnalyticsRequest(env, {
+            method: req.method,
+            token,
+            range: url.searchParams.get('range'),
+            start: url.searchParams.get('start'),
+            end: url.searchParams.get('end'),
+            compare: url.searchParams.get('compare'),
+          })
         res.statusCode = result.status
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify(result.body))

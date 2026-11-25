@@ -19,10 +19,16 @@ function init(method, access) {
   }
 }
 
-export async function fetchAnalytics(range = '28') {
+export async function fetchAnalytics(input = '30') {
   const access = await token()
   if (!access) return { status: 'unauthorized' }
-  const response = await fetch(`/api/analytics-data?range=${encodeURIComponent(range)}`, init('GET', access))
+  const query = typeof input === 'string' ? { range: input } : (input || {})
+  const params = new URLSearchParams()
+  params.set('range', query.range || '30')
+  if (query.compare) params.set('compare', query.compare)
+  if (query.start) params.set('start', query.start)
+  if (query.end) params.set('end', query.end)
+  const response = await fetch(`/api/analytics-data?${params.toString()}`, init('GET', access))
   if (response.status === 401) return { status: 'unauthorized' }
   if (response.status === 403) {
     const body = await response.json().catch(() => null)

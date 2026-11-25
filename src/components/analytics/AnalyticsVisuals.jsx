@@ -1,4 +1,5 @@
 import { Sparkline } from '../Charts'
+import { rankMeaning, rankSummary } from '../../lib/rankPages'
 
 export const BRAND = {
   orange: '#F7931E',
@@ -45,7 +46,27 @@ export function Trend({ current, previous, invert = false, suffix = '' }) {
   )
 }
 
-export function KpiCard({ label, value, hint, current, previous, invert, series, color = BRAND.orange, testId }) {
+export function PercentChange({ current, previous, invert = false }) {
+  const currentNumber = Number(current)
+  const previousNumber = Number(previous)
+  if (current == null || previous == null || !Number.isFinite(currentNumber) || !Number.isFinite(previousNumber) || previousNumber === 0) {
+    return <span className="text-xs font-medium text-slate-400">No comparison</span>
+  }
+  const pct = ((currentNumber - previousNumber) / previousNumber) * 100
+  if (!Number.isFinite(pct)) return <span className="text-xs font-medium text-slate-400">No comparison</span>
+  const better = invert ? pct < 0 : pct > 0
+  const worse = invert ? pct > 0 : pct < 0
+  const tone = !pct ? 'bg-slate-100 text-slate-600' : better ? 'bg-emerald-50 text-emerald-700' : worse ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-600'
+  const arrow = !pct ? '●' : pct > 0 ? '▲' : '▼'
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${tone}`}>
+      <span aria-hidden="true">{arrow}</span>
+      {Math.abs(pct).toFixed(1)}%
+    </span>
+  )
+}
+
+export function KpiCard({ label, value, hint, current, previous, invert, series, color = BRAND.orange, testId, mode }) {
   return (
     <article className="flex min-h-[148px] flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" data-testid={testId}>
       <div className="flex items-start justify-between gap-3">
@@ -56,7 +77,7 @@ export function KpiCard({ label, value, hint, current, previous, invert, series,
         {series?.length ? <Sparkline data={series} width={84} height={36} color={color} /> : <span className="h-9 w-16" />}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Trend current={current} previous={previous} invert={invert} />
+        {mode === 'percent' ? <PercentChange current={current} previous={previous} invert={invert} /> : <Trend current={current} previous={previous} invert={invert} />}
         {hint ? <span className="text-[11px] text-slate-400">{hint}</span> : null}
       </div>
     </article>
@@ -175,10 +196,75 @@ export function DualAxisChart({ series }) {
   )
 }
 
+export function rankTone(position) {
+  if (position == null || position > 40) return 'bg-slate-200 text-slate-600'
+  if (position <= 3) return 'bg-emerald-600 text-white'
+  if (position <= 10) return 'bg-[#00D4AA] text-[#1A1A2E]'
+  if (position <= 20) return 'bg-amber-500 text-white'
+  return 'bg-[#F7931E] text-white'
+}
+
+export function GoogleRank({ position, change, previous }) {
+  const ranked = position != null && position > 0 && position <= 40
+  const amount = change == null ? null : Math.abs(Number(change))
+  const improved = Number(change) > 0
+  const dropped = Number(change) < 0
+  const changeText = amount == null || previous == null
+    ? ''
+    : Number(change) === 0
+      ? `same as #${formatPosition(previous)}`
+      : `${improved ? '▲' : '▼'}${amount} from #${formatPosition(previous)}`
+  const meaning = rankMeaning(ranked ? position : null)
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className={`inline-flex min-h-[2.5rem] min-w-[4.75rem] items-center justify-center rounded-xl px-3 py-1.5 text-lg font-bold tabular-nums ${ranked ? '' : 'min-w-[7.5rem] text-sm'} ${rankTone(ranked ? position : null)}`} title={ranked ? `Google position ${position}. ${meaning}` : meaning}>
+        {ranked ? `#${formatPosition(position)}` : 'Not ranking'}
+      </span>
+      <span className="flex flex-col">
+        <span className="text-xs font-semibold text-slate-700">{meaning}</span>
+        {changeText ? <span className={`text-xs font-semibold ${improved ? 'text-emerald-700' : dropped ? 'text-red-600' : 'text-slate-500'}`}>{changeText}</span> : null}
+      </span>
+    </div>
+  )
+}
+
+export function RankLegend() {
+  const items = [
+    { label: '#1–3 · Page 1, top 3', color: '#059669' },
+    { label: '#4–10 · Page 1', color: '#00D4AA' },
+    { label: '#11–20 · Page 2', color: '#f59e0b' },
+    { label: '#21–30 · Page 3', color: '#F7931E' },
+    { label: '#31–40 · Page 4', color: '#F7931E' },
+    { label: 'Not in top 4 pages', color: '#e2e8f0' },
+  ]
+  return (
+    <ul className="flex flex-wrap gap-3 text-xs text-slate-600" aria-label="Google rank colors">
+      {items.map((item) => (
+        <li key={item.label} className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full border border-slate-200" style={{ background: item.color }} />
+          {item.label}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+export function RankSummary({ rows }) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-5" aria-label="Keyword rank summary">
+      {rankSummary(rows).map((item) => (
+        <div key={item.id} className="rounded-2xl border border-slate-200 bg-white px-3 py-2" title={item.detail}>
+          <p className="text-2xl font-semibold tabular-nums text-slate-900">{formatCount(item.count)}</p>
+          <p className="text-xs font-semibold text-slate-700">{item.label}</p>
+          <p className="text-[11px] text-slate-400">{item.detail}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function PositionBadge({ position }) {
-  if (position == null) return <span className="text-sm text-slate-400">—</span>
-  const tone = position <= 3 ? 'bg-emerald-100 text-emerald-800' : position <= 10 ? 'bg-sky-100 text-sky-800' : position <= 20 ? 'bg-amber-100 text-amber-900' : 'bg-orange-100 text-orange-800'
-  return <span className={`inline-flex min-w-[2.25rem] justify-center rounded-full px-2 py-0.5 text-sm font-bold tabular-nums ${tone}`} title={`Google position ${position}`}>{formatPosition(position)}</span>
+  return <GoogleRank position={position} />
 }
 
 export function BucketBars({ rows }) {
@@ -259,22 +345,49 @@ export function Heatmap({ prompts }) {
 
 const SLICE_COLORS = ['#F7931E', '#00AEEF', '#00D4AA', '#8B5CF6', '#FF6B6B', '#FBBF24', '#1A1A2E', '#94A3B8']
 
-export function TimeSeriesChart({ series, label = 'Sessions' }) {
-  const rows = (series || []).filter((row) => row.date && row.sessions != null)
+export function TimeSeriesChart({ series, compare, label = 'Sessions', valueKey = 'sessions' }) {
+  const rows = (series || []).filter((row) => row.date && row[valueKey] != null)
+  const prior = (compare || []).filter((row) => row[valueKey] != null)
   if (rows.length < 2) return <EmptyPanel title="No sessions trend">A chart appears when Google Analytics returns at least two days.</EmptyPanel>
   const width = 640
   const height = 200
   const pad = { l: 28, r: 12, t: 16, b: 28 }
-  const max = Math.max(...rows.map((row) => row.sessions), 1)
-  const x = (index) => pad.l + (index / (rows.length - 1)) * (width - pad.l - pad.r)
+  const max = Math.max(...rows.map((row) => row[valueKey]), ...prior.map((row) => row[valueKey]), 1)
+  const xFor = (index, count) => pad.l + (index / (count - 1)) * (width - pad.l - pad.r)
   const y = (value) => pad.t + (1 - value / max) * (height - pad.t - pad.b)
-  const line = rows.map((row, index) => `${index ? 'L' : 'M'} ${x(index)} ${y(row.sessions)}`).join(' ')
-  const area = `${line} L ${x(rows.length - 1)} ${height - pad.b} L ${x(0)} ${height - pad.b} Z`
+  const line = rows.map((row, index) => `${index ? 'L' : 'M'} ${xFor(index, rows.length)} ${y(row[valueKey])}`).join(' ')
+  const area = `${line} L ${xFor(rows.length - 1, rows.length)} ${height - pad.b} L ${xFor(0, rows.length)} ${height - pad.b} Z`
+  const dashed = prior.length > 1 ? prior.map((row, index) => `${index ? 'L' : 'M'} ${xFor(index, prior.length)} ${y(row[valueKey])}`).join(' ') : ''
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="h-52 w-full" role="img" aria-label={label}>
       <path d={area} fill="#F7931E" opacity="0.18" />
       <path d={line} fill="none" stroke="#F7931E" strokeWidth="3" />
+      {dashed ? <path d={dashed} fill="none" stroke="#64748b" strokeWidth="2" strokeDasharray="5 4" /> : null}
     </svg>
+  )
+}
+
+export function MonthlyBars({ months }) {
+  const rows = (months || []).filter((row) => row.month)
+  const plotted = rows.filter((row) => row.sessions != null || row.clicks != null)
+  if (plotted.length < 2) return <EmptyPanel title="No monthly history">A bar appears when Google Analytics or Search Console returns more than one month.</EmptyPanel>
+  const maxSessions = Math.max(...rows.map((row) => row.sessions || 0), 1)
+  const maxClicks = Math.max(...rows.map((row) => row.clicks || 0), 1)
+  return (
+    <div className="overflow-x-auto" aria-label="Last 13 months of organic sessions and clicks">
+      <div className="flex min-w-[640px] items-end gap-2">
+        {rows.map((row) => (
+          <div key={row.month} className="flex flex-1 flex-col items-center gap-1">
+            <div className="flex h-28 items-end gap-0.5">
+              <span className="w-2 rounded-sm bg-[#F7931E]" style={{ height: row.sessions == null ? 0 : `${Math.max((row.sessions / maxSessions) * 100, row.sessions ? 6 : 0)}%` }} title={row.sessions == null ? `${row.month} sessions unavailable` : `${row.month}: ${row.sessions} organic sessions`} />
+              <span className="w-2 rounded-sm bg-[#00AEEF]" style={{ height: row.clicks == null ? 0 : `${Math.max((row.clicks / maxClicks) * 100, row.clicks ? 6 : 0)}%` }} title={row.clicks == null ? `${row.month} clicks unavailable` : `${row.month}: ${row.clicks} clicks`} />
+            </div>
+            <span className="text-[10px] text-slate-500">{row.month.slice(5)}</span>
+            <span className="text-[10px] tabular-nums text-slate-600">{row.sessions == null ? '—' : formatCount(row.sessions)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
