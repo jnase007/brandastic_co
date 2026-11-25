@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import {
   DualAxisChart,
   EmptyPanel,
+  Gauge,
   GoogleRank,
   HorizontalBars,
   KpiCard,
@@ -19,6 +20,7 @@ import {
 import { estimateRankCheck, fetchAnalytics, rankCheckStatus, startRankCheck } from '../lib/analyticsApi'
 import { ANALYTICS_RANGES, COMPARE_MODES } from '../lib/analyticsRange'
 import { KEYWORD_CATEGORIES } from '../lib/keywordCategoryLabels'
+import { engineAppearances, groupAiPrompts, promptMentioned } from '../lib/aiCards'
 import { averageRank, isRankingKeyword } from '../lib/rankPages'
 
 function ctr(value) {
@@ -379,8 +381,43 @@ function KeywordList({ report, check, onRefresh }) {
   )
 }
 
+function EngineChip({ engine }) {
+  if (engine.appears === true) {
+    return <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white">{engine.engine} {engine.rank == null ? 'Mentioned' : `#${engine.rank}`}</span>
+  }
+  if (engine.appears === false) {
+    return <span className="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600">{engine.engine} · Not mentioned</span>
+  }
+  const label = engine.answerStatus === 'no_answer' ? 'No answer' : 'Not checked'
+  return <span className="inline-flex items-center rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-500">{engine.engine} · {label}</span>
+}
+
+function PromptCard({ card }) {
+  return (
+    <article className="rounded-xl border border-slate-200 bg-white p-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h4 className="text-sm font-semibold text-slate-900">{card.prompt}</h4>
+        {card.topic ? <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">{card.topic}</span> : null}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {card.engines.length ? card.engines.map((engine) => <EngineChip key={`${card.id}-${engine.engine}`} engine={engine} />) : <span className="inline-flex items-center rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-500">Not checked</span>}
+      </div>
+      {card.citedUrls.length ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {card.citedUrls.map((url) => <ExternalLink key={url} href={url} className="max-w-full truncate text-xs" />)}
+        </div>
+      ) : null}
+      {card.competitors.length ? (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {card.competitors.map((name) => <span key={name} className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-800">{name}</span>)}
+        </div>
+      ) : null}
+    </article>
+  )
+}
+
 function AiList({ ai }) {
-  const [showBlank, setShowBlank] = useState(false)
+  const [showPaused, setShowPaused] = useState(false)
   const [showVoices, setShowVoices] = useState(false)
   const [opened, setOpened] = useState(null)
   if (!ai?.connected) {
@@ -390,17 +427,18 @@ function AiList({ ai }) {
       </Section>
     )
   }
-  const prompts = ai.prompts || []
-  const answered = prompts.filter((row) => row.appears != null)
-  const blank = prompts.filter((row) => row.appears == null)
-  const visible = showBlank ? prompts : answered
+  const cards = groupAiPrompts(ai.prompts)
+  const paused = cards.filter((card) => card.paused)
+  const visible = (showPaused ? cards : cards.filter((card) => !card.paused)).slice().sort((a, b) => Number(promptMentioned(b)) - Number(promptMentioned(a)) || a.prompt.localeCompare(b.prompt))
   const topics = []
-  for (const row of visible) {
-    const topic = row.topic || 'Other'
+  for (const card of visible) {
+    const topic = card.topic || 'Other'
     const group = topics.find((item) => item.topic === topic)
-    if (group) group.items.push(row)
-    else topics.push({ topic, items: [row] })
+    if (group) group.items.push(card)
+    else topics.push({ topic, items: [card], mentioned: 0 })
   }
+  topics.forEach((group) => { group.mentioned = group.items.filter(promptMentioned).length })
+  topics.sort((a, b) => b.mentioned - a.mentioned || a.topic.localeCompare(b.topic))
   const firstTopic = topics[0]?.topic
   const isOpen = (topic) => (opened == null ? topic === firstTopic : opened.has(topic))
   const toggle = (topic) => {
@@ -413,11 +451,19 @@ function AiList({ ai }) {
   }
   const voices = (ai.voices || []).slice().sort((a, b) => (b.mentions || 0) - (a.mentions || 0) || Number(b.own) - Number(a.own))
   const voiced = voices.filter((row) => row.mentions > 0)
-  const quietVoices = voices.length - voiced.length
-  const shownVoices = showVoices ? voices : voiced.slice(0, 6)
+  const shownVoices = showVoices ? voices : (voiced.length ? voiced : voices).slice(0, 6)
   const totalMentions = voices.reduce((sum, row) => sum + (row.mentions || 0), 0)
+  const engines = engineAppearances(visible)
   return (
     <Section id="ai" title="AI visibility rankings">
+      <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <Card title="Mention rate" info="Share of stored answers that mention Brandastic.">
+          <Gauge value={ai.score} label="Mention rate" />
+        </Card>
+        <Card title="Where Brandastic appears" info="Prompts in which Brandastic is mentioned, by engine.">
+          {engines.length ? <HorizontalBars rows={engines.map((row) => ({ label: row.label, value: row.value, display: formatCount(row.value) }))} color="#00D4AA" /> : <p className="text-sm text-slate-500">No engine has mentioned Brandastic in this run.</p>}
+        </Card>
+      </div>
       {shownVoices.length ? (
         <Card title="Share of voice" info="Mentions in the latest stored run.">
           <HorizontalBars rows={shownVoices.map((row) => ({ label: row.name, value: row.mentions, display: share(row.mentions, totalMentions), color: row.own ? '#F7931E' : '#00AEEF' }))} />
@@ -426,44 +472,22 @@ function AiList({ ai }) {
               Show {formatCount(voices.length - shownVoices.length)} more brands
             </button>
           ) : null}
-          {showVoices && quietVoices ? (
-            <button type="button" onClick={() => setShowVoices(false)} className="mt-2 text-sm font-semibold text-[#1644ED] hover:underline">
-              Hide brands with no mentions
-            </button>
-          ) : null}
         </Card>
       ) : null}
-      {blank.length ? (
-        <button type="button" onClick={() => setShowBlank((value) => !value)} className="text-sm font-semibold text-[#1644ED] hover:underline" aria-expanded={showBlank}>
-          {showBlank ? `Hide ${formatCount(blank.length)} prompts with no results` : `Show ${formatCount(blank.length)} prompts with no results`}
+      {paused.length ? (
+        <button type="button" onClick={() => setShowPaused((value) => !value)} className="text-sm font-semibold text-[#1644ED] hover:underline" aria-expanded={showPaused}>
+          {showPaused ? `Hide paused (${formatCount(paused.length)})` : `Show paused (${formatCount(paused.length)})`}
         </button>
       ) : null}
       {topics.map((group) => (
-        <div key={group.topic} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <button type="button" aria-expanded={isOpen(group.topic)} onClick={() => toggle(group.topic)} className="flex w-full items-center justify-between gap-3 bg-slate-50 px-4 py-2 text-left">
+        <div key={group.topic} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+          <button type="button" aria-expanded={isOpen(group.topic)} onClick={() => toggle(group.topic)} className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left">
             <span className="text-sm font-semibold text-slate-900">{group.topic}</span>
-            <span className="text-xs font-medium text-slate-500">{formatCount(group.items.length)}</span>
+            <span className="text-xs font-medium text-slate-500">{formatCount(group.mentioned)} mentioned · {formatCount(group.items.length)}</span>
           </button>
           {isOpen(group.topic) ? (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="text-[11px] uppercase tracking-wide text-slate-400">
-                  <tr>{['Prompt', 'Mentioned', 'Rank', 'Cited URL', 'Engine', 'Competitors', 'Checked'].map((label) => <th key={label} className="px-3 py-2">{label}</th>)}</tr>
-                </thead>
-                <tbody>
-                  {group.items.map((row) => (
-                    <tr key={row.id} className="border-t border-slate-100">
-                      <td className="max-w-[280px] px-3 py-2 font-medium text-slate-900">{row.prompt}{row.paused ? ' · paused' : ''}</td>
-                      <td className="px-3 py-2">{row.appears == null ? 'Not checked' : row.appears ? 'Yes' : 'No'}</td>
-                      <td className="px-3 py-2">{row.rank == null ? '—' : row.rank}</td>
-                      <td className="max-w-[220px] px-3 py-2"><ExternalLink href={row.citedUrl} className="block truncate text-sm" /></td>
-                      <td className="px-3 py-2">{row.engine || '—'}</td>
-                      <td className="px-3 py-2 text-slate-600">{(row.competitors || []).join(', ') || '—'}</td>
-                      <td className="px-3 py-2 text-slate-500">{row.checkedAt ? new Date(row.checkedAt).toLocaleDateString() : '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-2 px-3 pb-3">
+              {group.items.map((card) => <PromptCard key={card.id} card={card} />)}
             </div>
           ) : null}
         </div>

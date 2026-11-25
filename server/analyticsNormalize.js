@@ -283,6 +283,7 @@ export function aiRankingsFromResults({ tracker, rows, summaries, trend, citedUr
       topic: text(row.topic) || prompts.get(id)?.topic || '',
       paused: prompts.get(id)?.paused === true,
       engine: ENGINE_LABELS[engine] || engine,
+      answerStatus: row.answerStatus === 'no_answer' || row.answerStatus === 'failed' ? 'no_answer' : answered ? 'answered' : 'not_checked',
       appears: answered && own ? own.mentioned === true : null,
       rank: answered ? mentionRank(row.brands) : null,
       competitors: (row.brands || []).filter((brand) => !brand.own && (brand.mentioned || brand.cited)).map((brand) => text(brand.name)).filter(Boolean).slice(0, 8),

@@ -7,6 +7,7 @@ import { handleAnalytics } from '../server/analyticsHttp.js'
 import { cooldownDecision, startRankCheck } from '../server/analyticsRankCheck.js'
 import { salesSnapshot } from '../src/lib/analyticsSales.js'
 import { comparisonWindow, resolveAnalyticsRange } from '../src/lib/analyticsRange.js'
+import { engineAppearances, groupAiPrompts } from '../src/lib/aiCards.js'
 import { averageRank, isRankingKeyword, rankMeaning, rankSummary } from '../src/lib/rankPages.js'
 
 const JUSTIN = 'justin.sample@example.test'
@@ -218,6 +219,18 @@ describe('ai visibility normalize', () => {
     assert.equal(parsed.prompts[0].engine, 'ChatGPT')
     assert.equal(parsed.voices[0].mentions, 9)
     assert.equal(parsed.score, 9.3)
+    const cards = groupAiPrompts([
+      ...parsed.prompts,
+      { prompt: parsed.prompts[0].prompt, engine: 'Perplexity', appears: false, rank: null, answerStatus: 'answered', competitors: ['Finalsite'], citedUrl: null },
+      { prompt: 'paused prompt', topic: 'Education', paused: true, engine: 'ChatGPT', appears: null, answerStatus: 'not_checked' },
+      { prompt: 'unmentioned prompt', topic: 'SEO agency', engine: 'ChatGPT', appears: false, rank: null, answerStatus: 'answered' },
+    ])
+    assert.equal(cards.length, 3)
+    assert.equal(cards[0].prompt, parsed.prompts[0].prompt)
+    assert.equal(cards[0].engines.length, 2)
+    assert.deepEqual(cards[0].citedUrls, ['https://brandastic.com/'])
+    assert.equal(cards.filter((card) => card.paused).length, 2)
+    assert.deepEqual(engineAppearances(cards).map((row) => row.label), ['ChatGPT'])
   })
 
   it('does not treat a missing answer as a no', () => {
