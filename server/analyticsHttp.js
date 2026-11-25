@@ -1,10 +1,9 @@
 /* eslint-env node */
 import { createClient } from '@supabase/supabase-js'
 import { isAllowedEmail, parseAllowlist } from './billingGate.js'
-import { loadKeywordOverrides } from './keywordCategories.js'
-import { normalizeAi, normalizeKeywords, normalizeSearch, emptySearch, emptyGa4 } from './analyticsNormalize.js'
-import { loadGa4 } from './analyticsGa4.js'
-import { clearOpenseoCache, openseoConfig, openseoFetch } from './openseo.js'
+import { emptySearch, emptyGa4 } from './analyticsNormalize.js'
+import { loadOpenSeo } from './analyticsReads.js'
+import { clearOpenseoCache, openseoConfig } from './openseo.js'
 import { resolveAnalyticsRange } from '../src/lib/analyticsRange.js'
 
 const CACHE_MS = 120000
@@ -50,15 +49,6 @@ function disconnected(reason) {
   }
 }
 
-async function safeGet(config, path, options) {
-  try {
-    return await openseoFetch(config, path, options)
-  } catch (error) {
-    if (error?.code === 'not_configured') throw error
-    return { status: 0, payload: null }
-  }
-}
-
 export async function loadAnalytics(env, rangeId, options = {}) {
   const now = options.now || new Date()
   const range = resolveAnalyticsRange(rangeId, now)
@@ -66,30 +56,14 @@ export async function loadAnalytics(env, rangeId, options = {}) {
   if (!config.configured) {
     return { range, fetchedAt: now.toISOString(), ...disconnected('not_configured') }
   }
-  const fetchImpl = options.fetchImpl || fetch
-  const cacheMs = options.cacheMs ?? CACHE_MS
-  const request = (path) => safeGet(config, path, { fetchImpl, cacheMs, now: now.getTime() })
-  const device = 'mobile'
-  const [report, queries, pages, tracker, aiSettings, aiResults] = await Promise.all([
-    request(`/projects/${config.projectId}/search-performance?range=${range.openseo}`),
-    request(`/projects/${config.projectId}/search-performance/table?range=${range.openseo}&dimension=query&size=25&page=1`),
-    request(`/projects/${config.projectId}/search-performance/table?range=${range.openseo}&dimension=page&size=25&page=1`),
-    request(`/trackers/${config.trackerId}/results?device=${device}`),
-    request(`/projects/${config.projectId}/ai`),
-    request(`/projects/${config.projectId}/ai/results`),
-  ])
-  const ga4 = await loadGa4(config, range, { fetchImpl, cacheMs, now: now.getTime() })
-  const failed = [report, queries, pages, tracker, aiSettings, aiResults].every((item) => !item || item.status === 0 || item.status >= 400)
-  if (failed) return { range, fetchedAt: now.toISOString(), ...disconnected('unavailable'), ga4 }
-  const overrides = options.overrides || loadKeywordOverrides(options.overridesPath)
-  const search = report?.status >= 200 && report.status < 300 ? normalizeSearch(report.payload, queries?.payload, pages?.payload) : emptySearch('unavailable')
-  const keywords = tracker?.status >= 200 && tracker.status < 300
-    ? normalizeKeywords(tracker.payload, { device, overrides })
-    : { connected: false, reason: 'unavailable', rows: [], tracked: 0, ranking: 0, device, lastCheckedAt: null, runStatus: null }
-  const ai = aiSettings?.status >= 200 && aiSettings.status < 300
-    ? normalizeAi(aiSettings.payload, aiResults?.status >= 200 && aiResults.status < 300 ? aiResults.payload : null)
-    : { connected: false, reason: 'unavailable', score: null, trend: null, prompts: [], voices: [], citationRate: null, lastChecked: null }
-  return { range, fetchedAt: now.toISOString(), search, keywords, ai, ga4 }
+  const loaded = await loadOpenSeo(config, range, {
+    fetchImpl: options.fetchImpl,
+    cacheMs: options.cacheMs ?? CACHE_MS,
+    now: now.getTime(),
+    overrides: options.overrides,
+    overridesPath: options.overridesPath,
+  })
+  return { range, fetchedAt: now.toISOString(), ...loaded }
 }
 
 export async function handleAnalytics(env, token, rangeId, options = {}) {

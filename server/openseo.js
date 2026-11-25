@@ -13,6 +13,11 @@ const GA4_TOOLS = new Set([
   'get_google_analytics_key_events',
   'get_google_analytics_audience_breakdown',
   'get_google_analytics_organic_landing_pages',
+  'get_search_console_performance',
+  'get_rank_tracker',
+  'get_ai_visibility_tracker',
+  'get_ai_visibility_results',
+  'get_ai_visibility_trend',
 ])
 
 export function openseoConfig(env = {}) {
@@ -128,6 +133,7 @@ export async function openseoTool(config, name, args, { fetchImpl = fetch, cache
     headers: {
       Accept: 'application/json, text/event-stream',
       'Content-Type': 'application/json',
+      'MCP-Protocol-Version': '2025-03-26',
       Authorization: `Bearer ${config.apiKey}`,
     },
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }),
