@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { assignKeywordCategory } from '../server/keywordCategories.js'
-import { normalizeAi, normalizeGa4, normalizeKeywords, normalizeSearch } from '../server/analyticsNormalize.js'
-import { openseoTool } from '../server/openseo.js'
+import { aiRankingsFromResults, applyRankHistory, normalizeAi, normalizeGa4, normalizeKeywords, normalizeSearch } from '../server/analyticsNormalize.js'
+import { openseoTool, readMcpToolResult } from '../server/openseo.js'
 import { handleAnalytics } from '../server/analyticsHttp.js'
 import { cooldownDecision, startRankCheck } from '../server/analyticsRankCheck.js'
 import { salesSnapshot } from '../src/lib/analyticsSales.js'
-import { resolveAnalyticsRange } from '../src/lib/analyticsRange.js'
+import { comparisonWindow, resolveAnalyticsRange } from '../src/lib/analyticsRange.js'
+import { rankMeaning, rankSummary } from '../src/lib/rankPages.js'
 
 const JUSTIN = 'justin.sample@example.test'
 const SANDY = 'sandy.sample@example.test'
@@ -57,7 +58,100 @@ describe('rank rows', () => {
     assert.equal(parsed.rows.find((row) => row.keyword === 'what is tiktok').ranking, false)
     assert.equal(parsed.rows.find((row) => row.keyword === 'what is tiktok').position, null)
   })
+
+  it('fills a blank tracker position from the completed rank history', () => {
+    const parsed = normalizeKeywords({
+      rows: [
+        { trackingKeywordId: 'a', keyword: 'ad agency in orange county', searchVolume: 90, mobile: { position: null, checked: false } },
+      ],
+      run: { status: 'partial', errorMessage: 'Not checked: "ad agency in orange county".' },
+    })
+    const withHistory = applyRankHistory(parsed, {
+      device: 'mobile',
+      runs: [{ runId: 'run-1', checkedAt: '2026-11-21T21:31:00.000Z' }],
+      rows: [{
+        trackingKeywordId: 'a',
+        keyword: 'ad agency in orange county',
+        history: [
+          { checkedAt: '2026-11-21T21:31:00.000Z', position: 7, checked: true },
+          { checkedAt: '2026-11-21T17:06:00.000Z', position: 5, checked: true },
+        ],
+      }],
+    })
+    const row = withHistory.rows[0]
+    assert.equal(row.position, 7)
+    assert.equal(row.previousPosition, 5)
+    assert.equal(row.change, -2)
+    assert.equal(row.ranking, true)
+    assert.equal(row.checked, true)
+  })
 })
+
+describe('rank page labels', () => {
+  it('maps a Google position to the page it lands on', () => {
+    assert.equal(rankMeaning(1), 'Page 1, top 3')
+    assert.equal(rankMeaning(3), 'Page 1, top 3')
+    assert.equal(rankMeaning(4), 'Page 1')
+    assert.equal(rankMeaning(10), 'Page 1')
+    assert.equal(rankMeaning(11), 'Page 2')
+    assert.equal(rankMeaning(20), 'Page 2')
+    assert.equal(rankMeaning(21), 'Page 3')
+    assert.equal(rankMeaning(30), 'Page 3')
+    assert.equal(rankMeaning(31), 'Page 4')
+    assert.equal(rankMeaning(40), 'Page 4')
+    assert.equal(rankMeaning(null), 'Not in top 4 pages')
+  })
+
+  it('counts the summary buckets without overlap', () => {
+    const summary = rankSummary([
+      { position: 2 },
+      { position: 8 },
+      { position: 14 },
+      { position: 25 },
+      { position: 36 },
+      { position: null },
+    ])
+    assert.deepEqual(summary.map((item) => [item.label, item.count]), [
+      ['Page 1, top 3', 1],
+      ['Page 1', 1],
+      ['Page 2', 1],
+      ['Pages 3-4', 2],
+      ['Not ranking', 1],
+    ])
+  })
+})
+
+describe('organic comparison ranges', () => {
+  const now = new Date('2026-11-25T18:00:00.000Z')
+
+  it('uses the nine preset windows', () => {
+    assert.deepEqual(resolveAnalyticsRange('7', now), expectRange('7', 'Last 7 days', '2026-11-19', '2026-11-25'))
+    assert.equal(resolveAnalyticsRange('30', now).startDate, '2026-10-27')
+    assert.equal(resolveAnalyticsRange('60', now).days, 60)
+    assert.equal(resolveAnalyticsRange('this-month', now).startDate, '2026-11-01')
+    assert.equal(resolveAnalyticsRange('last-month', now).endDate, '2026-10-31')
+    assert.equal(resolveAnalyticsRange('ytd', now).startDate, '2026-01-01')
+    assert.equal(resolveAnalyticsRange('12', now).startDate, '2025-11-25')
+    assert.equal(resolveAnalyticsRange('custom', now, { start: '2026-10-01', end: '2026-10-15' }).days, 15)
+  })
+
+  it('compares a preset with the previous period, previous month, and last year', () => {
+    const range = resolveAnalyticsRange('30', now)
+    assert.equal(comparisonWindow(range, 'period').endDate, '2026-10-26')
+    assert.equal(comparisonWindow(range, 'month').startDate, '2026-09-27')
+    assert.equal(comparisonWindow(range, 'year').startDate, '2025-10-27')
+    assert.equal(comparisonWindow(range, 'year').endDate, '2025-11-25')
+  })
+})
+
+function expectRange(id, label, startDate, endDate) {
+  const range = resolveAnalyticsRange(id, new Date('2026-11-25T18:00:00.000Z'))
+  assert.equal(range.id, id)
+  assert.equal(range.label, label)
+  assert.equal(range.startDate, startDate)
+  assert.equal(range.endDate, endDate)
+  return range
+}
 
 describe('search console normalize', () => {
   it('returns an empty state instead of zeroes when Search Console is not connected', () => {
@@ -69,6 +163,51 @@ describe('search console normalize', () => {
 })
 
 describe('ai visibility normalize', () => {
+  it('reads prompts and answers wrapped by the OpenSEO success envelope', () => {
+    const tracker = readMcpToolResult({
+      result: {
+        structuredContent: {
+          status: 'success',
+          data: {
+            prompts: [{ id: 'p1', text: 'best school marketing agency in California', topic: 'Education', paused: true }],
+            recentRuns: [{ id: 'run-1', status: 'completed', trigger: 'manual' }],
+          },
+        },
+      },
+    })
+    const results = readMcpToolResult({
+      result: {
+        structuredContent: {
+          status: 'success',
+          data: {
+            rows: [{
+              id: 'obs-1',
+              promptId: 'p1',
+              prompt: 'best school marketing agency in California',
+              engine: 'chatgpt',
+              answerStatus: 'answered',
+              collectedAt: '2026-11-22T17:28:19.000Z',
+              brands: [
+                { name: 'Brandastic', own: true, mentioned: true, cited: true, firstMention: 14 },
+                { name: 'Finalsite', own: false, mentioned: true, cited: false, firstMention: 80 },
+              ],
+            }],
+            summaries: [{ name: 'Brandastic', mentions: 9, own: true }],
+          },
+        },
+      },
+    })
+    const parsed = aiRankingsFromResults({ tracker, rows: results.rows, summaries: results.summaries, trend: { mentions: { current: 9.3 }, citations: { current: 12.7 }, comparison: 'no_previous' }, citedUrls: { 'obs-1': 'https://brandastic.com/' } })
+    assert.equal(parsed.connected, true)
+    assert.equal(parsed.prompts.length, 1)
+    assert.equal(parsed.prompts[0].appears, true)
+    assert.equal(parsed.prompts[0].rank, 1)
+    assert.equal(parsed.prompts[0].citedUrl, 'https://brandastic.com/')
+    assert.equal(parsed.prompts[0].engine, 'ChatGPT')
+    assert.equal(parsed.voices[0].mentions, 9)
+    assert.equal(parsed.score, 9.3)
+  })
+
   it('does not treat a missing answer as a no', () => {
     const parsed = normalizeAi(
       { configured: true, tracker: { scheduleInterval: 'weekly' }, prompts: [{ id: 'p1', text: 'best school marketing agency in California', topic: 'Education', paused: true }] },

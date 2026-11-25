@@ -246,6 +246,7 @@ export function searchFromPerformance({ daily, queries, pages, previous } = {}) 
     totals: series.length ? totals : null,
     previous: previousTotals.length ? rollupSearch(previousTotals) : null,
     series,
+    compareSeries: previousTotals,
     queries: searchList(queries?.rows),
     pages: searchList(pages?.rows),
   }
@@ -259,45 +260,46 @@ function mentionRank(brands) {
   return index >= 0 ? index + 1 : null
 }
 
-export function aiRankingsFromResults({ tracker, rows, summaries, trend } = {}) {
+export function aiRankingsFromResults({ tracker, rows, summaries, trend, citedUrls } = {}) {
   const prompts = new Map()
   for (const prompt of tracker?.prompts || []) {
     const id = text(prompt.id)
     const promptText = text(prompt.text) || text(prompt.prompt)
     if (!id || !promptText) continue
-    prompts.set(id, {
-      id,
+    prompts.set(id, { prompt: promptText, topic: text(prompt.topic), paused: prompt.paused === true })
+  }
+  const list = []
+  for (const row of rows || []) {
+    const id = text(row.promptId) || text(row.id)
+    const promptText = text(row.prompt) || prompts.get(id)?.prompt
+    if (!promptText) continue
+    const engine = text(row.engine) || 'chatgpt'
+    const own = (row.brands || []).find((brand) => brand?.own)
+    const answered = row.answerStatus !== 'no_answer' && row.answerStatus !== 'failed'
+    const citedSource = (row.sources || []).find((source) => /brandastic\.com/i.test(`${source?.url || ''} ${source?.domain || ''}`))
+    list.push({
+      id: `${id || promptText}:${engine}:${text(row.id)}`,
       prompt: promptText,
-      topic: text(prompt.topic),
-      paused: prompt.paused === true,
-      engine: null,
-      appears: null,
-      rank: null,
-      competitors: [],
-      checkedAt: null,
+      topic: text(row.topic) || prompts.get(id)?.topic || '',
+      paused: prompts.get(id)?.paused === true,
+      engine: ENGINE_LABELS[engine] || engine,
+      appears: answered && own ? own.mentioned === true : null,
+      rank: answered ? mentionRank(row.brands) : null,
+      competitors: (row.brands || []).filter((brand) => !brand.own && (brand.mentioned || brand.cited)).map((brand) => text(brand.name)).filter(Boolean).slice(0, 8),
+      citedUrl: text(citedUrls?.[row.id]) || text(row.citedUrl) || text(row.citationUrl) || text(own?.citedUrl) || text(citedSource?.url) || (citedSource?.domain ? `https://${citedSource.domain}` : null),
+      checkedAt: text(row.collectedAt),
     })
   }
-  for (const row of rows || []) {
-    const id = text(row.promptId) || text(row.prompt)
-    const promptText = text(row.prompt) || id
-    if (!id || !promptText) continue
-    if (!prompts.has(id)) {
-      prompts.set(id, { id, prompt: promptText, topic: text(row.topic), paused: false, engine: null, appears: null, rank: null, competitors: [], checkedAt: null })
+  if (!list.length) {
+    for (const [id, prompt] of prompts) {
+      list.push({ id, ...prompt, engine: null, appears: null, rank: null, competitors: [], citedUrl: null, checkedAt: null })
     }
-    const item = prompts.get(id)
-    const own = (row.brands || []).find((brand) => brand?.own)
-    item.engine = text(row.engine) || item.engine
-    item.checkedAt = text(row.collectedAt) || item.checkedAt
-    item.appears = own ? Boolean(own.mentioned || own.cited) : item.appears
-    item.rank = mentionRank(row.brands)
-    item.competitors = (row.brands || []).filter((brand) => !brand.own && (brand.mentioned || brand.cited)).map((brand) => text(brand.name)).filter(Boolean).slice(0, 8)
   }
   const voices = (Array.isArray(summaries) ? summaries : []).map((item) => ({
     name: text(item.name) || text(item.domain),
     mentions: num(item.mentions) ?? 0,
     own: item.own === true,
   })).filter((item) => item.name)
-  const list = [...prompts.values()]
   const checked = list.some((item) => item.appears != null)
   return {
     connected: list.length > 0 || checked,
@@ -443,6 +445,56 @@ export function normalizeKeywords(payload, { device = 'mobile', overrides = {} }
     ranking: rows.filter((row) => row.ranking).length,
     lastCheckedAt: text(run?.lastCheckedAt) || text(run?.completedAt) || rows.find((row) => row.lastChecked)?.lastChecked || null,
     runStatus: text(run?.status),
+    rows,
+  }
+}
+
+export function applyRankHistory(report, history) {
+  const historyRows = Array.isArray(history?.rows) ? history.rows : []
+  if (!report?.connected || !historyRows.length) return report
+  const byId = new Map()
+  const byName = new Map()
+  for (const item of historyRows) {
+    const points = (Array.isArray(item.history) ? item.history : []).filter((point) => point?.checked === true)
+    const id = text(item.trackingKeywordId)
+    const name = text(item.keyword).toLowerCase()
+    if (id) byId.set(id, points)
+    if (name) byName.set(name, points)
+  }
+  const rows = report.rows.map((row) => {
+    const points = byId.get(row.id) || byName.get(String(row.keyword || '').toLowerCase())
+    if (!points) return row
+    const latest = points[0]
+    if (!latest) {
+      return { ...row, position: null, previousPosition: null, change: null, ranking: false, checked: false, history: [] }
+    }
+    const position = num(latest.position)
+    const previousPoint = points.slice(1).find((point) => num(point.position) != null)
+    const previousPosition = previousPoint ? num(previousPoint.position) : null
+    const ranking = position != null && position > 0 && position <= 40
+    const historyPoints = points.slice(0, 12).map((point) => ({
+      checkedAt: text(point.checkedAt),
+      position: num(point.position),
+      checked: true,
+    }))
+    const best = historyPoints.map((point) => point.position).filter((value) => value != null && value > 0)
+    return {
+      ...row,
+      position: ranking ? position : null,
+      previousPosition: ranking ? previousPosition : null,
+      change: ranking && position != null && previousPosition != null ? round1(previousPosition - position) : null,
+      bestPosition: best.length ? Math.min(...best) : null,
+      lastChecked: text(latest.checkedAt) || row.lastChecked,
+      history: historyPoints,
+      ranking,
+      checked: true,
+    }
+  })
+  return {
+    ...report,
+    device: text(history.device) || report.device,
+    ranking: rows.filter((row) => row.ranking).length,
+    lastCheckedAt: text(history.runs?.[0]?.checkedAt) || report.lastCheckedAt,
     rows,
   }
 }

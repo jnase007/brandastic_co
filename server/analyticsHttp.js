@@ -51,7 +51,7 @@ function disconnected(reason) {
 
 export async function loadAnalytics(env, rangeId, options = {}) {
   const now = options.now || new Date()
-  const range = resolveAnalyticsRange(rangeId, now)
+  const range = resolveAnalyticsRange(rangeId, now, { start: options.start, end: options.end })
   const config = options.config || openseoConfig(env)
   if (!config.configured) {
     return { range, fetchedAt: now.toISOString(), ...disconnected('not_configured') }
@@ -60,6 +60,7 @@ export async function loadAnalytics(env, rangeId, options = {}) {
     fetchImpl: options.fetchImpl,
     cacheMs: options.cacheMs ?? CACHE_MS,
     now: now.getTime(),
+    compare: options.compare,
     overrides: options.overrides,
     overridesPath: options.overridesPath,
   })
@@ -87,7 +88,8 @@ export function invalidateAnalyticsCache() {
   clearOpenseoCache()
 }
 
-export async function runAnalyticsRequest(env, { method, token, range }) {
+export async function runAnalyticsRequest(env, { method, token, range, start, end, compare }) {
   if (method !== 'GET') return denied(405, 'method_not_allowed')
-  return handleAnalytics(env, token, range)
+  const mode = ['period', 'month', 'year'].includes(compare) ? compare : 'period'
+  return handleAnalytics(env, token, range, { start, end, compare: mode })
 }
