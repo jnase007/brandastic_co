@@ -88,6 +88,18 @@ export function resolveAnalyticsRange(id, now = new Date(), custom = {}) {
   }
 }
 
+export function formatComparisonDates(startDate, endDate) {
+  const start = parseIso(startDate)
+  const end = parseIso(endDate)
+  if (!start || !end) return ''
+  const month = (date) => date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })
+  const sameYear = start.getUTCFullYear() === end.getUTCFullYear()
+  const sameMonth = sameYear && start.getUTCMonth() === end.getUTCMonth()
+  if (sameMonth) return `${month(start)} ${start.getUTCDate()}-${end.getUTCDate()}, ${end.getUTCFullYear()}`
+  if (sameYear) return `${month(start)} ${start.getUTCDate()}-${month(end)} ${end.getUTCDate()}, ${end.getUTCFullYear()}`
+  return `${month(start)} ${start.getUTCDate()}, ${start.getUTCFullYear()}-${month(end)} ${end.getUTCDate()}, ${end.getUTCFullYear()}`
+}
+
 export function comparisonWindow(range, mode = 'period') {
   const start = parseIso(range.startDate)
   const end = parseIso(range.endDate)

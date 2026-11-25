@@ -3,7 +3,7 @@ import { emptySearch, normalizeKeywords, searchFromPerformance, aiRankingsFromRe
 import { loadGa4 } from './analyticsGa4.js'
 import { loadKeywordOverrides } from './keywordCategories.js'
 import { openseoTool, readMcpToolResult } from './openseo.js'
-import { comparisonWindow, historyCovers, recentMonths, GSC_HISTORY_MONTHS, GA4_HISTORY_MONTHS } from '../src/lib/analyticsRange.js'
+import { comparisonWindow, formatComparisonDates, historyCovers, recentMonths, GSC_HISTORY_MONTHS, GA4_HISTORY_MONTHS } from '../src/lib/analyticsRange.js'
 
 async function call(config, name, args, options) {
   try {
@@ -113,6 +113,43 @@ async function aiRows(config, runId, options) {
   return { rows, summaries }
 }
 
+function asNumber(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim() && Number.isFinite(Number(value))) return Number(value)
+  return null
+}
+
+function isoDay(value) {
+  const raw = String(value || '')
+  if (/^\d{8}$/.test(raw)) return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`
+  return raw.slice(0, 10)
+}
+
+function organicPoints(data) {
+  return (data?.trend || []).map((row) => ({
+    date: isoDay(row.date),
+    sessions: asNumber(row.sessions),
+    users: asNumber(row.activeUsers),
+  })).filter((row) => row.date)
+}
+
+function sumKey(series, key) {
+  let total = 0
+  let seen = false
+  for (const row of series || []) {
+    if (typeof row[key] !== 'number') continue
+    total += row[key]
+    seen = true
+  }
+  return seen ? total : null
+}
+
+function missingComparisonNote(mode, covered) {
+  if (mode === 'year') return 'No data for last year'
+  if (!covered) return 'This comparison is older than the available history, so it is not shown.'
+  return 'No data for that comparison period.'
+}
+
 function monthValue(series, month, key) {
   let total = 0
   let seen = false
@@ -155,20 +192,22 @@ export async function loadOpenSeo(config, range, options = {}) {
   ])
   const overrides = options.overrides || loadKeywordOverrides(options.overridesPath)
   const search = daily ? searchFromPerformance({ daily, queries, pages, previous: previousDaily }) : emptySearch('unavailable')
-  if (search.connected) {
-    search.compare = {
-      mode: compare?.mode || 'period',
-      label: compare?.label || 'Previous period',
-      startDate: compare?.startDate || null,
-      endDate: compare?.endDate || null,
-      available: Boolean(gscCompareOk && previousDaily && previousDaily.ok !== false && (previousDaily.rows || []).length),
-      note: gscCompareOk ? '' : 'Search Console keeps about 16 months. This comparison is older than that, so it is not shown.',
-    }
+  const compareDates = formatComparisonDates(compare?.startDate, compare?.endDate)
+  const searchAvailable = Boolean(gscCompareOk && previousDaily && previousDaily.ok !== false && (previousDaily.rows || []).length)
+  search.compare = {
+    mode: compare?.mode || 'period',
+    label: compare?.label || 'Previous period',
+    dates: compareDates,
+    startDate: compare?.startDate || null,
+    endDate: compare?.endDate || null,
+    available: search.connected ? searchAvailable : false,
+    note: search.connected && searchAvailable ? '' : missingComparisonNote(compare?.mode || 'period', gscCompareOk),
   }
-  const organicSeries = (organicNow?.trend || []).map((row) => ({ date: String(row.date || ''), sessions: row.sessions, users: row.activeUsers }))
-  const organicCompareSeries = (organicCompare?.trend || []).map((row) => ({ date: String(row.date || ''), sessions: row.sessions, users: row.activeUsers }))
-  const historySessions = (organicHistory?.trend || []).map((row) => ({ date: String(row.date || '').slice(0, 10), sessions: row.sessions }))
-  const historyClicks = (historyDaily?.rows || []).map((row) => ({ date: row.keys?.[0], clicks: row.clicks }))
+  if (!searchAvailable) search.previous = null
+  const organicSeries = organicPoints(organicNow)
+  const organicCompareSeries = organicPoints(organicCompare)
+  const historySessions = organicPoints(organicHistory)
+  const historyClicks = (historyDaily?.rows || []).map((row) => ({ date: isoDay(row.keys?.[0]), clicks: asNumber(row.clicks) }))
   const months = recentMonths(range.endDate, 13).map((month) => ({
     month,
     sessions: monthValue(historySessions, month, 'sessions'),
@@ -176,20 +215,27 @@ export async function loadOpenSeo(config, range, options = {}) {
   }))
   if (ga4) {
     ga4.organic = {
-      sessions: typeof organicNow?.current?.sessions === 'number' ? organicNow.current.sessions : null,
-      users: typeof organicNow?.current?.activeUsers === 'number' ? organicNow.current.activeUsers : null,
+      sessions: asNumber(organicNow?.current?.sessions) ?? sumKey(organicSeries, 'sessions'),
+      users: asNumber(organicNow?.current?.activeUsers) ?? sumKey(organicSeries, 'users'),
       series: organicSeries,
       compare: {
         mode: compare?.mode || 'period',
         label: compare?.label || 'Previous period',
+        dates: compareDates,
         startDate: compare?.startDate || null,
         endDate: compare?.endDate || null,
-        available: Boolean(ga4CompareOk && organicCompare?.current && typeof organicCompare.current.sessions === 'number'),
-        note: ga4CompareOk ? (organicCompare?.current ? '' : 'Google Analytics returned no organic rows for that earlier period.') : 'Google Analytics retention does not cover this comparison, so year-over-year or older organic totals are not shown.',
-        sessions: typeof organicCompare?.current?.sessions === 'number' ? organicCompare.current.sessions : null,
-        users: typeof organicCompare?.current?.activeUsers === 'number' ? organicCompare.current.activeUsers : null,
+        available: Boolean(ga4CompareOk && (asNumber(organicCompare?.current?.sessions) != null || organicCompareSeries.some((row) => row.sessions != null))),
+        note: '',
+        sessions: asNumber(organicCompare?.current?.sessions) ?? sumKey(organicCompareSeries, 'sessions'),
+        users: asNumber(organicCompare?.current?.activeUsers) ?? sumKey(organicCompareSeries, 'users'),
         series: organicCompareSeries,
       },
+    }
+    ga4.organic.compare.note = ga4.organic.compare.available ? '' : missingComparisonNote(compare?.mode || 'period', ga4CompareOk)
+    if (!ga4.organic.compare.available) {
+      ga4.organic.compare.sessions = null
+      ga4.organic.compare.users = null
+      ga4.organic.compare.series = []
     }
     ga4.monthly = months
   }

@@ -6,7 +6,8 @@ import { openseoTool, readMcpToolResult } from '../server/openseo.js'
 import { handleAnalytics } from '../server/analyticsHttp.js'
 import { cooldownDecision, startRankCheck } from '../server/analyticsRankCheck.js'
 import { salesSnapshot } from '../src/lib/analyticsSales.js'
-import { comparisonWindow, resolveAnalyticsRange } from '../src/lib/analyticsRange.js'
+import { comparisonWindow, formatComparisonDates, resolveAnalyticsRange } from '../src/lib/analyticsRange.js'
+import { loadOpenSeo } from '../server/analyticsReads.js'
 import { engineAppearances, groupAiPrompts } from '../src/lib/aiCards.js'
 import { averageRank, isRankingKeyword, rankMeaning, rankSummary } from '../src/lib/rankPages.js'
 
@@ -154,6 +155,44 @@ describe('organic comparison ranges', () => {
     assert.equal(comparisonWindow(range, 'month').startDate, '2026-09-27')
     assert.equal(comparisonWindow(range, 'year').startDate, '2025-10-27')
     assert.equal(comparisonWindow(range, 'year').endDate, '2025-11-25')
+    assert.equal(formatComparisonDates('2025-10-26', '2025-11-22'), 'Oct 26-Nov 22, 2025')
+  })
+
+  it('re-fetches a different window for each comparison and says when last year is missing', async () => {
+    const now = new Date('2026-11-25T18:00:00.000Z')
+    const range = resolveAnalyticsRange('30', now)
+    const calls = []
+    const fetchImpl = async (_url, init) => {
+      const body = JSON.parse(init.body)
+      const args = body.params.arguments
+      calls.push({ name: body.params.name, startDate: args.startDate, endDate: args.endDate })
+      const sessions = { '2026-10-27': 464, '2026-09-27': 636, '2026-09-27-month': 620, '2025-10-27': 654 }[args.endDate === '2026-10-25' ? '2026-09-27-month' : args.startDate] || 1
+      const payload = body.params.name === 'get_google_analytics_organic_overview'
+        ? { current: { sessions, activeUsers: 10 }, trend: [{ date: String(args.startDate || '').replaceAll('-', ''), sessions: 4, activeUsers: 2 }, { date: String(args.endDate || '').replaceAll('-', ''), sessions: 5, activeUsers: 3 }] }
+        : body.params.name === 'get_search_console_performance'
+          ? { ok: true, rows: [{ keys: [args.startDate], clicks: sessions, impressions: 100, ctr: 0.1, position: 8 }, { keys: [args.endDate], clicks: 2, impressions: 80, ctr: 0.02, position: 9 }] }
+          : {}
+      return { status: 200, text: async () => JSON.stringify({ jsonrpc: '2.0', id: 1, result: { structuredContent: payload } }) }
+    }
+    const config = { configured: true, apiKey: 'oseo_test', mcpUrl: 'https://example.test/mcp', projectId: 'p', trackerId: 't' }
+    const period = await loadOpenSeo(config, range, { fetchImpl, compare: 'period', now: now.getTime(), cacheMs: 0, overrides: {} })
+    const month = await loadOpenSeo(config, range, { fetchImpl, compare: 'month', now: now.getTime(), cacheMs: 0, overrides: {} })
+    const year = await loadOpenSeo(config, range, { fetchImpl, compare: 'year', now: now.getTime(), cacheMs: 0, overrides: {} })
+    assert.equal(period.ga4.organic.compare.sessions, 636)
+    assert.equal(period.ga4.organic.compare.dates, 'Sep 27-Oct 26, 2026')
+    assert.equal(month.ga4.organic.compare.sessions, 620)
+    assert.equal(month.ga4.organic.compare.dates, 'Sep 27-Oct 25, 2026')
+    assert.equal(year.ga4.organic.compare.sessions, 654)
+    assert.equal(year.ga4.organic.compare.dates, 'Oct 27-Nov 25, 2025')
+    assert.equal(year.search.previous.clicks > 0, true)
+    assert.equal(calls.some((call) => call.name === 'get_google_analytics_organic_overview' && call.startDate === '2025-10-27'), true)
+    const old = resolveAnalyticsRange('12', now)
+    calls.length = 0
+    const missing = await loadOpenSeo(config, old, { fetchImpl, compare: 'year', now: now.getTime(), cacheMs: 0, overrides: {} })
+    assert.equal(missing.ga4.organic.compare.available, false)
+    assert.equal(missing.ga4.organic.compare.sessions, null)
+    assert.equal(missing.ga4.organic.compare.note, 'No data for last year')
+    assert.equal(calls.some((call) => call.startDate && call.startDate < '2025-09-25'), false)
   })
 })
 

@@ -162,13 +162,14 @@ export function HorizontalBars({ rows, color = BRAND.orange, valueLabel = 'value
   )
 }
 
-export function DualAxisChart({ series }) {
+export function DualAxisChart({ series, compare }) {
   const rows = (series || []).filter((row) => row.date)
+  const prior = (compare || []).filter((row) => row.date && row.clicks != null)
   if (rows.length < 2) return <EmptyPanel title="No Search Console trend">A line chart appears when Search Console returns at least two days.</EmptyPanel>
   const width = 640
   const height = 220
   const pad = { l: 36, r: 36, t: 16, b: 28 }
-  const maxClicks = Math.max(...rows.map((row) => row.clicks || 0), 1)
+  const maxClicks = Math.max(...rows.map((row) => row.clicks || 0), ...prior.map((row) => row.clicks || 0), 1)
   const maxImpressions = Math.max(...rows.map((row) => row.impressions || 0), 1)
   const positions = rows.map((row) => row.position).filter((value) => value != null)
   const minPos = positions.length ? Math.min(...positions) : 1
@@ -187,9 +188,12 @@ export function DualAxisChart({ series }) {
   const clicks = line((row) => yOf(row.clicks, maxClicks))
   const impressions = line((row) => yOf(row.impressions, maxImpressions))
   const position = line((row) => yPos(row.position))
+  const xPrior = (index) => pad.l + (index / (prior.length - 1)) * (width - pad.l - pad.r)
+  const compared = prior.length > 1 ? prior.map((row, index) => `${index ? 'L' : 'M'} ${xPrior(index)} ${yOf(row.clicks, maxClicks)}`).join(' ') : ''
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full" role="img" aria-label="Clicks, impressions, and average position">
       <path d={clicks} fill="none" stroke={BRAND.orange} strokeWidth="3" />
+      {compared ? <path d={compared} fill="none" stroke="#64748b" strokeWidth="2" strokeDasharray="5 4" /> : null}
       <path d={impressions} fill="none" stroke={BRAND.blue} strokeWidth="2" strokeDasharray="5 4" />
       {position ? <path d={position} fill="none" stroke={BRAND.teal} strokeWidth="2" /> : null}
     </svg>

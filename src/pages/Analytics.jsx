@@ -18,7 +18,7 @@ import {
   formatPosition,
 } from '../components/analytics/AnalyticsVisuals'
 import { estimateRankCheck, fetchAnalytics, rankCheckStatus, startRankCheck } from '../lib/analyticsApi'
-import { ANALYTICS_RANGES, COMPARE_MODES } from '../lib/analyticsRange'
+import { ANALYTICS_RANGES, COMPARE_MODES, comparisonWindow, formatComparisonDates, resolveAnalyticsRange } from '../lib/analyticsRange'
 import { KEYWORD_CATEGORIES } from '../lib/keywordCategoryLabels'
 import { engineAppearances, groupAiPrompts, promptMentioned } from '../lib/aiCards'
 import { averageRank, isRankingKeyword } from '../lib/rankPages'
@@ -97,15 +97,17 @@ export default function Analytics() {
   const [state, setState] = useState({ status: 'loading' })
   const [dialog, setDialog] = useState(null)
   const [check, setCheck] = useState(null)
+  const [pending, setPending] = useState(false)
+  const selectedRange = resolveAnalyticsRange(rangeId, new Date(), { start: customStart, end: customEnd })
+  const selectedCompare = comparisonWindow(selectedRange, compare)
+  const compareLabel = formatComparisonDates(selectedCompare?.startDate, selectedCompare?.endDate)
 
-  const load = () => {
-    fetchAnalytics({
-      range: rangeId,
-      compare,
-      start: rangeId === 'custom' ? customStart : undefined,
-      end: rangeId === 'custom' ? customEnd : undefined,
-    }).then(setState).catch(() => setState({ status: 'error' }))
-  }
+  const request = (query) => fetchAnalytics({
+    range: query.rangeId,
+    compare: query.compare,
+    start: query.rangeId === 'custom' ? query.customStart : undefined,
+    end: query.rangeId === 'custom' ? query.customEnd : undefined,
+  })
 
   useEffect(() => {
     const previous = document.title
@@ -128,9 +130,14 @@ export default function Analytics() {
   }, [])
 
   useEffect(() => {
-    load()
-    const timer = setInterval(load, 180000)
-    return () => clearInterval(timer)
+    let active = true
+    const query = { rangeId, compare, customStart, customEnd }
+    setPending(true)
+    request(query).then((result) => { if (active) setState(result) }).catch(() => { if (active) setState({ status: 'error' }) }).finally(() => { if (active) setPending(false) })
+    const timer = setInterval(() => {
+      request(query).then((result) => { if (active) setState(result) }).catch(() => {})
+    }, 180000)
+    return () => { active = false; clearInterval(timer) }
   }, [rangeId, compare, customStart, customEnd])
 
   useEffect(() => {
@@ -140,7 +147,7 @@ export default function Analytics() {
       const status = result.body?.status
       if (status === 'completed' || status === 'failed' || status === 'cancelled') {
         setCheck({ ...result.body, done: true })
-        load()
+        request({ rangeId, compare, customStart, customEnd }).then(setState).catch(() => setState({ status: 'error' }))
       } else {
         setCheck(result.body)
       }
@@ -173,12 +180,15 @@ export default function Analytics() {
                 <label className="text-xs font-semibold text-slate-500">End<input type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} className="mt-1 block rounded-full border border-slate-200 px-3 py-1.5 text-sm" /></label>
               </div>
             ) : null}
-            <div className="flex rounded-full bg-white p-1 shadow-sm" role="group" aria-label="Comparison">
-              {COMPARE_MODES.map((item) => (
-                <button key={item.id} type="button" aria-pressed={compare === item.id} onClick={() => setCompare(item.id)} className={`rounded-full px-3 py-1.5 text-sm font-semibold ${compare === item.id ? 'bg-brand-orange text-white' : 'text-slate-600'}`}>
-                  {item.label}
-                </button>
-              ))}
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex rounded-full bg-white p-1 shadow-sm" role="group" aria-label="Comparison">
+                {COMPARE_MODES.map((item) => (
+                  <button key={item.id} type="button" aria-pressed={compare === item.id} onClick={() => setCompare(item.id)} className={`rounded-full px-3 py-1.5 text-sm font-semibold ${compare === item.id ? 'bg-brand-orange text-white' : 'text-slate-600'}`}>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs font-semibold text-slate-600" data-testid="comparison-range">Compared with {compareLabel}{pending ? ' · updating' : ''}</p>
             </div>
           </div>
         </header>
@@ -190,11 +200,11 @@ export default function Analytics() {
 
         {report ? (
           <>
-            <MarketingKpis report={report} />
-            <TrafficSection ga4={report.ga4} />
+            <MarketingKpis report={report} compare={compare} pending={pending} compareLabel={compareLabel} />
+            <TrafficSection ga4={report.ga4} compare={compare} pending={pending} compareLabel={compareLabel} />
             <KeywordList report={report.keywords} check={check} onRefresh={() => { setDialog({ status: 'loading' }); estimateRankCheck().then((result) => setDialog(result.body || { estimate: null })) }} />
             <AiList ai={report.ai} />
-            <SearchCharts search={report.search} />
+            <SearchCharts search={report.search} compare={compare} pending={pending} compareLabel={compareLabel} />
             <OtherCharts ga4={report.ga4} />
           </>
         ) : null}
@@ -216,16 +226,24 @@ export default function Analytics() {
   )
 }
 
-function MarketingKpis({ report }) {
+function comparisonReady(block, compare, pending) {
+  return !pending && block?.mode === compare
+}
+
+function MarketingKpis({ report, compare, pending, compareLabel }) {
   const ga4 = report.ga4 || {}
   const organic = ga4.organic || {}
-  const organicPrevious = organic.compare?.available ? organic.compare : {}
+  const organicReady = comparisonReady(organic.compare, compare, pending) && organic.compare?.available
+  const organicPrevious = organicReady ? organic.compare : {}
   const search = report.search || {}
   const totals = search.totals || {}
-  const previous = search.compare?.available ? (search.previous || {}) : {}
+  const searchReady = comparisonReady(search.compare, compare, pending) && search.compare?.available
+  const previous = searchReady ? (search.previous || {}) : {}
+  const note = [organic.compare, search.compare].find((block) => comparisonReady(block, compare, pending) && block?.note)?.note || ''
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="marketing-kpis">
-      <KpiCard label="Organic users" value={formatCount(organic.users)} current={organic.users} previous={organicPrevious.users} mode="percent" color="#00AEEF" testId="kpi-users" />
+      {note ? <p className="sm:col-span-2 xl:col-span-4 text-sm font-semibold text-amber-800" data-testid="comparison-note">{note}</p> : null}
+      <KpiCard label="Organic users" value={formatCount(organic.users)} current={organic.users} previous={organicPrevious.users} mode="percent" hint={organicReady ? compareLabel : pending ? 'Updating comparison…' : ''} color="#00AEEF" testId="kpi-users" />
       <KpiCard label="Organic sessions" value={formatCount(organic.sessions)} current={organic.sessions} previous={organicPrevious.sessions} mode="percent" series={(organic.series || []).map((row) => row.sessions).filter((value) => value != null)} />
       <KpiCard label="Clicks" value={formatCount(totals.clicks)} current={totals.clicks} previous={previous.clicks} mode="percent" series={(search.series || []).map((row) => row.clicks)} />
       <KpiCard label="Impressions" value={formatCount(totals.impressions)} current={totals.impressions} previous={previous.impressions} mode="percent" series={(search.series || []).map((row) => row.impressions)} color="#00AEEF" />
@@ -237,7 +255,7 @@ function MarketingKpis({ report }) {
   )
 }
 
-function TrafficSection({ ga4 }) {
+function TrafficSection({ ga4, compare, pending, compareLabel }) {
   if (!ga4?.connected) {
     return (
       <Section id="traffic" title="Site traffic and sources">
@@ -249,11 +267,11 @@ function TrafficSection({ ga4 }) {
   return (
     <Section id="traffic" title="Site traffic and sources">
       <p className="text-sm text-slate-500">Channel totals cover every GA4 session. The daily chart is Organic Search only. The dashed line is the selected comparison, aligned by day.</p>
-      {ga4.organic?.compare && !ga4.organic.compare.available && ga4.organic.compare.note ? <p className="text-sm text-amber-800">{ga4.organic.compare.note}</p> : null}
+      {comparisonReady(ga4.organic?.compare, compare, pending) && !ga4.organic.compare.available ? <p className="text-sm font-semibold text-amber-800">{ga4.organic.compare.note}</p> : null}
       <div className="grid gap-3 lg:grid-cols-2">
-        <Card title="Organic sessions over time" info="Daily Organic Search sessions. All-channel totals are in the table.">
-          <TimeSeriesChart series={ga4.organic?.series?.length ? ga4.organic.series : ga4.series} compare={ga4.organic?.compare?.available ? ga4.organic.compare.series : []} label="Organic sessions over time" />
-          <Legend items={[{ label: 'This range', color: '#F7931E' }, { label: ga4.organic?.compare?.label || 'Comparison', color: '#64748b' }]} />
+        <Card title="Organic sessions over time" info="Daily Organic Search sessions. The dashed line is the comparison period.">
+          <TimeSeriesChart series={ga4.organic?.series?.length ? ga4.organic.series : ga4.series} compare={comparisonReady(ga4.organic?.compare, compare, pending) && ga4.organic.compare.available ? ga4.organic.compare.series : []} label="Organic sessions over time" />
+          <Legend items={[{ label: 'This range', color: '#F7931E' }, { label: compareLabel || 'Comparison', color: '#64748b' }]} />
         </Card>
         <Card title="Sessions by channel" info="Share of all sessions.">
           <SliceDonut slices={(ga4.channels || []).map((row) => ({ label: row.label, value: row.sessions }))} caption="Sessions" />
@@ -496,7 +514,7 @@ function AiList({ ai }) {
   )
 }
 
-function SearchCharts({ search }) {
+function SearchCharts({ search, compare, pending, compareLabel }) {
   if (!search?.connected) {
     return (
       <Section id="search" title="Search Console">
@@ -507,8 +525,8 @@ function SearchCharts({ search }) {
   return (
     <Section id="search" title="Search Console">
       <Card title="Clicks, impressions, and position" info="Orange is clicks, blue dashes are impressions, teal is average position.">
-        <DualAxisChart series={search.series || []} />
-        <Legend items={[{ label: 'Clicks', color: '#F7931E' }, { label: 'Impressions, own scale', color: '#00AEEF' }, { label: 'Avg position', color: '#00D4AA' }]} />
+        <DualAxisChart series={search.series || []} compare={comparisonReady(search.compare, compare, pending) && search.compare.available ? search.compareSeries : []} />
+        <Legend items={[{ label: 'Clicks', color: '#F7931E' }, { label: compareLabel || 'Comparison clicks', color: '#64748b' }, { label: 'Impressions, own scale', color: '#00AEEF' }, { label: 'Avg position', color: '#00D4AA' }]} />
       </Card>
       <div className="grid gap-3 lg:grid-cols-2">
         <Card title="Top queries"><HorizontalBars rows={(search.queries || []).map((row) => ({ label: row.key, value: row.clicks, display: `${formatCount(row.clicks)} clicks` }))} /></Card>
