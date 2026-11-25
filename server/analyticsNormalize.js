@@ -45,6 +45,8 @@ export function emptyGa4(reason) {
     devices: [],
     countries: [],
     events: [],
+    sources: [],
+    seriesScope: null,
   }
 }
 
@@ -93,7 +95,7 @@ export function ga4ErrorCode(data) {
   return text(data.error?.code) || text(data.code) || (data.status === 'error' ? 'ga4_unavailable' : null)
 }
 
-export function normalizeGa4({ overview, channels, pages, events, devices, countries } = {}) {
+export function normalizeGa4({ overview, channels, sources, pages, events, devices, countries } = {}) {
   const parts = [overview, channels, pages, events, devices, countries].filter(Boolean)
   const codes = parts.map(ga4ErrorCode).filter(Boolean)
   if (codes.some((code) => code === 'ga4_not_connected' || code === 'ga4_property_inaccessible' || code === 'ga4_reconnect_required')) {
@@ -163,6 +165,10 @@ export function normalizeGa4({ overview, channels, pages, events, devices, count
     label: labelOf(row, ['country']),
     value: metric(row, 'sessions') ?? metric(row, 'activeUsers') ?? 0,
   })).filter((row) => row.label).slice(0, 8)
+  const sourcesOut = reportRows(sources).map((row) => ({
+    label: labelOf(row, ['sessionSourceMedium', 'sourceMedium', 'sessionSource']),
+    sessions: metric(row, 'sessions') ?? 0,
+  })).filter((row) => row.label).slice(0, 12)
   const eventsOut = reportRows(events).map((row) => ({
     label: labelOf(row, ['eventName', 'event']),
     value: metric(row, 'keyEvents') ?? 0,
@@ -184,6 +190,125 @@ export function normalizeGa4({ overview, channels, pages, events, devices, count
     devices: devicesOut,
     countries: countriesOut,
     events: eventsOut,
+    sources: sourcesOut,
+    seriesScope: 'organic_search',
+  }
+}
+
+function rollupSearch(series) {
+  let clicks = 0
+  let impressions = 0
+  let weighted = 0
+  for (const row of series) {
+    clicks += row.clicks || 0
+    impressions += row.impressions || 0
+    if (row.position != null) weighted += row.position * (row.impressions || 0)
+  }
+  return {
+    clicks,
+    impressions,
+    ctr: impressions ? clicks / impressions : null,
+    position: impressions ? weighted / impressions : null,
+  }
+}
+
+function searchSeries(rows) {
+  return (Array.isArray(rows) ? rows : []).map((row) => ({
+    date: text(row.keys?.[0]) || text(row.date),
+    clicks: num(row.clicks) ?? 0,
+    impressions: num(row.impressions) ?? 0,
+    ctr: num(row.ctr),
+    position: num(row.position),
+  })).filter((row) => row.date)
+}
+
+function searchList(rows) {
+  return (Array.isArray(rows) ? rows : []).slice(0, 15).map((row) => ({
+    key: text(row.keys?.[0]) || text(row.key) || '',
+    clicks: num(row.clicks) ?? 0,
+    impressions: num(row.impressions) ?? 0,
+    ctr: num(row.ctr),
+    position: num(row.position),
+  })).filter((row) => row.key)
+}
+
+export function searchFromPerformance({ daily, queries, pages, previous } = {}) {
+  if (!daily || daily.ok === false) {
+    return emptySearch(daily?.reason === 'not_connected' ? 'not_connected' : 'unavailable')
+  }
+  const series = searchSeries(daily.rows)
+  if (!series.length && !(queries?.rows || []).length) return emptySearch('unavailable')
+  const totals = rollupSearch(series)
+  const previousTotals = searchSeries(previous?.rows)
+  return {
+    connected: true,
+    reason: null,
+    totals: series.length ? totals : null,
+    previous: previousTotals.length ? rollupSearch(previousTotals) : null,
+    series,
+    queries: searchList(queries?.rows),
+    pages: searchList(pages?.rows),
+  }
+}
+
+function mentionRank(brands) {
+  const ordered = (Array.isArray(brands) ? brands : [])
+    .filter((brand) => brand?.mentioned && num(brand.firstMention) != null)
+    .sort((a, b) => a.firstMention - b.firstMention)
+  const index = ordered.findIndex((brand) => brand.own)
+  return index >= 0 ? index + 1 : null
+}
+
+export function aiRankingsFromResults({ tracker, rows, summaries, trend } = {}) {
+  const prompts = new Map()
+  for (const prompt of tracker?.prompts || []) {
+    const id = text(prompt.id)
+    const promptText = text(prompt.text) || text(prompt.prompt)
+    if (!id || !promptText) continue
+    prompts.set(id, {
+      id,
+      prompt: promptText,
+      topic: text(prompt.topic),
+      paused: prompt.paused === true,
+      engine: null,
+      appears: null,
+      rank: null,
+      competitors: [],
+      checkedAt: null,
+    })
+  }
+  for (const row of rows || []) {
+    const id = text(row.promptId) || text(row.prompt)
+    const promptText = text(row.prompt) || id
+    if (!id || !promptText) continue
+    if (!prompts.has(id)) {
+      prompts.set(id, { id, prompt: promptText, topic: text(row.topic), paused: false, engine: null, appears: null, rank: null, competitors: [], checkedAt: null })
+    }
+    const item = prompts.get(id)
+    const own = (row.brands || []).find((brand) => brand?.own)
+    item.engine = text(row.engine) || item.engine
+    item.checkedAt = text(row.collectedAt) || item.checkedAt
+    item.appears = own ? Boolean(own.mentioned || own.cited) : item.appears
+    item.rank = mentionRank(row.brands)
+    item.competitors = (row.brands || []).filter((brand) => !brand.own && (brand.mentioned || brand.cited)).map((brand) => text(brand.name)).filter(Boolean).slice(0, 8)
+  }
+  const voices = (Array.isArray(summaries) ? summaries : []).map((item) => ({
+    name: text(item.name) || text(item.domain),
+    mentions: num(item.mentions) ?? 0,
+    own: item.own === true,
+  })).filter((item) => item.name)
+  const list = [...prompts.values()]
+  const checked = list.some((item) => item.appears != null)
+  return {
+    connected: list.length > 0 || checked,
+    reason: list.length ? null : 'empty',
+    score: num(trend?.mentions?.current),
+    trend: trend?.comparison === 'comparable' ? num(trend?.mentions?.change) : null,
+    trendStatus: text(trend?.comparison),
+    prompts: list,
+    voices,
+    citationRate: num(trend?.citations?.current),
+    lastChecked: list.map((item) => item.checkedAt).filter(Boolean).sort().at(-1) || null,
   }
 }
 

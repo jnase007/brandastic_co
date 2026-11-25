@@ -16,9 +16,10 @@ export async function loadGa4(config, range, options = {}) {
     now: options.now,
   }).catch(() => null)
   try {
-    const [overview, channels, pages, events, devices, countries] = await Promise.all([
+    const [overview, channels, sources, pages, events, devices, countries] = await Promise.all([
       call('get_google_analytics_organic_overview', { trend: 'daily' }),
       call('get_google_analytics_traffic_acquisition', { breakdown: 'channel_group', comparePreviousPeriod: true, limit: 20 }),
+      call('get_google_analytics_traffic_acquisition', { breakdown: 'source_medium', limit: 12 }),
       call('get_google_analytics_page_performance', { channel: 'all', limit: 8 }),
       call('get_google_analytics_key_events', { channel: 'all', breakdown: 'event', comparePreviousPeriod: true, limit: 8 }),
       call('get_google_analytics_audience_breakdown', { breakdown: 'device', channel: 'all', limit: 10 }),
@@ -27,6 +28,7 @@ export async function loadGa4(config, range, options = {}) {
     const unpacked = {
       overview: unwrap(overview),
       channels: unwrap(channels),
+      sources: unwrap(sources),
       pages: unwrap(pages),
       events: unwrap(events),
       devices: unwrap(devices),

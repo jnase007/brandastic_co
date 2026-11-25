@@ -1,53 +1,39 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
-import DealReportingDashboard from '../components/DealReports'
-import { MeetingCloseRateSection } from '../components/MeetingCloseRate'
 import {
-  BucketBars,
   DualAxisChart,
   EmptyPanel,
-  Gauge,
-  Heatmap,
   HorizontalBars,
-  KeywordSpark,
   KpiCard,
   Legend,
   PositionBadge,
   SliceDonut,
-  StageFunnel,
   TimeSeriesChart,
   Trend,
-  WinLossDonut,
   formatCount,
   formatPosition,
 } from '../components/analytics/AnalyticsVisuals'
 import { estimateRankCheck, fetchAnalytics, rankCheckStatus, startRankCheck } from '../lib/analyticsApi'
-import { previousAnalyticsRange, resolveAnalyticsRange } from '../lib/analyticsRange'
-import { salesSnapshot } from '../lib/analyticsSales'
-import { formatMoney } from '../lib/leads'
+import { resolveAnalyticsRange } from '../lib/analyticsRange'
 import { KEYWORD_CATEGORIES } from '../lib/keywordCategoryLabels'
-import { ensureValidSession, supabase } from '../lib/supabase'
 
 const RANGES = ['7', '28', '90']
-
-function money(value) {
-  if (value == null) return '—'
-  return formatMoney(value) || '$0'
-}
 
 function ctr(value) {
   if (value == null) return '—'
   return `${(value * 100).toFixed(1)}%`
 }
 
-function Section({ id, kicker, title, children }) {
+function share(part, whole) {
+  if (!whole) return '—'
+  return `${((part / whole) * 100).toFixed(1)}%`
+}
+
+function Section({ id, title, children }) {
   return (
     <section id={id} className="space-y-4" aria-labelledby={`${id}-title`}>
-      <header>
-        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-orange">{kicker}</p>
-        <h2 id={`${id}-title`} className="text-xl font-semibold tracking-tight text-slate-900">{title}</h2>
-      </header>
+      <h2 id={`${id}-title`} className="text-xl font-semibold tracking-tight text-slate-900">{title}</h2>
       {children}
     </section>
   )
@@ -62,14 +48,19 @@ function Card({ title, info, children }) {
   )
 }
 
+function missingCopy(reason, what) {
+  if (reason === 'not_configured') {
+    return `Missing environment variable: OPENSEO_API_KEY. Add it on the Vercel project brandastic-co and redeploy. ${what}`
+  }
+  if (reason === 'ga4_not_connected' || reason === 'not_connected') {
+    return 'OPENSEO_API_KEY is set, but this OpenSEO project does not have that Google property saved. In OpenSEO, open the Brandastic project, Project settings, Integrations, and connect it.'
+  }
+  return 'OpenSEO did not return this data. Nothing is estimated in its place.'
+}
+
 export default function Analytics() {
   const [rangeId, setRangeId] = useState('28')
   const [state, setState] = useState({ status: 'loading' })
-  const [leads, setLeads] = useState(null)
-  const [leadError, setLeadError] = useState('')
-  const [rankingOnly, setRankingOnly] = useState(true)
-  const [query, setQuery] = useState('')
-  const [openTable, setOpenTable] = useState(false)
   const [dialog, setDialog] = useState(null)
   const [check, setCheck] = useState(null)
 
@@ -104,23 +95,6 @@ export default function Analytics() {
   }, [rangeId])
 
   useEffect(() => {
-    if (state.status !== 'ready') return undefined
-    let cancel = false
-    ensureValidSession().then(() => supabase.from('sales_leads').select('*').order('first_contact_date', { ascending: false }))
-      .then(({ data, error }) => {
-        if (cancel) return
-        if (error) {
-          setLeadError('Deals could not be loaded.')
-          setLeads([])
-        } else {
-          setLeadError('')
-          setLeads(data || [])
-        }
-      })
-    return () => { cancel = true }
-  }, [state.status])
-
-  useEffect(() => {
     if (!check?.runId || check.done) return undefined
     const timer = setInterval(async () => {
       const result = await rankCheckStatus(check.runId)
@@ -135,28 +109,17 @@ export default function Analytics() {
     return () => clearInterval(timer)
   }, [check?.runId, check?.done])
 
-  const range = resolveAnalyticsRange(rangeId)
-  const report = state.status === 'ready' ? state.report : null
-  const sales = useMemo(() => (leads ? salesSnapshot(leads, range) : null), [leads, range])
-  const priorSales = useMemo(() => (leads ? salesSnapshot(leads, previousAnalyticsRange(range)) : null), [leads, range])
-
   if (state.status === 'unauthorized') return <Navigate to="/login" replace />
-
-  const keywords = report?.keywords?.rows || []
-  const visibleKeywords = keywords.filter((row) => {
-    if (rankingOnly && !row.ranking) return false
-    if (query && !row.keyword.toLowerCase().includes(query.trim().toLowerCase())) return false
-    return true
-  })
+  const report = state.status === 'ready' ? state.report : null
 
   return (
     <div className="min-h-full bg-[#f6f7fb] px-4 py-6 lg:px-8">
       <div className="mx-auto flex max-w-[1200px] flex-col gap-8">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-orange">Sales</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-orange">Marketing</p>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Analytics</h1>
-            <p className="mt-1 text-sm text-slate-500">brandastic.com · refreshes every few minutes · rankings update only when you start a check</p>
+            <p className="mt-1 text-sm text-slate-500">brandastic.com · live reads only · a rank check starts only from Refresh rankings</p>
           </div>
           <div className="flex rounded-full bg-white p-1 shadow-sm" role="group" aria-label="Date range">
             {RANGES.map((id) => {
@@ -175,24 +138,14 @@ export default function Analytics() {
         {state.status === 'not_configured' ? <EmptyPanel title="Analytics access is not configured." testId="analytics-unconfigured">Set BILLING_ALLOWED_EMAILS to exactly two login emails, the same variable Billing uses.</EmptyPanel> : null}
         {state.status === 'error' ? <EmptyPanel title="Analytics could not be loaded.">Try again in a moment. No numbers are filled in when the request fails.</EmptyPanel> : null}
 
-        {state.status === 'ready' ? (
+        {report ? (
           <>
-            <SalesSection sales={sales} prior={priorSales} leads={leads} error={leadError} range={range} />
-            <Ga4Section ga4={report.ga4} />
-            <SearchSection search={report.search} />
-            <KeywordSection
-              report={report.keywords}
-              rows={visibleKeywords}
-              rankingOnly={rankingOnly}
-              onToggle={() => setRankingOnly((value) => !value)}
-              query={query}
-              onQuery={setQuery}
-              openTable={openTable}
-              onOpenTable={() => setOpenTable((value) => !value)}
-              onRefresh={() => { setDialog({ status: 'loading' }); estimateRankCheck().then((result) => setDialog(result.body || { estimate: null })) }}
-              check={check}
-            />
-            <AiSection ai={report.ai} />
+            <MarketingKpis report={report} />
+            <TrafficSection ga4={report.ga4} />
+            <KeywordList report={report.keywords} check={check} onRefresh={() => { setDialog({ status: 'loading' }); estimateRankCheck().then((result) => setDialog(result.body || { estimate: null })) }} />
+            <AiList ai={report.ai} />
+            <SearchCharts search={report.search} />
+            <OtherCharts ga4={report.ga4} />
           </>
         ) : null}
       </div>
@@ -213,264 +166,180 @@ export default function Analytics() {
   )
 }
 
-function SalesSection({ sales, prior, leads, error, range }) {
-  return (
-    <Section id="sales" kicker="01" title="Sales pipeline">
-      {error ? <EmptyPanel title="Deals could not be loaded.">{error}</EmptyPanel> : null}
-      {!leads && !error ? <p className="text-sm text-slate-500">Loading deals…</p> : null}
-      {sales ? (
-        <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <KpiCard label="Open pipeline" value={money(sales.openValue)} current={sales.openValue} previous={prior?.openValue} hint={range.label} testId="kpi-open-value" />
-            <KpiCard label="Weighted pipeline" value={money(sales.weightedValue)} current={sales.weightedValue} previous={prior?.weightedValue} hint="Stage weights on the deal board" color="#00AEEF" />
-            <KpiCard label="Win rate" value={sales.winRate == null ? '—' : `${sales.winRate.toFixed(1)}%`} current={sales.winRate} previous={prior?.winRate} suffix="%" />
-            <KpiCard label="New deals" value={formatCount(sales.createdCount)} current={sales.createdCount} previous={prior?.createdCount} hint="By created date" color="#8B5CF6" />
-          </div>
-          <div className="grid gap-3 lg:grid-cols-3">
-            <Card title="Stage funnel" info="Count of deals whose lead date is in this range. Value uses the deal board amount.">
-              <StageFunnel stages={sales.distribution.filter((stage) => stage.id !== 'lost').map((stage) => ({ ...stage, valueLabel: money(stage.value) }))} />
-            </Card>
-            <Card title="Won vs lost" info="A deal that is both Closed and Deal Lost counts as won, matching the existing reports.">
-              <WinLossDonut won={sales.wonCount} lost={sales.lostCount} />
-              <p className="mt-3 text-sm text-slate-600">Won {money(sales.wonValue)} · Lost {money(sales.lostValue)}</p>
-              <p className="mt-1 text-sm text-slate-600">Average won deal {sales.averageDealSize == null ? '—' : money(sales.averageDealSize)}</p>
-            </Card>
-            <Card title="Lost reasons" info="Counted from the lost reason stored on the deal.">
-              {sales.hasLostReasons ? <HorizontalBars rows={sales.lostReasons.map((row) => ({ label: row.reason, value: row.count }))} color="#FF6B6B" /> : <p className="text-sm text-slate-500">{sales.lostCount ? 'Lost reasons are not stored on these deals.' : 'No lost deals in this range.'}</p>}
-            </Card>
-          </div>
-          <Card title="Days to close" info={sales.cycle.reason}>
-            <p className="text-4xl font-semibold text-slate-300">—</p>
-            <p className="mt-2 text-sm text-slate-500">{sales.cycle.reason}</p>
-          </Card>
-          <MeetingCloseRateSection leads={sales.leads} monthView="all" year={Number(range.endDate.slice(0, 4))} />
-          <details className="rounded-2xl border border-slate-200 bg-white p-4">
-            <summary className="cursor-pointer text-sm font-semibold text-slate-900">Eight report views</summary>
-            <div className="mt-4">
-              <DealReportingDashboard rows={sales.leads} monthView="all" onMonth={() => {}} now={new Date()} focus="all" onFocus={() => {}} controls={false} />
-            </div>
-          </details>
-        </>
-      ) : null}
-    </Section>
-  )
-}
-
-function Ga4Section({ ga4 }) {
-  if (!ga4?.connected) {
-    const missingKey = ga4?.reason === 'not_configured'
-    const missingProperty = ga4?.reason === 'ga4_not_connected'
-    return (
-      <Section id="ga4" kicker="02" title="Google Analytics">
-        <EmptyPanel title={missingProperty ? 'Google Analytics is not connected on OpenSEO.' : 'Google Analytics is not connected.'} testId="ga4-empty">
-          {missingKey
-            ? 'Missing environment variable: OPENSEO_API_KEY. Add it on the Vercel project brandastic-co and redeploy. Google Analytics is read with that same key. No users or sessions are shown until it is set.'
-            : missingProperty
-              ? 'OPENSEO_API_KEY is set, but this OpenSEO project has no GA4 property. In OpenSEO, open the Brandastic project, then Project settings, Integrations, Google Analytics, and save the brandastic.com property.'
-              : 'OpenSEO did not return Google Analytics. Nothing is estimated in its place.'}
-        </EmptyPanel>
-      </Section>
-    )
-  }
-  const previous = ga4.previous || {}
-  return (
-    <Section id="ga4" kicker="02" title="Google Analytics">
-      <p className="text-sm text-slate-500">{ga4.property ? `${ga4.property} · ` : ''}All channels for the totals. The sessions chart is Organic Search, the daily series OpenSEO returns.</p>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Users" value={formatCount(ga4.users)} current={ga4.users} previous={previous.users} color="#00AEEF" testId="ga4-users" />
-        <KpiCard label="Sessions" value={formatCount(ga4.sessions)} current={ga4.sessions} previous={previous.sessions} series={(ga4.series || []).map((row) => row.sessions).filter((value) => value != null)} />
-        <KpiCard label="Engaged sessions" value={formatCount(ga4.engagedSessions)} current={ga4.engagedSessions} previous={previous.engagedSessions} color="#00D4AA" />
-        <KpiCard label="Key events" value={formatCount(ga4.keyEvents)} current={ga4.keyEvents} previous={previous.keyEvents} color="#8B5CF6" />
-      </div>
-      <div className="grid gap-3 lg:grid-cols-2">
-        <Card title="Sessions over time" info="Organic Search sessions by day from the connected GA4 property.">
-          <TimeSeriesChart series={ga4.series} label="Organic sessions over time" />
-        </Card>
-        <Card title="Traffic by channel" info="Session share across GA4 default channel groups.">
-          <SliceDonut slices={(ga4.channels || []).map((row) => ({ label: row.label, value: row.sessions }))} caption="Sessions" />
-        </Card>
-      </div>
-      <div className="grid gap-3 lg:grid-cols-3">
-        <Card title="Top pages" info="Page views across all channels.">
-          <HorizontalBars rows={(ga4.pages || []).map((row) => ({ label: row.label, value: row.value, display: formatCount(row.value) }))} />
-        </Card>
-        <Card title="Devices" info="Sessions by device.">
-          <HorizontalBars rows={(ga4.devices || []).map((row) => ({ label: row.label, value: row.value, display: formatCount(row.value) }))} color="#00AEEF" />
-        </Card>
-        <Card title="Countries" info="Sessions by country.">
-          <HorizontalBars rows={(ga4.countries || []).map((row) => ({ label: row.label, value: row.value, display: formatCount(row.value) }))} color="#00D4AA" />
-        </Card>
-      </div>
-      {(ga4.events || []).length ? (
-        <Card title="Key events" info="Conversion events stored in GA4.">
-          <HorizontalBars rows={ga4.events.map((row) => ({ label: row.label, value: row.value, display: formatCount(row.value) }))} color="#8B5CF6" />
-        </Card>
-      ) : null}
-    </Section>
-  )
-}
-
-function SearchSection({ search }) {
-  if (!search?.connected) {
-    return (
-      <Section id="search" kicker="03" title="Site analytics">
-        <EmptyPanel title="Search Console is not connected." testId="search-empty">
-          {search?.reason === 'not_configured'
-            ? 'Missing environment variable: OPENSEO_API_KEY. Add it on the Vercel project brandastic-co and redeploy. Search Console is read through the Brandastic OpenSEO project. No clicks or positions are shown until that key is set.'
-            : 'OpenSEO did not return Search Console data. Nothing is estimated in its place.'}
-        </EmptyPanel>
-      </Section>
-    )
-  }
+function MarketingKpis({ report }) {
+  const ga4 = report.ga4 || {}
+  const search = report.search || {}
   const totals = search.totals || {}
   const previous = search.previous || {}
-  const series = search.series || []
+  const prior = ga4.previous || {}
   return (
-    <Section id="search" kicker="03" title="Site analytics">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Clicks" value={formatCount(totals.clicks)} current={totals.clicks} previous={previous.clicks} series={series.map((row) => row.clicks)} />
-        <KpiCard label="Impressions" value={formatCount(totals.impressions)} current={totals.impressions} previous={previous.impressions} series={series.map((row) => row.impressions)} color="#00AEEF" />
-        <KpiCard label="CTR" value={ctr(totals.ctr)} current={totals.ctr == null ? null : totals.ctr * 100} previous={previous.ctr == null ? null : previous.ctr * 100} series={series.map((row) => (row.ctr || 0) * 100)} color="#8B5CF6" />
-        <KpiCard label="Average position" value={formatPosition(totals.position)} current={totals.position} previous={previous.position} invert series={series.map((row) => row.position).filter((value) => value != null)} color="#00D4AA" />
-      </div>
-      <Card title="Clicks, impressions, and position" info="Orange is clicks, blue dashes are impressions, teal is average position. Lower position is better.">
-        <DualAxisChart series={series} />
-        <Legend items={[{ label: 'Clicks', color: '#F7931E' }, { label: 'Impressions, own scale', color: '#00AEEF' }, { label: 'Avg position, lower is higher on the chart', color: '#00D4AA' }]} />
-      </Card>
-      <div className="grid gap-3 lg:grid-cols-2">
-        <Card title="Top queries" info="Search Console queries for this range.">
-          <HorizontalBars rows={(search.queries || []).map((row) => ({ label: row.key, value: row.clicks, display: `${formatCount(row.clicks)} clicks` }))} />
-        </Card>
-        <Card title="Top pages" info="Search Console pages for this range.">
-          <HorizontalBars rows={(search.pages || []).map((row) => ({ label: row.key.replace('https://brandastic.com', ''), value: row.clicks, display: `${formatCount(row.clicks)} clicks` }))} color="#00AEEF" />
-        </Card>
-      </div>
-    </Section>
-  )
-}
-
-function KeywordSection({ report, rows, rankingOnly, onToggle, query, onQuery, openTable, onOpenTable, onRefresh, check }) {
-  if (!report?.connected) {
-    return (
-      <Section id="keywords" kicker="04" title="SEO keywords">
-        <EmptyPanel title="OpenSEO rank tracking is not connected." testId="keywords-empty">
-          {report?.reason === 'not_configured'
-            ? 'Missing environment variable: OPENSEO_API_KEY. Add it on the Vercel project brandastic-co and redeploy. Optional: OPENSEO_PROJECT_ID and OPENSEO_RANK_TRACKER_ID. The keyword list stays empty until that key is set.'
-            : 'OpenSEO did not return tracker keywords. No positions are filled in.'}
-        </EmptyPanel>
-      </Section>
-    )
-  }
-  const groups = KEYWORD_CATEGORIES.map((category) => {
-    const items = rows.filter((row) => row.category === category.id).slice().sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
-    const ranked = items.filter((row) => row.position != null)
-    const average = ranked.length ? ranked.reduce((sum, row) => sum + row.position, 0) / ranked.length : null
-    return { ...category, items, average }
-  }).filter((group) => group.items.length)
-  return (
-    <Section id="keywords" kicker="04" title="SEO keywords">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-600">
-          Showing {report.ranking} ranking of {report.tracked} tracked
-          {report.lastCheckedAt ? ` · last checked ${new Date(report.lastCheckedAt).toLocaleString()}` : ''}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={onToggle} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700" aria-pressed={!rankingOnly}>
-            {rankingOnly ? 'Show all tracked' : 'Ranking only'}
-          </button>
-          <button type="button" onClick={onRefresh} disabled={check && !check.done} className="rounded-full bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
-            {check && !check.done ? 'Checking rankings…' : 'Refresh rankings'}
-          </button>
-        </div>
-      </div>
-      {check?.status ? <p className="text-sm text-slate-500">Rank check: {check.status}{check.done ? '' : ' · this page will reload when it finishes'}</p> : null}
-      <input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="Search keywords" aria-label="Search keywords" className="h-10 w-full max-w-sm rounded-lg border border-slate-200 bg-white px-3 text-sm" />
-      <div className="grid gap-3 lg:grid-cols-2">
-        {groups.map((group) => (
-          <article key={group.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div>
-                <h3 className="font-semibold text-slate-900">{group.label}</h3>
-                <p className="text-xs text-slate-500">{group.items.length} keywords · avg position {formatPosition(group.average)}</p>
-              </div>
-            </div>
-            <BucketBars rows={group.items} />
-            <ul className="mt-3 space-y-2">
-              {group.items.slice(0, 5).map((row) => (
-                <li key={row.id} className="flex items-center justify-between gap-2" title={row.rankingUrl || row.keyword}>
-                  <span className="truncate text-sm text-slate-700">{row.keyword}</span>
-                  <span className="flex items-center gap-2">
-                    <KeywordSpark history={row.history} />
-                    <PositionBadge position={row.position} />
-                    <Trend current={row.position} previous={row.previousPosition} invert />
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </article>
-        ))}
-      </div>
-      <button type="button" onClick={onOpenTable} className="text-sm font-semibold text-[#1644ED]">{openTable ? 'Hide table' : 'Show keyword table'}</button>
-      {openTable ? <KeywordTable rows={rows} /> : null}
-    </Section>
-  )
-}
-
-function KeywordTable({ rows }) {
-  return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-      <table className="w-full min-w-[880px] text-left text-sm">
-        <thead className="text-[11px] uppercase tracking-wide text-slate-400">
-          <tr>{['Keyword', 'URL', 'Position', 'Change', 'Best', 'Volume', 'KD', 'CPC', 'Checked'].map((label) => <th key={label} className="px-3 py-2">{label}</th>)}</tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.id} className="border-t border-slate-100">
-              <td className="px-3 py-2 font-medium text-slate-800">{row.keyword}</td>
-              <td className="max-w-[180px] truncate px-3 py-2 text-slate-500">{row.rankingUrl || '—'}</td>
-              <td className="px-3 py-2"><PositionBadge position={row.position} /></td>
-              <td className="px-3 py-2"><Trend current={row.position} previous={row.previousPosition} invert /></td>
-              <td className="px-3 py-2">{formatPosition(row.bestPosition)}</td>
-              <td className="px-3 py-2">{row.volume == null ? '—' : formatCount(row.volume)}</td>
-              <td className="px-3 py-2">{row.kd == null ? '—' : row.kd}</td>
-              <td className="px-3 py-2">{row.cpc == null ? '—' : `$${Number(row.cpc).toFixed(2)}`}</td>
-              <td className="px-3 py-2 text-slate-500">{row.checked ? (row.lastChecked ? new Date(row.lastChecked).toLocaleDateString() : 'Checked') : 'Not checked'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="marketing-kpis">
+      <KpiCard label="Users" value={formatCount(ga4.users)} current={ga4.users} previous={prior.users} color="#00AEEF" testId="kpi-users" />
+      <KpiCard label="Sessions" value={formatCount(ga4.sessions)} current={ga4.sessions} previous={prior.sessions} series={(ga4.series || []).map((row) => row.sessions).filter((value) => value != null)} />
+      <KpiCard label="Clicks" value={formatCount(totals.clicks)} current={totals.clicks} previous={previous.clicks} series={(search.series || []).map((row) => row.clicks)} />
+      <KpiCard label="Impressions" value={formatCount(totals.impressions)} current={totals.impressions} previous={previous.impressions} series={(search.series || []).map((row) => row.impressions)} color="#00AEEF" />
+      <KpiCard label="Avg position" value={formatPosition(totals.position)} current={totals.position} previous={previous.position} invert color="#00D4AA" />
+      <KpiCard label="Keywords ranking" value={formatCount(report.keywords?.ranking)} hint={`of ${formatCount(report.keywords?.tracked)} tracked`} color="#8B5CF6" />
+      <KpiCard label="AI mention rate" value={report.ai?.score == null ? '—' : `${Number(report.ai.score).toFixed(1)}%`} current={report.ai?.score} previous={report.ai?.trend == null || report.ai?.score == null ? null : report.ai.score - report.ai.trend} color="#F7931E" />
+      <KpiCard label="CTR" value={ctr(totals.ctr)} current={totals.ctr == null ? null : totals.ctr * 100} previous={previous.ctr == null ? null : previous.ctr * 100} />
     </div>
   )
 }
 
-function AiSection({ ai }) {
-  if (!ai?.connected) {
+function TrafficSection({ ga4 }) {
+  if (!ga4?.connected) {
     return (
-      <Section id="ai" kicker="05" title="AI visibility">
-        <EmptyPanel title="AI visibility is not connected." testId="ai-empty">
-          {ai?.reason === 'not_configured'
-            ? 'Missing environment variable: OPENSEO_API_KEY. Add it on the Vercel project brandastic-co and redeploy. No mention rate is shown until that key is set.'
-            : 'OpenSEO did not return AI visibility. Unchecked prompts are not marked as misses.'}
-        </EmptyPanel>
+      <Section id="traffic" title="Site traffic and sources">
+        <EmptyPanel title="Site traffic is not connected." testId="ga4-empty">{missingCopy(ga4?.reason, 'Users and sessions stay blank until that key is set.')}</EmptyPanel>
       </Section>
     )
   }
-  const checked = (ai.prompts || []).some((prompt) => (prompt.engines || []).length)
+  const total = (ga4.channels || []).reduce((sum, row) => sum + (row.sessions || 0), 0)
   return (
-    <Section id="ai" kicker="05" title="AI visibility">
-      <div className="grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <Card title="Mention rate" info={ai.trendStatus === 'comparable' ? 'Change versus the previous OpenSEO period.' : 'No earlier period to compare yet.'}>
-          {checked || ai.score != null ? <Gauge value={ai.score} label="Brand mentions" /> : <EmptyPanel title="Not checked yet">Prompts are listed, and each engine stays blank until a stored answer exists.</EmptyPanel>}
-          <div className="mt-2 flex justify-center"><Trend current={ai.score} previous={ai.trend == null || ai.score == null ? null : ai.score - ai.trend} /></div>
+    <Section id="traffic" title="Site traffic and sources">
+      <p className="text-sm text-slate-500">Channel totals cover every GA4 session. The daily chart is Organic Search only, because that is the daily series OpenSEO returns.</p>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Card title="Organic sessions over time" info="Daily Organic Search sessions. All-channel totals are in the table.">
+          <TimeSeriesChart series={ga4.series} label="Organic sessions over time" />
         </Card>
-        <Card title="Share of voice" info="Mentions in the latest stored run. Competitors come from the OpenSEO project.">
-          {(ai.voices || []).length ? <HorizontalBars rows={ai.voices.map((voice) => ({ label: voice.name, value: voice.mentions, display: `${voice.mentions} mentions`, color: voice.own ? '#F7931E' : '#00AEEF' }))} /> : <p className="text-sm text-slate-500">No competitor comparison was stored on this run.</p>}
+        <Card title="Sessions by channel" info="Share of all sessions.">
+          <SliceDonut slices={(ga4.channels || []).map((row) => ({ label: row.label, value: row.sessions }))} caption="Sessions" />
         </Card>
       </div>
-      <Card title="Prompt by engine" info="Green means mentioned and cited. Orange means mentioned. Gray means an answer was stored without a mention.">
-        <Heatmap prompts={ai.prompts || []} />
-        <Legend items={[{ label: 'Mentioned and cited', color: '#10b981' }, { label: 'Mentioned', color: '#fb923c' }, { label: 'Not mentioned', color: '#e2e8f0' }, { label: 'Not checked', color: '#f1f5f9' }]} />
+      <Card title="Channel breakdown" info="Sessions and share of the period.">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-[11px] uppercase tracking-wide text-slate-400">
+              <tr><th className="py-2">Channel</th><th className="py-2 text-right">Sessions</th><th className="py-2 text-right">Share</th></tr>
+            </thead>
+            <tbody>
+              {(ga4.channels || []).map((row) => (
+                <tr key={row.label} className="border-t border-slate-100">
+                  <td className="py-2 font-medium text-slate-800">{row.label}</td>
+                  <td className="py-2 text-right tabular-nums">{formatCount(row.sessions)}</td>
+                  <td className="py-2 text-right tabular-nums">{share(row.sessions, total)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
+      <Card title="Top sources" info="Source / medium from GA4.">
+        <HorizontalBars rows={(ga4.sources || []).map((row) => ({ label: row.label, value: row.sessions, display: formatCount(row.sessions) }))} color="#00AEEF" />
+      </Card>
+    </Section>
+  )
+}
+
+function KeywordList({ report, check, onRefresh }) {
+  const rows = (report?.rows || []).filter((row) => row.ranking).slice().sort((a, b) => a.position - b.position)
+  const groups = KEYWORD_CATEGORIES.map((category) => ({
+    ...category,
+    items: rows.filter((row) => row.category === category.id),
+  })).filter((group) => group.items.length)
+  return (
+    <Section id="keywords" title="Keyword rankings">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-600">
+          {report?.connected ? `${formatCount(report.ranking)} ranking of ${formatCount(report.tracked)} tracked` : 'Not connected'}
+          {report?.lastCheckedAt ? ` · last checked ${new Date(report.lastCheckedAt).toLocaleString()}` : ''}
+        </p>
+        <button type="button" onClick={onRefresh} disabled={!report?.connected || (check && !check.done)} className="rounded-full bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
+          {check && !check.done ? 'Checking rankings…' : 'Refresh rankings'}
+        </button>
+      </div>
+      {!report?.connected ? <EmptyPanel title="Keyword rankings are not connected." testId="keywords-empty">{missingCopy(report?.reason, 'The ranking list stays empty until that key is set.')}</EmptyPanel> : null}
+      {groups.map((group) => (
+        <div key={group.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <h3 className="border-b border-slate-100 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900">{group.label} · {group.items.length}</h3>
+          <ul>
+            {group.items.map((row) => (
+              <li key={row.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-slate-100 px-4 py-2">
+                <PositionBadge position={row.position} />
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-slate-900">{row.keyword}</p>
+                  <p className="truncate text-xs text-slate-500">{row.rankingUrl || 'No ranking URL'}</p>
+                </div>
+                <div className="text-right">
+                  <Trend current={row.position} previous={row.previousPosition} invert />
+                  <p className="text-xs text-slate-500">{row.volume == null ? 'Volume —' : `${formatCount(row.volume)} / mo`}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </Section>
+  )
+}
+
+function AiList({ ai }) {
+  if (!ai?.connected) {
+    return (
+      <Section id="ai" title="AI visibility rankings">
+        <EmptyPanel title="AI visibility is not connected." testId="ai-empty">{missingCopy(ai?.reason, 'Prompt rankings stay blank until that key is set.')}</EmptyPanel>
+      </Section>
+    )
+  }
+  const totalMentions = (ai.voices || []).reduce((sum, row) => sum + (row.mentions || 0), 0)
+  return (
+    <Section id="ai" title="AI visibility rankings">
+      <Card title="Share of voice" info="Mentions in the latest stored run.">
+        <HorizontalBars rows={(ai.voices || []).map((row) => ({ label: row.name, value: row.mentions, display: share(row.mentions, totalMentions), color: row.own ? '#F7931E' : '#00AEEF' }))} />
+      </Card>
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <table className="w-full min-w-[760px] text-left text-sm">
+          <thead className="text-[11px] uppercase tracking-wide text-slate-400">
+            <tr>{['Prompt', 'Appears', 'Rank', 'Engine', 'Competitors', 'Checked'].map((label) => <th key={label} className="px-3 py-2">{label}</th>)}</tr>
+          </thead>
+          <tbody>
+            {(ai.prompts || []).map((row) => (
+              <tr key={row.id} className="border-t border-slate-100">
+                <td className="max-w-[280px] px-3 py-2 font-medium text-slate-900">{row.prompt}{row.paused ? ' · paused' : ''}</td>
+                <td className="px-3 py-2">{row.appears == null ? 'Not checked' : row.appears ? 'Yes' : 'No'}</td>
+                <td className="px-3 py-2">{row.rank == null ? '—' : row.rank}</td>
+                <td className="px-3 py-2">{row.engine || '—'}</td>
+                <td className="px-3 py-2 text-slate-600">{(row.competitors || []).join(', ') || '—'}</td>
+                <td className="px-3 py-2 text-slate-500">{row.checkedAt ? new Date(row.checkedAt).toLocaleDateString() : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Section>
+  )
+}
+
+function SearchCharts({ search }) {
+  if (!search?.connected) {
+    return (
+      <Section id="search" title="Search Console">
+        <EmptyPanel title="Search Console is not connected." testId="search-empty">{missingCopy(search?.reason, 'Clicks and impressions stay blank until that key is set.')}</EmptyPanel>
+      </Section>
+    )
+  }
+  return (
+    <Section id="search" title="Search Console">
+      <Card title="Clicks, impressions, and position" info="Orange is clicks, blue dashes are impressions, teal is average position.">
+        <DualAxisChart series={search.series || []} />
+        <Legend items={[{ label: 'Clicks', color: '#F7931E' }, { label: 'Impressions, own scale', color: '#00AEEF' }, { label: 'Avg position', color: '#00D4AA' }]} />
+      </Card>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Card title="Top queries"><HorizontalBars rows={(search.queries || []).map((row) => ({ label: row.key, value: row.clicks, display: `${formatCount(row.clicks)} clicks` }))} /></Card>
+        <Card title="Top pages"><HorizontalBars rows={(search.pages || []).map((row) => ({ label: String(row.key).replace('https://brandastic.com', ''), value: row.clicks, display: `${formatCount(row.clicks)} clicks` }))} color="#00AEEF" /></Card>
+      </div>
+    </Section>
+  )
+}
+
+function OtherCharts({ ga4 }) {
+  if (!ga4?.connected) return null
+  return (
+    <Section id="audience" title="Audience">
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Card title="Devices"><HorizontalBars rows={(ga4.devices || []).map((row) => ({ label: row.label, value: row.value, display: formatCount(row.value) }))} /></Card>
+        <Card title="Countries"><HorizontalBars rows={(ga4.countries || []).map((row) => ({ label: row.label, value: row.value, display: formatCount(row.value) }))} color="#00D4AA" /></Card>
+      </div>
     </Section>
   )
 }
@@ -482,9 +351,9 @@ function RankDialog({ dialog, busy, onClose, onConfirm }) {
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="rank-check-title">
       <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
         <h2 id="rank-check-title" className="text-lg font-semibold text-slate-900">Refresh rankings?</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">This starts one OpenSEO rank check for the Brandastic mobile tracker. It uses credits and does not change the tracker schedule, devices, or keywords.</p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">This starts one OpenSEO rank check. It uses credits and does not change the tracker schedule, devices, or keywords.</p>
         <p className="mt-3 text-sm font-semibold text-slate-800">{cost ? `Estimated cost: ${cost}.` : 'OpenSEO did not return an estimate. Starting a check still uses credits.'}</p>
-        {dialog?.reason === 'cooldown' ? <p className="mt-2 text-sm text-amber-700">A check already ran in the last hour. Next check {dialog.nextAt ? new Date(dialog.nextAt).toLocaleString() : 'later'}.</p> : null}
+        {dialog?.reason === 'cooldown' ? <p className="mt-2 text-sm text-amber-700">A check already ran in the last hour.</p> : null}
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600">Cancel</button>
           <button type="button" onClick={onConfirm} disabled={busy || dialog?.allowed === false || dialog?.status === 'loading'} className="rounded-lg bg-brand-orange px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Start check</button>
