@@ -19,6 +19,7 @@ import {
 import { estimateRankCheck, fetchAnalytics, rankCheckStatus, startRankCheck } from '../lib/analyticsApi'
 import { ANALYTICS_RANGES, COMPARE_MODES } from '../lib/analyticsRange'
 import { KEYWORD_CATEGORIES } from '../lib/keywordCategoryLabels'
+import { averageRank, isRankingKeyword } from '../lib/rankPages'
 
 function ctr(value) {
   if (value == null) return '—'
@@ -32,10 +33,19 @@ function share(part, whole) {
 
 function Section({ id, title, children }) {
   return (
-    <section id={id} className="space-y-4" aria-labelledby={`${id}-title`}>
+    <section id={id} className="space-y-3" aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`} className="text-xl font-semibold tracking-tight text-slate-900">{title}</h2>
       {children}
     </section>
+  )
+}
+
+function CompactEmpty({ title, children, testId }) {
+  return (
+    <details className="rounded-xl border border-dashed border-slate-300 bg-slate-50" data-testid={testId}>
+      <summary className="cursor-pointer px-4 py-2 text-sm font-semibold text-slate-800">{title}</summary>
+      <p className="px-4 pb-3 text-sm leading-6 text-slate-600">{children}</p>
+    </details>
   )
 }
 
@@ -141,7 +151,7 @@ export default function Analytics() {
 
   return (
     <div className="min-h-full bg-[#f6f7fb] px-4 py-6 lg:px-8">
-      <div className="mx-auto flex max-w-[1200px] flex-col gap-8">
+      <div className="mx-auto flex max-w-[1200px] flex-col gap-6">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-orange">Marketing</p>
@@ -229,7 +239,7 @@ function TrafficSection({ ga4 }) {
   if (!ga4?.connected) {
     return (
       <Section id="traffic" title="Site traffic and sources">
-        <EmptyPanel title="Site traffic is not connected." testId="ga4-empty">{missingCopy(ga4?.reason, 'Users and sessions stay blank until that key is set.')}</EmptyPanel>
+        <CompactEmpty title="Site traffic is not connected." testId="ga4-empty">{missingCopy(ga4?.reason, 'Users and sessions stay blank until that key is set.')}</CompactEmpty>
       </Section>
     )
   }
@@ -284,17 +294,32 @@ function byGoogleRank(a, b) {
 }
 
 function KeywordList({ report, check, onRefresh }) {
-  const rows = (report?.rows || []).filter((row) => row.checked !== false).slice().sort(byGoogleRank)
-  const groups = KEYWORD_CATEGORIES.map((category) => ({
-    ...category,
-    items: rows.filter((row) => row.category === category.id).sort(byGoogleRank),
-  })).filter((group) => group.items.length)
+  const [showHidden, setShowHidden] = useState(false)
+  const [opened, setOpened] = useState(null)
+  const all = report?.rows || []
+  const ranking = all.filter(isRankingKeyword).slice().sort(byGoogleRank)
+  const hidden = all.filter((row) => !isRankingKeyword(row)).slice().sort(byGoogleRank)
+  const groups = KEYWORD_CATEGORIES.map((category) => {
+    const ranked = ranking.filter((row) => row.category === category.id)
+    const quiet = hidden.filter((row) => row.category === category.id)
+    return { ...category, ranked, quiet, items: showHidden ? ranked.concat(quiet) : ranked }
+  }).filter((group) => group.items.length)
+  const firstId = groups[0]?.id
+  const isOpen = (id) => (opened == null ? id === firstId : opened.has(id))
+  const toggle = (id) => {
+    setOpened((current) => {
+      const next = new Set(current ?? (firstId ? [firstId] : []))
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
   return (
     <Section id="keywords" title="Keyword rankings">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-2">
           <p className="text-sm text-slate-600">
-            {report?.connected ? `${formatCount(report.ranking)} ranking in the top 40 of ${formatCount(rows.length)} checked` : 'Not connected'}
+            {report?.connected ? `${formatCount(ranking.length)} ranking in the top 40` : 'Not connected'}
             {report?.lastCheckedAt ? ` · latest completed mobile check ${new Date(report.lastCheckedAt).toLocaleString()}` : ''}
           </p>
           <RankLegend />
@@ -303,73 +328,146 @@ function KeywordList({ report, check, onRefresh }) {
           {check && !check.done ? 'Checking rankings…' : 'Refresh rankings'}
         </button>
       </div>
-      {report?.connected ? <RankSummary rows={rows} /> : null}
-      {!report?.connected ? <EmptyPanel title="Keyword rankings are not connected." testId="keywords-empty">{missingCopy(report?.reason, 'The ranking list stays empty until that key is set.')}</EmptyPanel> : null}
-      {groups.map((group) => (
-        <div key={group.id} className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-          <h3 className="border-b border-slate-100 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900">{group.label} · {group.items.length}</h3>
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="text-[11px] uppercase tracking-wide text-slate-400">
-              <tr>
-                <th className="px-4 py-2">Google rank</th>
-                <th className="px-3 py-2">Keyword</th>
-                <th className="px-3 py-2">Ranking URL</th>
-                <th className="px-3 py-2 text-right">Volume</th>
-                <th className="px-3 py-2 text-right">KD</th>
-              </tr>
-            </thead>
-            <tbody>
-              {group.items.map((row) => (
-                <tr key={row.id} className="border-t border-slate-100">
-                  <td className="px-4 py-3"><GoogleRank position={row.position} change={row.change} previous={row.previousPosition} /></td>
-                  <td className="px-3 py-3 font-medium text-slate-900">{row.keyword}</td>
-                  <td className="max-w-[240px] px-3 py-3"><ExternalLink href={row.rankingUrl} className="block truncate text-sm" /></td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums text-slate-500">{row.volume == null ? '—' : formatCount(row.volume)}</td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums text-slate-500">{row.kd == null ? '—' : formatCount(row.kd)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
+      {report?.connected ? <RankSummary rows={all} /> : null}
+      {!report?.connected ? <CompactEmpty title="Keyword rankings are not connected." testId="keywords-empty">{missingCopy(report?.reason, 'The ranking list stays empty until that key is set.')}</CompactEmpty> : null}
+      {hidden.length ? (
+        <button type="button" onClick={() => setShowHidden((value) => !value)} className="self-start text-sm font-semibold text-[#1644ED] hover:underline" aria-expanded={showHidden}>
+          {showHidden ? `Hide ${formatCount(hidden.length)} not ranking` : `Show ${formatCount(hidden.length)} not ranking`}
+        </button>
+      ) : null}
+      {groups.map((group) => {
+        const avg = averageRank(group.ranked)
+        return (
+          <div key={group.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <button type="button" aria-expanded={isOpen(group.id)} onClick={() => toggle(group.id)} className="flex w-full items-center justify-between gap-3 bg-slate-50 px-4 py-2 text-left">
+              <span className="text-sm font-semibold text-slate-900">{group.label}</span>
+              <span className="text-xs font-medium text-slate-500">
+                {formatCount(group.ranked.length)} ranking{showHidden && group.quiet.length ? ` · ${formatCount(group.quiet.length)} not ranking` : ''}
+                {avg == null ? '' : ` · avg #${avg}`}
+              </span>
+            </button>
+            {isOpen(group.id) ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead className="text-[11px] uppercase tracking-wide text-slate-400">
+                    <tr>
+                      <th className="px-4 py-2">Google rank</th>
+                      <th className="px-3 py-2">Keyword</th>
+                      <th className="px-3 py-2">Ranking URL</th>
+                      <th className="px-3 py-2 text-right">Volume</th>
+                      <th className="px-3 py-2 text-right">KD</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.items.map((row) => (
+                      <tr key={row.id} className="border-t border-slate-100">
+                        <td className="px-4 py-2"><GoogleRank position={row.position} change={row.change} previous={row.previousPosition} /></td>
+                        <td className="px-3 py-2 font-medium text-slate-900">{row.keyword}</td>
+                        <td className="max-w-[240px] px-3 py-2"><ExternalLink href={row.rankingUrl} className="block truncate text-sm" /></td>
+                        <td className="px-3 py-2 text-right text-xs tabular-nums text-slate-500">{row.volume == null ? '—' : formatCount(row.volume)}</td>
+                        <td className="px-3 py-2 text-right text-xs tabular-nums text-slate-500">{row.kd == null ? '—' : formatCount(row.kd)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </div>
+        )
+      })}
     </Section>
   )
 }
 
 function AiList({ ai }) {
+  const [showBlank, setShowBlank] = useState(false)
+  const [showVoices, setShowVoices] = useState(false)
+  const [opened, setOpened] = useState(null)
   if (!ai?.connected) {
     return (
       <Section id="ai" title="AI visibility rankings">
-        <EmptyPanel title="AI visibility is not connected." testId="ai-empty">{missingCopy(ai?.reason, 'Prompt rankings stay blank until that key is set.')}</EmptyPanel>
+        <CompactEmpty title="AI visibility is not connected." testId="ai-empty">{missingCopy(ai?.reason, 'Prompt rankings stay blank until that key is set.')}</CompactEmpty>
       </Section>
     )
   }
-  const totalMentions = (ai.voices || []).reduce((sum, row) => sum + (row.mentions || 0), 0)
+  const prompts = ai.prompts || []
+  const answered = prompts.filter((row) => row.appears != null)
+  const blank = prompts.filter((row) => row.appears == null)
+  const visible = showBlank ? prompts : answered
+  const topics = []
+  for (const row of visible) {
+    const topic = row.topic || 'Other'
+    const group = topics.find((item) => item.topic === topic)
+    if (group) group.items.push(row)
+    else topics.push({ topic, items: [row] })
+  }
+  const firstTopic = topics[0]?.topic
+  const isOpen = (topic) => (opened == null ? topic === firstTopic : opened.has(topic))
+  const toggle = (topic) => {
+    setOpened((current) => {
+      const next = new Set(current ?? (firstTopic ? [firstTopic] : []))
+      if (next.has(topic)) next.delete(topic)
+      else next.add(topic)
+      return next
+    })
+  }
+  const voices = (ai.voices || []).slice().sort((a, b) => (b.mentions || 0) - (a.mentions || 0) || Number(b.own) - Number(a.own))
+  const voiced = voices.filter((row) => row.mentions > 0)
+  const quietVoices = voices.length - voiced.length
+  const shownVoices = showVoices ? voices : voiced.slice(0, 6)
+  const totalMentions = voices.reduce((sum, row) => sum + (row.mentions || 0), 0)
   return (
     <Section id="ai" title="AI visibility rankings">
-      <Card title="Share of voice" info="Mentions in the latest stored run.">
-        <HorizontalBars rows={(ai.voices || []).map((row) => ({ label: row.name, value: row.mentions, display: share(row.mentions, totalMentions), color: row.own ? '#F7931E' : '#00AEEF' }))} />
-      </Card>
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="text-[11px] uppercase tracking-wide text-slate-400">
-            <tr>{['Prompt', 'Mentioned', 'Rank', 'Cited URL', 'Engine', 'Competitors', 'Checked'].map((label) => <th key={label} className="px-3 py-2">{label}</th>)}</tr>
-          </thead>
-          <tbody>
-            {(ai.prompts || []).map((row) => (
-              <tr key={row.id} className="border-t border-slate-100">
-                <td className="max-w-[280px] px-3 py-2 font-medium text-slate-900">{row.prompt}{row.paused ? ' · paused' : ''}</td>
-                <td className="px-3 py-2">{row.appears == null ? 'Not checked' : row.appears ? 'Yes' : 'No'}</td>
-                <td className="px-3 py-2">{row.rank == null ? '—' : row.rank}</td>
-                <td className="max-w-[220px] px-3 py-2"><ExternalLink href={row.citedUrl} className="block truncate text-sm" /></td>
-                <td className="px-3 py-2">{row.engine || '—'}</td>
-                <td className="px-3 py-2 text-slate-600">{(row.competitors || []).join(', ') || '—'}</td>
-                <td className="px-3 py-2 text-slate-500">{row.checkedAt ? new Date(row.checkedAt).toLocaleDateString() : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {shownVoices.length ? (
+        <Card title="Share of voice" info="Mentions in the latest stored run.">
+          <HorizontalBars rows={shownVoices.map((row) => ({ label: row.name, value: row.mentions, display: share(row.mentions, totalMentions), color: row.own ? '#F7931E' : '#00AEEF' }))} />
+          {voices.length > shownVoices.length ? (
+            <button type="button" onClick={() => setShowVoices(true)} className="mt-2 text-sm font-semibold text-[#1644ED] hover:underline">
+              Show {formatCount(voices.length - shownVoices.length)} more brands
+            </button>
+          ) : null}
+          {showVoices && quietVoices ? (
+            <button type="button" onClick={() => setShowVoices(false)} className="mt-2 text-sm font-semibold text-[#1644ED] hover:underline">
+              Hide brands with no mentions
+            </button>
+          ) : null}
+        </Card>
+      ) : null}
+      {blank.length ? (
+        <button type="button" onClick={() => setShowBlank((value) => !value)} className="text-sm font-semibold text-[#1644ED] hover:underline" aria-expanded={showBlank}>
+          {showBlank ? `Hide ${formatCount(blank.length)} prompts with no results` : `Show ${formatCount(blank.length)} prompts with no results`}
+        </button>
+      ) : null}
+      {topics.map((group) => (
+        <div key={group.topic} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <button type="button" aria-expanded={isOpen(group.topic)} onClick={() => toggle(group.topic)} className="flex w-full items-center justify-between gap-3 bg-slate-50 px-4 py-2 text-left">
+            <span className="text-sm font-semibold text-slate-900">{group.topic}</span>
+            <span className="text-xs font-medium text-slate-500">{formatCount(group.items.length)}</span>
+          </button>
+          {isOpen(group.topic) ? (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="text-[11px] uppercase tracking-wide text-slate-400">
+                  <tr>{['Prompt', 'Mentioned', 'Rank', 'Cited URL', 'Engine', 'Competitors', 'Checked'].map((label) => <th key={label} className="px-3 py-2">{label}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {group.items.map((row) => (
+                    <tr key={row.id} className="border-t border-slate-100">
+                      <td className="max-w-[280px] px-3 py-2 font-medium text-slate-900">{row.prompt}{row.paused ? ' · paused' : ''}</td>
+                      <td className="px-3 py-2">{row.appears == null ? 'Not checked' : row.appears ? 'Yes' : 'No'}</td>
+                      <td className="px-3 py-2">{row.rank == null ? '—' : row.rank}</td>
+                      <td className="max-w-[220px] px-3 py-2"><ExternalLink href={row.citedUrl} className="block truncate text-sm" /></td>
+                      <td className="px-3 py-2">{row.engine || '—'}</td>
+                      <td className="px-3 py-2 text-slate-600">{(row.competitors || []).join(', ') || '—'}</td>
+                      <td className="px-3 py-2 text-slate-500">{row.checkedAt ? new Date(row.checkedAt).toLocaleDateString() : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </div>
+      ))}
     </Section>
   )
 }
@@ -378,7 +476,7 @@ function SearchCharts({ search }) {
   if (!search?.connected) {
     return (
       <Section id="search" title="Search Console">
-        <EmptyPanel title="Search Console is not connected." testId="search-empty">{missingCopy(search?.reason, 'Clicks and impressions stay blank until that key is set.')}</EmptyPanel>
+        <CompactEmpty title="Search Console is not connected." testId="search-empty">{missingCopy(search?.reason, 'Clicks and impressions stay blank until that key is set.')}</CompactEmpty>
       </Section>
     )
   }

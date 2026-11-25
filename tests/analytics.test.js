@@ -7,7 +7,7 @@ import { handleAnalytics } from '../server/analyticsHttp.js'
 import { cooldownDecision, startRankCheck } from '../server/analyticsRankCheck.js'
 import { salesSnapshot } from '../src/lib/analyticsSales.js'
 import { comparisonWindow, resolveAnalyticsRange } from '../src/lib/analyticsRange.js'
-import { rankMeaning, rankSummary } from '../src/lib/rankPages.js'
+import { averageRank, isRankingKeyword, rankMeaning, rankSummary } from '../src/lib/rankPages.js'
 
 const JUSTIN = 'justin.sample@example.test'
 const SANDY = 'sandy.sample@example.test'
@@ -118,6 +118,18 @@ describe('rank page labels', () => {
       ['Pages 3-4', 2],
       ['Not ranking', 1],
     ])
+  })
+
+  it('keeps only a top-40 position in the default list and averages those ranks', () => {
+    const rows = [
+      { keyword: 'ranked', position: 7 },
+      { keyword: 'deep', position: 41 },
+      { keyword: 'missing', position: null },
+    ]
+    assert.equal(rows.filter(isRankingKeyword).length, 1)
+    assert.equal(averageRank(rows), 7)
+    assert.equal(averageRank([{ position: 4 }, { position: 8 }]), 6)
+    assert.equal(averageRank([{ position: null }]), null)
   })
 })
 
