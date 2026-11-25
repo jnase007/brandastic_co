@@ -312,14 +312,14 @@ function Kpi({ label, value, change, note, testId }) {
   )
 }
 
-export default function DealReportingDashboard({ rows, monthView, onMonth, now, focus, onFocus }) {
+export default function DealReportingDashboard({ rows, monthView, onMonth, now, focus, onFocus, controls = true }) {
   const filtered = filterDealsByLeadMonth(rows, { monthView })
   const kpis = reportingKpis(rows, { monthView, now })
   const order = ['funnel', 'won-by-source', 'distribution', 'stalled', 'time-in-stage', 'won-lost', 'created', 'cycle']
   const visible = !focus || focus === 'all' ? order : [focus, ...order.filter((id) => id !== focus)]
   return (
     <div data-testid="deal-reporting">
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      {controls ? <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Reporting</h1>
           <p className="mt-1 max-w-xl text-sm text-slate-500">Percents are labeled on each chart. A dash means there is nothing to divide by.</p>
@@ -334,7 +334,7 @@ export default function DealReportingDashboard({ rows, monthView, onMonth, now, 
             {REPORT_MONTHS.map((month) => <option key={month.id} value={String(month.id)}>{month.label} {REPORT_YEAR}</option>)}
           </select>
         </div>
-      </div>
+      </div> : null}
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Kpi label="Total deals" value={kpis.total} change={kpis.totalChange} note={kpis.compareLabel} testId="kpi-total" />
         <Kpi label="Win rate" value={formatPct(kpis.winRate)} change={kpis.winRateChange} note={kpis.compareLabel} testId="kpi-win-rate" />

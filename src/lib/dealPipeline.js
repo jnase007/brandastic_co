@@ -65,6 +65,20 @@ export function stageFromLead(row) {
   return 'lead'
 }
 
+export function contractMonths(row) {
+  const months = Number(row?.contract_months)
+  return months > 0 ? months : 12
+}
+
+/** Same amount the deal board shows: close amount for wins, otherwise the 2026 value. */
+export function dealAmount(row) {
+  const stage = stageFromLead(row)
+  if (stage === 'won') return Number(row?.close_amount || row?.value_2026) || 0
+  const estimate = Number(row?.value_2026) || 0
+  if (row?.deal_type === 'Monthly') return estimate * contractMonths(row)
+  return estimate
+}
+
 export function parseUtcDay(value) {
   const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/)
   if (!match) return null

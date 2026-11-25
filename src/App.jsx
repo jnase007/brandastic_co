@@ -19,6 +19,7 @@ const Settings = lazy(() => import('./pages/Settings'))
 const Admin = lazy(() => import('./pages/Admin'))
 const TeamHub = lazy(() => import('./pages/TeamHub'))
 const Billing = lazy(() => import('./pages/Billing'))
+const Analytics = lazy(() => import('./pages/Analytics'))
 const BillingSubscriptionsPreview = import.meta.env.DEV
   ? lazy(() => import('./pages/BillingSubscriptionsPreview'))
   : null
@@ -1076,6 +1077,14 @@ function App() {
                 element={
                   <TeamRoute>
                     <TeamHub />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/analytics"
+                element={
+                  <TeamRoute>
+                    <Analytics />
                   </TeamRoute>
                 }
               />

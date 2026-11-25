@@ -3,17 +3,12 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { GripVertical, Loader2, Plus, RefreshCw, Target } from 'lucide-react'
 import { supabase, ensureValidSession } from '../lib/supabase'
 import { CHANNEL_COLORS, chipClass, displayDate, formatMoney, jiraUrl } from '../lib/leads'
-import { DEFAULT_LOST_REASON, PIPELINE_ALERTS_ENABLED, PIPELINE_STAGES as STAGES, dealAlert, dropUnavailableDealColumns, qualityForLostReason, stageFromLead } from '../lib/dealPipeline'
+import { DEFAULT_LOST_REASON, PIPELINE_ALERTS_ENABLED, PIPELINE_STAGES as STAGES, contractMonths, dealAlert, dealAmount, dropUnavailableDealColumns, qualityForLostReason, stageFromLead } from '../lib/dealPipeline'
 import { Button } from '../components/ui/button'
 import LeadContactDialog from '../components/LeadContactDialog'
 import { DealAlertBadge, DealAlertsPanel, DealLostDialog, WonChecklist } from '../components/DealPipelineAlerts'
 import { useToast } from '../hooks/useToast'
 import { cn } from '../lib/utils'
-
-function contractMonths(row) {
-  const months = Number(row.contract_months)
-  return months > 0 ? months : 12
-}
 
 function withinPastYear(row) {
   const raw = row.first_contact_date || row.updated_at || row.created_at
@@ -24,11 +19,7 @@ function withinPastYear(row) {
 }
 
 function amountOf(row) {
-  const stage = stageFromLead(row)
-  if (stage === 'won') return Number(row.close_amount || row.value_2026) || 0
-  const estimate = Number(row.value_2026) || 0
-  if (row.deal_type === 'Monthly') return estimate * contractMonths(row)
-  return estimate
+  return dealAmount(row)
 }
 
 export default function ScoreCardPipeline({ previewRows = null, previewNow = null } = {}) {
