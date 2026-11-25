@@ -12,6 +12,7 @@ import {
   stalledByStage,
   wonLostOverTime,
 } from '../lib/dealReports'
+import DealReportVisuals from './DealReportVisuals'
 
 const BLUE = '#1644ED'
 const VIOLET = '#7c3aed'
@@ -312,7 +313,7 @@ function Kpi({ label, value, change, note, testId }) {
   )
 }
 
-export default function DealReportingDashboard({ rows, monthView, onMonth, now, focus, onFocus, controls = true }) {
+export default function DealReportingDashboard({ rows, monthView, onMonth, now, focus, onFocus, controls = true, overview = false }) {
   const filtered = filterDealsByLeadMonth(rows, { monthView })
   const kpis = reportingKpis(rows, { monthView, now })
   const order = ['funnel', 'won-by-source', 'distribution', 'stalled', 'time-in-stage', 'won-lost', 'created', 'cycle']
@@ -335,6 +336,13 @@ export default function DealReportingDashboard({ rows, monthView, onMonth, now, 
           </select>
         </div>
       </div> : null}
+      {overview ? <DealReportVisuals rows={rows} monthView={monthView} now={now} /> : null}
+      {overview ? (
+        <div className="mb-3">
+          <h2 className="text-lg font-semibold text-slate-900">Report totals</h2>
+          <p className="text-sm text-slate-500">Same counts as before. Open pipeline here is the number of open deals, and a dash means there is nothing to divide by.</p>
+        </div>
+      ) : null}
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Kpi label="Total deals" value={kpis.total} change={kpis.totalChange} note={kpis.compareLabel} testId="kpi-total" />
         <Kpi label="Win rate" value={formatPct(kpis.winRate)} change={kpis.winRateChange} note={kpis.compareLabel} testId="kpi-win-rate" />
@@ -342,6 +350,7 @@ export default function DealReportingDashboard({ rows, monthView, onMonth, now, 
         <Kpi label="Open pipeline" value={kpis.open} change={kpis.openChange} note={kpis.compareLabel} testId="kpi-open" />
         <Kpi label="Won this month" value={kpis.wonThisMonth} change={kpis.wonThisMonthChange} note={kpis.compareLabel} testId="kpi-won-month" />
       </div>
+      {overview ? <h2 className="mb-3 text-lg font-semibold text-slate-900">All eight reports</h2> : null}
       <div className="grid gap-4 lg:grid-cols-2">
         {visible.map((id) => {
           const Chart = CHARTS[id]
