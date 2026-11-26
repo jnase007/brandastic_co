@@ -37,6 +37,39 @@ describe('keyword categories', () => {
   it('lets the mapping file override a rule', () => {
     assert.equal(assignKeywordCategory('osi express', { 'osi express': 'brand' }), 'brand')
   })
+
+  it('assigns senior living phrases before the digital and agency rules', () => {
+    const seniorTerms = [
+      'senior living crm',
+      'assisted living marketing',
+      'senior care marketing',
+      'home care marketing',
+      'senior living marketing',
+      'senior living marketing agency',
+      'senior living',
+      'senior living near me',
+      'senior living facilities near me',
+      'senior assisted living near me',
+      'assisted living facility',
+      'senior living communities',
+      'senior housing',
+      'independent living for seniors',
+      'low income senior living apartments',
+      'memory care marketing',
+      'google ads for senior living',
+      'senior living lead generation',
+      'memory care',
+      'nursing home',
+      'retirement community',
+      'retirement communities',
+    ]
+    for (const keyword of seniorTerms) {
+      assert.equal(assignKeywordCategory(keyword), 'senior', keyword)
+    }
+    assert.equal(assignKeywordCategory('full service marketing agency'), 'digital')
+    assert.equal(assignKeywordCategory('school marketing agency'), 'education')
+    assert.equal(assignKeywordCategory('advertising agency in orange county'), 'digital')
+  })
 })
 
 describe('rank rows', () => {

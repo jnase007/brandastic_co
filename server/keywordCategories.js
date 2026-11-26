@@ -7,6 +7,7 @@ export const KEYWORD_CATEGORIES = [
   { id: 'brand', label: 'Brand' },
   { id: 'digital', label: 'Digital marketing agency' },
   { id: 'education', label: 'Education' },
+  { id: 'senior', label: 'Senior living' },
   { id: 'seo', label: 'SEO topics' },
   { id: 'social', label: 'Social media / TikTok' },
   { id: 'other', label: 'Other' },
@@ -18,6 +19,7 @@ const EDUCATION = /\b(schools?|colleges?|universit(?:y|ies)|after-?school|enroll
 const SOCIAL = /\btik[\s-]?tok\b/i
 const SEO_TOPIC = /\b(link profiles?|search engine optimi[sz]ation|organic search)\b/i
 const AGENCY = /\bagenc(?:y|ies)\b/i
+const SENIOR = /\b(senior living|assisted living|memory care|home care|senior care|senior housing|independent living|nursing home|retirement communit(?:y|ies))\b/i
 const DIGITAL = /\b(digital marketing|advertising|branding|ppc|paid media|pay[- ]per|cro|wordpress|shopify|social media agency|content agency|marketing agency|google ads|irvine|costa mesa|newport beach|orange county|\boc\b)\b/i
 
 export function normalizeKeyword(value) {
@@ -50,6 +52,7 @@ export function assignKeywordCategory(keyword, overrides = {}) {
   if (EDUCATION.test(text)) return 'education'
   if (SOCIAL.test(text)) return 'social'
   if (SEO_TOPIC.test(text) && !AGENCY.test(text)) return 'seo'
+  if (SENIOR.test(text)) return 'senior'
   if (DIGITAL.test(text) || AGENCY.test(text)) return 'digital'
   return 'other'
 }

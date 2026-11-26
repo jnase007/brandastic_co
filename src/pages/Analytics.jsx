@@ -322,7 +322,8 @@ function KeywordList({ report, check, onRefresh }) {
   const groups = KEYWORD_CATEGORIES.map((category) => {
     const ranked = ranking.filter((row) => row.category === category.id)
     const quiet = hidden.filter((row) => row.category === category.id)
-    return { ...category, ranked, quiet, items: showHidden ? ranked.concat(quiet) : ranked }
+    const alwaysShow = category.id === 'senior'
+    return { ...category, ranked, quiet, items: (showHidden || alwaysShow) ? ranked.concat(quiet) : ranked }
   }).filter((group) => group.items.length)
   const firstId = groups[0]?.id
   const isOpen = (id) => (opened == null ? id === firstId : opened.has(id))
@@ -362,7 +363,7 @@ function KeywordList({ report, check, onRefresh }) {
             <button type="button" aria-expanded={isOpen(group.id)} onClick={() => toggle(group.id)} className="flex w-full items-center justify-between gap-3 bg-slate-50 px-4 py-2 text-left">
               <span className="text-sm font-semibold text-slate-900">{group.label}</span>
               <span className="text-xs font-medium text-slate-500">
-                {formatCount(group.ranked.length)} ranking{showHidden && group.quiet.length ? ` · ${formatCount(group.quiet.length)} not ranking` : ''}
+                {formatCount(group.ranked.length)} ranking{(showHidden || group.id === 'senior') && group.quiet.length ? ` · ${formatCount(group.quiet.length)} ${group.id === 'senior' ? 'not in top 40' : 'not ranking'}` : ''}
                 {avg == null ? '' : ` · avg #${avg}`}
               </span>
             </button>
@@ -381,7 +382,7 @@ function KeywordList({ report, check, onRefresh }) {
                   <tbody>
                     {group.items.map((row) => (
                       <tr key={row.id} className="border-t border-slate-100">
-                        <td className="px-4 py-2"><GoogleRank position={row.position} change={row.change} previous={row.previousPosition} /></td>
+                        <td className="px-4 py-2">{group.id === 'senior' && !isRankingKeyword(row) ? <span className="text-xs font-medium text-slate-500">not in top 40</span> : <GoogleRank position={row.position} change={row.change} previous={row.previousPosition} />}</td>
                         <td className="px-3 py-2 font-medium text-slate-900">{row.keyword}</td>
                         <td className="max-w-[240px] px-3 py-2"><ExternalLink href={row.rankingUrl} className="block truncate text-sm" /></td>
                         <td className="px-3 py-2 text-right text-xs tabular-nums text-slate-500">{row.volume == null ? '—' : formatCount(row.volume)}</td>
