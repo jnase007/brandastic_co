@@ -1,5 +1,5 @@
 /* eslint-env node */
-import { emptySearch, normalizeKeywords, searchFromPerformance, aiRankingsFromResults, applyRankHistory } from './analyticsNormalize.js'
+import { emptySearch, normalizeKeywords, searchFromPerformance, aiRankingsFromResults, applyRankHistory, mergeSearchQueries } from './analyticsNormalize.js'
 import { loadGa4 } from './analyticsGa4.js'
 import { loadKeywordOverrides } from './keywordCategories.js'
 import { openseoTool, readMcpToolResult } from './openseo.js'
@@ -162,13 +162,34 @@ function monthValue(series, month, key) {
   return seen ? total : null
 }
 
+export const SENIOR_SEARCH_PHRASES = ['senior', 'assisted living', 'memory care']
+
+// Free Search Console reads for the Wins and Senior living cards. Each call is read-only and uses no credits.
+async function searchExtras(config, range, options) {
+  const base = { projectId: config.projectId, dimensions: ['query'], startDate: range.startDate, endDate: range.endDate }
+  const [best, ...senior] = await Promise.all([
+    call(config, 'get_search_console_performance', { ...base, rowLimit: 1000, maxPosition: 10, minImpressions: 3 }, options),
+    ...SENIOR_SEARCH_PHRASES.map((phrase) => call(config, 'get_search_console_performance', {
+      ...base,
+      rowLimit: 250,
+      filters: [{ dimension: 'query', operator: 'contains', expression: phrase }],
+    }, options)),
+  ])
+  const seniorOk = senior.some((data) => data && data.ok !== false)
+  return {
+    connected: Boolean((best && best.ok !== false) || seniorOk),
+    best: mergeSearchQueries([best], { limit: 25, sort: 'position' }),
+    senior: mergeSearchQueries(senior, { limit: 25, sort: 'impressions' }),
+  }
+}
+
 export async function loadOpenSeo(config, range, options = {}) {
   const toolOptions = { fetchImpl: options.fetchImpl, cacheMs: options.cacheMs ?? 0, now: options.now }
   const compare = comparisonWindow(range, options.compare || 'period')
   const gscCompareOk = Boolean(compare) && historyCovers(compare.startDate, options.now ? new Date(options.now) : new Date(), GSC_HISTORY_MONTHS)
   const ga4CompareOk = Boolean(compare) && historyCovers(compare.startDate, options.now ? new Date(options.now) : new Date(), GA4_HISTORY_MONTHS)
   const historyStart = recentMonths(range.endDate, 13)[0] ? `${recentMonths(range.endDate, 13)[0]}-01` : range.startDate
-  const [daily, queries, pages, previousDaily, historyDaily, organicNow, organicCompare, organicHistory, tracker, trend, ga4, ranked, history] = await Promise.all([
+  const [daily, queries, pages, previousDaily, historyDaily, organicNow, organicCompare, organicHistory, tracker, trend, ga4, ranked, history, extras] = await Promise.all([
     call(config, 'get_search_console_performance', { projectId: config.projectId, dimensions: ['date'], startDate: range.startDate, endDate: range.endDate, rowLimit: 500 }, toolOptions),
     call(config, 'get_search_console_performance', { projectId: config.projectId, dimensions: ['query'], startDate: range.startDate, endDate: range.endDate, rowLimit: 15 }, toolOptions),
     call(config, 'get_search_console_performance', { projectId: config.projectId, dimensions: ['page'], startDate: range.startDate, endDate: range.endDate, rowLimit: 10 }, toolOptions),
@@ -184,6 +205,7 @@ export async function loadOpenSeo(config, range, options = {}) {
     loadGa4(config, range, toolOptions),
     rankRows(config, toolOptions),
     rankHistory(config, toolOptions),
+    searchExtras(config, range, toolOptions),
   ])
   const latestRun = (tracker?.recentRuns || []).find((run) => run.status === 'completed' || run.status === 'partial')
   const [aiPage, sources] = await Promise.all([
@@ -246,5 +268,5 @@ export async function loadOpenSeo(config, range, options = {}) {
     history,
   )
   const ai = aiRankingsFromResults({ tracker, rows: aiPage.rows, summaries: aiPage.summaries, trend, citedUrls: citedUrlMap(sources) })
-  return { search, keywords, ai, ga4 }
+  return { search, keywords, ai, ga4, searchExtras: extras }
 }

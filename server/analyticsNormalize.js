@@ -591,3 +591,30 @@ export function normalizeAi(settingsPayload, resultsPayload) {
       })),
   }
 }
+
+// Merge Search Console query lists (for example one per senior living phrase), keep each query once,
+// and drop anything without a query or position. Rows come straight from Search Console.
+export function mergeSearchQueries(lists, { limit = 25, sort = 'impressions' } = {}) {
+  const byKey = new Map()
+  for (const list of lists || []) {
+    const rows = Array.isArray(list?.rows) ? list.rows : Array.isArray(list) ? list : []
+    for (const row of rows) {
+      const key = text(row?.keys?.[0]) || text(row?.key) || text(row?.query)
+      const position = num(row?.position)
+      if (!key || position == null) continue
+      const normalized = key.toLowerCase()
+      if (byKey.has(normalized)) continue
+      byKey.set(normalized, {
+        key,
+        clicks: num(row.clicks) ?? 0,
+        impressions: num(row.impressions) ?? 0,
+        ctr: num(row.ctr),
+        position,
+      })
+    }
+  }
+  const rows = [...byKey.values()]
+  if (sort === 'position') rows.sort((a, b) => a.position - b.position || b.impressions - a.impressions)
+  else rows.sort((a, b) => b.impressions - a.impressions || a.position - b.position)
+  return rows.slice(0, limit)
+}

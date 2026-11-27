@@ -22,6 +22,8 @@ import { ANALYTICS_RANGES, COMPARE_MODES, comparisonWindow, formatComparisonDate
 import { KEYWORD_CATEGORIES } from '../lib/keywordCategoryLabels'
 import { engineAppearances, groupAiPrompts, promptMentioned } from '../lib/aiCards'
 import { averageRank, isRankingKeyword } from '../lib/rankPages'
+import { neverChecked, rankStatusLabel } from '../lib/analyticsWins'
+import { SeniorSearchCard, WinsSection } from '../components/analytics/WinsVisuals'
 
 function ctr(value) {
   if (value == null) return '—'
@@ -200,9 +202,11 @@ export default function Analytics() {
 
         {report ? (
           <>
+            <WinsSection report={report} />
             <MarketingKpis report={report} compare={compare} pending={pending} compareLabel={compareLabel} />
             <TrafficSection ga4={report.ga4} compare={compare} pending={pending} compareLabel={compareLabel} />
             <KeywordList report={report.keywords} check={check} onRefresh={() => { setDialog({ status: 'loading' }); estimateRankCheck().then((result) => setDialog(result.body || { estimate: null })) }} />
+            <SeniorSearchCard extras={report.searchExtras} />
             <AiList ai={report.ai} />
             <SearchCharts search={report.search} compare={compare} pending={pending} compareLabel={compareLabel} />
             <OtherCharts ga4={report.ga4} />
@@ -313,6 +317,12 @@ function byGoogleRank(a, b) {
   return a.position - b.position || a.keyword.localeCompare(b.keyword)
 }
 
+function seniorQuietText(quiet) {
+  const unchecked = quiet.filter(neverChecked).length
+  const missing = quiet.length - unchecked
+  return [missing ? ` · ${formatCount(missing)} not in top 40` : '', unchecked ? ` · ${formatCount(unchecked)} not checked yet` : ''].join('')
+}
+
 function KeywordList({ report, check, onRefresh }) {
   const [showHidden, setShowHidden] = useState(false)
   const [opened, setOpened] = useState(null)
@@ -326,10 +336,11 @@ function KeywordList({ report, check, onRefresh }) {
     return { ...category, ranked, quiet, items: (showHidden || alwaysShow) ? ranked.concat(quiet) : ranked }
   }).filter((group) => group.items.length)
   const firstId = groups[0]?.id
-  const isOpen = (id) => (opened == null ? id === firstId : opened.has(id))
+  const openByDefault = (id) => id === firstId || id === 'senior'
+  const isOpen = (id) => (opened == null ? openByDefault(id) : opened.has(id))
   const toggle = (id) => {
     setOpened((current) => {
-      const next = new Set(current ?? (firstId ? [firstId] : []))
+      const next = new Set(current ?? groups.map((group) => group.id).filter(openByDefault))
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
@@ -363,7 +374,7 @@ function KeywordList({ report, check, onRefresh }) {
             <button type="button" aria-expanded={isOpen(group.id)} onClick={() => toggle(group.id)} className="flex w-full items-center justify-between gap-3 bg-slate-50 px-4 py-2 text-left">
               <span className="text-sm font-semibold text-slate-900">{group.label}</span>
               <span className="text-xs font-medium text-slate-500">
-                {formatCount(group.ranked.length)} ranking{(showHidden || group.id === 'senior') && group.quiet.length ? ` · ${formatCount(group.quiet.length)} ${group.id === 'senior' ? 'not in top 40' : 'not ranking'}` : ''}
+                {formatCount(group.ranked.length)} ranking{group.id === 'senior' ? seniorQuietText(group.quiet) : showHidden && group.quiet.length ? ` · ${formatCount(group.quiet.length)} not ranking` : ''}
                 {avg == null ? '' : ` · avg #${avg}`}
               </span>
             </button>
@@ -382,7 +393,7 @@ function KeywordList({ report, check, onRefresh }) {
                   <tbody>
                     {group.items.map((row) => (
                       <tr key={row.id} className="border-t border-slate-100">
-                        <td className="px-4 py-2">{group.id === 'senior' && !isRankingKeyword(row) ? <span className="text-xs font-medium text-slate-500">not in top 40</span> : <GoogleRank position={row.position} change={row.change} previous={row.previousPosition} />}</td>
+                        <td className="px-4 py-2">{group.id === 'senior' && !isRankingKeyword(row) ? <span className="text-xs font-medium text-slate-500">{rankStatusLabel(row)}</span> : <GoogleRank position={row.position} change={row.change} previous={row.previousPosition} />}</td>
                         <td className="px-3 py-2 font-medium text-slate-900">{row.keyword}</td>
                         <td className="max-w-[240px] px-3 py-2"><ExternalLink href={row.rankingUrl} className="block truncate text-sm" /></td>
                         <td className="px-3 py-2 text-right text-xs tabular-nums text-slate-500">{row.volume == null ? '—' : formatCount(row.volume)}</td>

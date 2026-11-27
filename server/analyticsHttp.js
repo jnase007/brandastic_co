@@ -46,6 +46,7 @@ function disconnected(reason) {
     keywords: { connected: false, reason, rows: [], tracked: 0, ranking: 0, device: 'mobile', lastCheckedAt: null, runStatus: null },
     ai: { connected: false, reason, score: null, trend: null, prompts: [], voices: [], citationRate: null, lastChecked: null },
     ga4: emptyGa4(reason),
+    searchExtras: { connected: false, best: [], senior: [] },
   }
 }
 
