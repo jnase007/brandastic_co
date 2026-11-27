@@ -4,7 +4,6 @@ import { Compass, ExternalLink, Target, TrendingUp } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import { Input } from '../components/ui/input'
 import { loadStrategyGoals, saveStrategyGoals, OWNERS } from '../lib/strategyGoals'
-import RedditListeningPlan from '../components/strategy/RedditListeningPlan'
 import './education.css'
 
 const PILLARS = [
@@ -324,7 +323,14 @@ export default function Strategy() {
           )}
         </div>
       </div>
-      <RedditListeningPlan />
+      <section id="reddit-plan" className="mt-8 rounded-2xl border bg-card p-6 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-brand-orange">Strategy 2027 · Community</p>
+        <h2 className="mt-0.5 text-lg font-bold tracking-tight">Reddit listening and community plan</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Reddit is a listening tool and an AEO content source, not a lead channel.</p>
+        <Link to="/strategy/reddit" className="mt-4 inline-flex items-center rounded-lg bg-brand-orange px-3 py-1.5 text-sm font-medium text-white">
+          Open the plan
+        </Link>
+      </section>
       </div>
     </div>
   )

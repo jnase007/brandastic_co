@@ -48,6 +48,7 @@ const ClientLogin = lazy(() => import('./pages/ClientLogin'))
 const ClientDashboard = lazy(() => import('./pages/ClientDashboard'))
 const Mission = lazy(() => import('./pages/Mission'))
 const Strategy = lazy(() => import('./pages/Strategy'))
+const StrategyReddit = lazy(() => import('./pages/StrategyReddit'))
 const IdealTargetClient = lazy(() => import('./pages/IdealTargetClient'))
 const ScoreCard = lazy(() => import('./pages/ScoreCard'))
 const ScoreCardFinancials = lazy(() => import('./pages/ScoreCardFinancials'))
@@ -1308,6 +1309,14 @@ function App() {
                 element={
                   <TeamRoute>
                     <Strategy />
+                  </TeamRoute>
+                }
+              />
+              <Route
+                path="/strategy/reddit"
+                element={
+                  <TeamRoute>
+                    <StrategyReddit />
                   </TeamRoute>
                 }
               />
