@@ -4,6 +4,7 @@ import { Compass, ExternalLink, Target, TrendingUp } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import { Input } from '../components/ui/input'
 import { loadStrategyGoals, saveStrategyGoals, OWNERS } from '../lib/strategyGoals'
+import RedditListeningPlan from '../components/strategy/RedditListeningPlan'
 import './education.css'
 
 const PILLARS = [
@@ -323,6 +324,7 @@ export default function Strategy() {
           )}
         </div>
       </div>
+      <RedditListeningPlan />
       </div>
     </div>
   )
